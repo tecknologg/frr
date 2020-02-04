@@ -287,6 +287,12 @@ struct attr {
 
 	/* EVPN ES */
 	esi_t esi;
+
+	/* SR-TE Policy Name */
+	char *srte_policy;
+
+	/* SR-TE Color */
+	uint32_t srte_color;
 };
 
 /* rmap_change_flags definition */
