@@ -643,6 +643,7 @@ void nexthop_copy_no_recurse(struct nexthop *copy,
 	if (copy->backup_num > 0)
 		memcpy(copy->backup_idx, nexthop->backup_idx, copy->backup_num);
 
+	copy->srte_color = nexthop->srte_color;
 	memcpy(&copy->gate, &nexthop->gate, sizeof(nexthop->gate));
 	memcpy(&copy->src, &nexthop->src, sizeof(nexthop->src));
 	memcpy(&copy->rmap_src, &nexthop->rmap_src, sizeof(nexthop->rmap_src));

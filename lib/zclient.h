@@ -404,6 +404,9 @@ struct zapi_nexthop {
 	/* Backup nexthops, for IP-FRR, TI-LFA, etc */
 	uint8_t backup_num;
 	uint8_t backup_idx[NEXTHOP_MAX_BACKUPS];
+
+	/* SR-TE color used for BGP traffic */
+	uint32_t srte_color;
 };
 
 enum zapi_srte_type {
