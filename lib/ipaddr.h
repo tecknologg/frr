@@ -25,6 +25,8 @@
 
 #include <zebra.h>
 
+#include "lib/log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
