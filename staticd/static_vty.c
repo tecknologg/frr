@@ -1001,6 +1001,7 @@ DEFPY_YANG(ipv6_route,
             |label WORD                                    \
 	    |table (1-4294967295)                          \
             |nexthop-vrf NAME                              \
+            |color (1-4294967295)                          \
           }]",
       NO_STR
       IPV6_STR
@@ -1018,7 +1019,9 @@ DEFPY_YANG(ipv6_route,
       MPLS_LABEL_HELPSTR
       "Table to configure\n"
       "The table number to configure\n"
-      VRF_CMD_HELP_STR)
+      VRF_CMD_HELP_STR
+      "SR-TE color\n"
+      "The SR-TE color to configure\n")
 {
 	const char *nh_vrf;
 	const char *flag = NULL;
@@ -1038,7 +1041,7 @@ DEFPY_YANG(ipv6_route,
 	return static_route_leak(vty, vrf, nh_vrf, AFI_IP6, SAFI_UNICAST, no,
 				 prefix_str, NULL, from_str, gate_str, ifname,
 				 flag, tag_str, distance_str, label, table_str,
-				 false, NULL);
+				 false, color_str);
 }
 
 DEFPY_YANG(ipv6_route_vrf,
