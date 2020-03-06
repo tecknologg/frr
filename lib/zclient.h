@@ -206,6 +206,9 @@ struct zclient {
 	/* Do we care about failure events for route install? */
 	bool receive_notify;
 
+	/* Is this a synchronous client? */
+	bool synchronous;
+
 	/* Socket to zebra daemon. */
 	int sock;
 
@@ -514,6 +517,7 @@ enum zebra_neigh_state { ZEBRA_NEIGH_INACTIVE = 0, ZEBRA_NEIGH_ACTIVE = 1 };
 
 struct zclient_options {
 	bool receive_notify;
+	bool synchronous;
 };
 
 extern struct zclient_options zclient_options_default;
@@ -729,5 +733,10 @@ static inline void zapi_route_set_blackhole(struct zapi_route *api,
 	SET_FLAG(api->message, ZAPI_MESSAGE_NEXTHOP);
 };
 
+
+/* Send the hello message.
+ * Returns 0 for success or -1 on an I/O error.
+ */
+extern int zclient_send_hello(struct zclient *client);
 
 #endif /* _ZEBRA_ZCLIENT_H */
