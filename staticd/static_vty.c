@@ -455,7 +455,7 @@ int static_config(struct vty *vty, struct static_vrf *svrf, afi_t afi,
 				/*
 				 * SR-TE color
 				 */
-				if (nh->color)
+				if (nh->color != 0)
 					vty_out(vty, " color %u", nh->color);
 
 				vty_out(vty, "\n");
