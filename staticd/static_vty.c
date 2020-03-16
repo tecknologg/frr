@@ -452,6 +452,12 @@ int static_config(struct vty *vty, struct static_vrf *svrf, afi_t afi,
 				if (nh->onlink)
 					vty_out(vty, " onlink");
 
+				/*
+				 * SR-TE color
+				 */
+				if (nh->color)
+					vty_out(vty, " color %u", nh->color);
+
 				vty_out(vty, "\n");
 
 				write = 1;
