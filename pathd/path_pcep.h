@@ -103,6 +103,7 @@ struct pcep_glob {
 struct pce_opts {
 	struct in_addr addr;
 	short port;
+	bool draft07;
 };
 
 struct pcc_opts {

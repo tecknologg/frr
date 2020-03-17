@@ -55,6 +55,9 @@ int pcep_lib_connect(struct pcc_state *pcc_state)
 	config->support_sr_te_pst = true;
 	config->pcc_can_resolve_nai_to_sid = false;
 
+	config->pcep_msg_versioning->draft_ietf_pce_segment_routing_07
+		= pcc_state->pce_opts->draft07;
+
 	sess = connect_pce(config, &pcc_state->pce_opts->addr);
 
 	if (NULL == sess)
