@@ -304,6 +304,11 @@ int pcep_pcc_enable(struct ctrl_state *ctrl_state, struct pcc_state *pcc_state)
 
 	int ret;
 
+	if (NULL != pcc_state->t_reconnect) {
+		thread_cancel(pcc_state->t_reconnect);
+		pcc_state->t_reconnect = NULL;
+	}
+
 	PCEP_DEBUG("PCC connecting to %pI4:%d", &pcc_state->pce_opts->addr,
 		   pcc_state->pce_opts->port);
 
