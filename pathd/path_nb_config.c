@@ -98,7 +98,7 @@ int pathd_te_segment_list_segment_destroy(enum nb_event event,
 	if (event != NB_EV_APPLY)
 		return NB_OK;
 
-	segment = nb_running_get_entry(dnode, NULL, true);
+	segment = nb_running_unset_entry(dnode);
 	srte_segment_entry_del(segment);
 	SET_FLAG(segment->segment_list->flags, F_SEGMENT_LIST_MODIFIED);
 
