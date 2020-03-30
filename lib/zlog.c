@@ -64,6 +64,8 @@ DEFINE_KOOH(zlog_fini, (), ())
 DEFINE_HOOK(zlog_aux_init, (const char *prefix, int prio_min),
 			   (prefix, prio_min))
 
+static const struct zlog_kw_frame *zlog_kw_record(void);
+
 char zlog_prefix[128];
 size_t zlog_prefixsz;
 int zlog_tmpdirfd = -1;
@@ -100,6 +102,7 @@ struct zlog_msg {
 	size_t stackbufsz;
 	char *text;
 	size_t textlen;
+	const struct zlog_kw_frame *kw_frame;
 
 	/* This is always ISO8601 with sub-second precision 9 here, it's
 	 * converted for callers as needed.  ts_dot points to the "."
@@ -358,6 +361,7 @@ static void vzlog_notls(const struct xref_logmsg *xref, int prio,
 		.prio = prio & LOG_PRIMASK,
 		.fmt = fmt,
 		.xref = xref,
+		.kw_frame = zlog_kw_record(),
 	}, *msg = &stackmsg;
 	char stackbuf[512];
 
@@ -417,6 +421,7 @@ static void vzlog_tls(struct zlog_tls *zlog_tls, const struct xref_logmsg *xref,
 	msg->fmt = fmt;
 	msg->prio = prio & LOG_PRIMASK;
 	msg->xref = xref;
+	msg->kw_frame = zlog_kw_record();
 	if (msg->prio < LOG_INFO)
 		immediate = true;
 
@@ -539,6 +544,11 @@ const struct xref_logmsg *zlog_msg_xref(struct zlog_msg *msg)
 	return msg->xref;
 }
 
+const struct zlog_kw_frame *zlog_msg_frame(struct zlog_msg *msg)
+{
+	return msg->kw_frame;
+}
+
 const char *zlog_msg_text(struct zlog_msg *msg, size_t *textlen)
 {
 	if (!msg->text) {
@@ -630,6 +640,11 @@ size_t zlog_msg_ts(struct zlog_msg *msg, char *out, size_t outsz,
 		out[len1 + len2] = '\0';
 		return len1 + len2;
 	}
+}
+
+void zlog_msg_tsraw(struct zlog_msg *msg, struct timespec *ts)
+{
+	memcpy(ts, &msg->ts, sizeof(*ts));
 }
 
 /* setup functions */
@@ -750,4 +765,398 @@ void zlog_fini(void)
 			zlog_err("failed to rmdir \"%s\": %s",
 				 zlog_tmpdir, strerror(errno));
 	}
+}
+
+DEFINE_MTYPE_STATIC(LIB, KW_SPACE, "Log key-value accumulation buffer")
+DEFINE_MTYPE_STATIC(LIB, KW_HEAP,  "Log key-value reference")
+
+struct zlog_kw zlkw_INVALID[1] = { { NULL } };
+
+struct zlog_kw_state {
+	struct zlog_kw_frame *current;
+
+	size_t kw_space_size;
+	char *kw_space;
+};
+
+static thread_local struct zlog_kw_state zlog_kw_state;
+
+static const struct zlog_kw_frame *zlog_kw_record(void)
+{
+	return zlog_kw_state.current;
+}
+
+struct zlog_kw_state *_zlog_kw_frame_init(struct zlog_kw_frame *fvar,
+					  unsigned size)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+	struct zlog_kw_frame *up = state->current;
+
+	fvar->n_alloc = size;
+
+	fvar->up = up;
+	fvar->heapcopy = NULL;
+
+	state->current = fvar;
+	zlog_kw_revert(state);
+	return state;
+}
+
+void _zlog_kw_frame_fini(struct zlog_kw_state **statep)
+{
+	if (*statep) {
+		struct zlog_kw_state *state = *statep;
+
+		zlog_tls_buffer_flush();
+
+		zlog_kw_unref(&state->current->heapcopy);
+		state->current = state->current->up;
+		*statep = NULL;
+	}
+}
+
+void _zlog_kw_push(struct zlog_kw_state *state, const struct xref *xref,
+		   struct zlog_kw *key, const char *fmt, ...)
+{
+	struct zlog_kw_frame *frame = state->current;
+	struct fbuf fb;
+	size_t offset;
+	ssize_t len;
+	va_list ap;
+	size_t i;
+
+	assert(frame);
+
+	if (frame->n_used)
+		offset = frame->keywords[frame->n_used - 1].end;
+	else
+		offset = 0;
+
+	assert(state->kw_space_size >= offset);
+
+	fb.buf = state->kw_space;
+	fb.pos = fb.buf + offset;
+	fb.len = state->kw_space_size;
+
+	va_start(ap, fmt);
+	len = vbprintfrr(&fb, fmt, ap);
+	va_end(ap);
+
+	if ((size_t)(len + 1) > state->kw_space_size - offset) {
+		size_t newsize = offset + len + 256;
+
+		newsize = (newsize + 4095) & ~4095ULL;
+		state->kw_space = XREALLOC(MTYPE_KW_SPACE, state->kw_space,
+					   newsize);
+		state->kw_space_size = newsize;
+
+		fb.buf = state->kw_space;
+		fb.pos = fb.buf + offset;
+		fb.len = state->kw_space_size;
+
+		va_start(ap, fmt);
+		len = vbprintfrr(&fb, fmt, ap);
+		va_end(ap);
+	}
+	
+	state->kw_space[offset + len] = '\0';
+
+	for (i = 0; i < frame->n_used; i++) {
+		const char *oldval;
+
+		if (frame->keywords[i].key != key)
+			continue;
+
+		oldval = state->kw_space + frame->keywords[i].start;
+		if (strcmp(oldval, state->kw_space + offset))
+			break;
+
+		if (frame->keywords[frame->n_used].origin == xref)
+			return;
+
+		zlog_tls_buffer_flush();
+		zlog_kw_unref(&frame->heapcopy);
+		frame->keywords[frame->n_used].origin = xref;
+		return;
+	}
+
+	zlog_tls_buffer_flush();
+
+	if (i < frame->n_used)
+		frame->keywords[i].key = zlkw_INVALID;
+
+	assert(frame->n_used < frame->n_alloc);
+
+	frame->keywords[frame->n_used].key = key;
+	frame->keywords[frame->n_used].origin = xref;
+	frame->keywords[frame->n_used].start = offset;
+	frame->keywords[frame->n_used].end = offset + len + 1;
+	zlog_kw_unref(&frame->heapcopy);
+	frame->n_used++;
+}
+
+void zlog_kw_revert(struct zlog_kw_state *state)
+{
+	struct zlog_kw_frame *frame = state->current;
+	struct zlog_kw_frame *up = frame->up;
+	struct zlog_kw_heap *heapcopy = NULL;
+
+	assert(frame);
+	zlog_tls_buffer_flush();
+
+	frame->n_used = up ? up->n_used : 0;
+
+	if (up && up->heapcopy)
+		heapcopy = zlog_kw_ref(up->heapcopy);
+	zlog_kw_unref(&frame->heapcopy);
+	frame->heapcopy = heapcopy;
+
+	assert(frame->n_used <= frame->n_alloc);
+
+	memcpy(frame->keywords, up->keywords,
+	       sizeof(frame->keywords[0]) * frame->n_used);
+	memset(frame->keywords + frame->n_used, 0,
+	       sizeof(frame->keywords[0]) * (frame->n_alloc - frame->n_used));
+}
+
+void zlog_kw_clear(struct zlog_kw_state *state)
+{
+	struct zlog_kw_frame *frame = state->current;
+
+	assert(frame);
+	zlog_tls_buffer_flush();
+
+	if (frame->n_used == 0)
+		return;
+	if (frame->n_used == 1 && frame->keywords[0].key == zlkw_INVALID)
+		return;
+
+	frame->keywords[0].start = 0;
+	frame->keywords[0].end = frame->keywords[frame->n_used - 1].end;
+	frame->keywords[0].key = zlkw_INVALID;
+
+	memset(frame->keywords + 1, 0,
+	       sizeof(frame->keywords[0]) * (frame->n_alloc - 1));
+
+	zlog_kw_unref(&frame->heapcopy);
+	frame->n_used = 1;
+}
+
+unsigned zlog_kw_count(void)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+
+	return state->current ? state->current->n_used : 0;
+}
+
+const char *zlog_kw_get(struct zlog_kw *kw)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+	struct zlog_kw_frame *frame = state->current;
+	size_t i;
+
+	if (!frame)
+		return NULL;
+
+	for (i = 0; i < frame->n_used; i++)
+		if (frame->keywords[i].key == kw)
+			return state->kw_space + frame->keywords[i].start;
+
+	return NULL;
+}
+
+void zlog_kw_dump(void)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+	struct zlog_kw_frame *frame = state->current;
+	size_t i;
+
+	if (!frame) {
+		zlog_debug("keyword stack is empty");
+		return;
+	}
+
+	zlog_debug("%u keywords on stack", frame->n_used);
+	for (i = 0; i < frame->n_used; i++) {
+		if (frame->keywords[i].key == zlkw_INVALID)
+			zlog_debug("  (void key)");
+		else
+			zlog_debug("  %s=\"%s\"", frame->keywords[i].key->name,
+				   state->kw_space + frame->keywords[i].start);
+	}
+}
+
+struct zlog_kw_heap *zlog_kw_save(void)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+	struct zlog_kw_frame *frame = state->current;
+
+	if (!frame || frame->n_used == 0)
+		return NULL;
+	if (frame->heapcopy)
+		return zlog_kw_ref(frame->heapcopy);
+
+	size_t i, kw_need = 0;
+	size_t char_need = 0;
+	struct zlog_kw_val *val;
+
+	for (i = 0; i < frame->n_used; i++) {
+		val = &frame->keywords[i];
+		if (val->key == zlkw_INVALID)
+			continue;
+
+		kw_need++;
+		char_need += val->end - val->start;
+	}
+
+	struct zlog_kw_heap *alloc;
+	char *char_base;
+	unsigned offset;
+
+	alloc = XMALLOC(MTYPE_KW_HEAP, sizeof(*alloc)
+			+ kw_need * sizeof(alloc->keywords[0]) + char_need);
+
+	/* one for the return value, one for frame->heapcopy */
+	alloc->refcount = 2;
+	alloc->n_keywords = kw_need;
+	val = &alloc->keywords[0];
+	char_base = (char *)&alloc->keywords[alloc->n_keywords];
+	offset = 0;
+
+	for (i = 0; i < frame->n_used; i++) {
+		const char *src;
+		size_t len;
+
+		if (frame->keywords[i].key == zlkw_INVALID)
+			continue;
+
+		val->key = frame->keywords[i].key;
+		val->origin = frame->keywords[i].origin;
+		val->start = offset;
+
+		src = state->kw_space + frame->keywords[i].start;
+		len = frame->keywords[i].end - frame->keywords[i].start;
+		memcpy(char_base + offset, src, len);
+		offset += len;
+
+		val->end = offset;
+		val++;
+	}
+
+	assert(val == &alloc->keywords[alloc->n_keywords]);
+
+	frame->heapcopy = alloc;
+	return alloc;
+}
+
+void zlog_kw_apply(struct zlog_kw_state *state, struct zlog_kw_heap *heapkw)
+{
+	struct zlog_kw_frame *frame = state->current;
+	unsigned val_start, total_len;
+	char *char_base;
+	size_t i, j;
+
+	assert(frame);
+
+	zlog_kw_clear(state);
+
+	if (!heapkw)
+		return;
+	if (!heapkw->n_keywords)
+		return;
+
+	if (frame->n_used)
+		val_start = frame->keywords[frame->n_used - 1].end;
+	else
+		val_start = 0;
+
+	total_len = heapkw->keywords[heapkw->n_keywords - 1].end;
+
+	if (state->kw_space_size - val_start < total_len) {
+		size_t newsize = state->kw_space_size + total_len + 256;
+
+		newsize = (newsize + 4095) & ~4095ULL;
+		state->kw_space = XREALLOC(MTYPE_KW_SPACE, state->kw_space,
+					   newsize);
+		state->kw_space_size = newsize;
+	}
+
+	char_base = (char *)&heapkw->keywords[heapkw->n_keywords];
+	memcpy(state->kw_space + val_start, char_base, total_len);
+
+	j = frame->n_used;
+
+	for (i = 0; i < heapkw->n_keywords; i++) {
+		if (j == frame->n_alloc) {
+			zlog_err("out of space while loading keywords");
+			return;
+		}
+
+		frame->keywords[j] = heapkw->keywords[i];
+		frame->keywords[j].start += val_start;
+		frame->keywords[j].end += val_start;
+		j++;
+	}
+
+	frame->n_used = j;
+	frame->heapcopy = zlog_kw_ref(heapkw);
+}
+
+struct zlog_kw_heap *zlog_kw_ref(struct zlog_kw_heap *heapkw)
+{
+	assert(heapkw);
+	assert(heapkw->refcount);
+
+	heapkw->refcount++;
+	return heapkw;
+}
+
+void zlog_kw_unref(struct zlog_kw_heap **heapkw)
+{
+	if (!heapkw || !*heapkw)
+		return;
+
+	(*heapkw)->refcount--;
+	if ((*heapkw)->refcount == 0)
+		XFREE(MTYPE_KW_HEAP, *heapkw);
+	*heapkw = NULL;
+}
+
+size_t zlog_kw_frame_count(const struct zlog_kw_frame *frame)
+{
+	size_t i;
+
+	if (!frame)
+		return 0;
+	for (i = 0; i < frame->n_used; i++)
+		if (frame->keywords[i].key != zlkw_INVALID)
+			i++;
+	return i;
+}
+
+const struct zlog_kw_val *zlog_kw_frame_vals_next(
+	const struct zlog_kw_frame *frame, const struct zlog_kw_val *prev)
+{
+	if (!frame)
+		return NULL;
+	do {
+		prev++;
+		if (prev >= &frame->keywords[frame->n_used])
+			return NULL;
+	} while (prev->key == zlkw_INVALID);
+
+	return prev;
+}
+
+const struct zlog_kw_val *zlog_kw_frame_vals_first(
+	const struct zlog_kw_frame *frame)
+{
+	return zlog_kw_frame_vals_next(frame, &frame->keywords[0] - 1);
+}
+
+const char *zlog_kw_frame_val_str(const struct zlog_kw_val *val)
+{
+	struct zlog_kw_state *state = &zlog_kw_state;
+
+	return state->kw_space + val->start;
 }

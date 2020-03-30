@@ -700,6 +700,74 @@ DEFPY (neigh_discover,
 	return CMD_SUCCESS;
 }
 
+struct zlog_kw zlkw_FOO[1] = {{ "FOO" }};
+struct zlog_kw zlkw_BAR[1] = {{ "BAR" }};
+
+struct zlog_kw_heap *saved;
+
+static void fn1(void)
+{
+	zlog_kw_dump();
+
+	ZLOG_KW_FRAME(frame, 8);
+
+	zlog_kw_dump();
+
+	zlog_kw_push(frame, zlkw_BAR, "bar-value");
+
+	zlog_kw_dump();
+
+	zlog_kw_push(frame, zlkw_FOO, "new-value");
+
+	zlog_kw_dump();
+}
+
+DEFPY (kwtest,
+       kwtest_cmd,
+       "sharp kwtest [STRARG]",
+       "Sharp Routing Protocol\n"
+       "keyword test\n"
+       "string arg\n")
+{
+	ZLOG_KW_FRAME(frame, 8);
+
+	if (!strarg)
+		strarg = "test";
+
+	zlog_kw_dump();
+
+	zlog_kw_push(frame, zlkw_FOO, "foo-value");
+
+	zlog_kw_dump();
+
+	fn1();
+
+	zlog_kw_push(frame, zlkw_BAR, "arg %s", strarg);
+	zlog_kw_dump();
+
+	if (saved)
+		zlog_kw_unref(&saved);
+	saved = zlog_kw_save();
+
+	vty_out(vty, "save contains %d kws\n", saved->n_keywords);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (kwload,
+       kwload_cmd,
+       "sharp kwload",
+       "Sharp Routing Protocol\n"
+       "keyword load\n")
+{
+	ZLOG_KW_FRAME(frame, saved ? saved->n_keywords : 0);
+
+	zlog_kw_dump();
+	zlog_kw_apply(frame, saved);
+	zlog_kw_dump();
+	return CMD_SUCCESS;
+}
+
 void sharp_vty_init(void)
 {
 	install_element(ENABLE_NODE, &install_routes_data_dump_cmd);
@@ -718,6 +786,8 @@ void sharp_vty_init(void)
 	install_element(ENABLE_NODE, &send_opaque_unicast_cmd);
 	install_element(ENABLE_NODE, &send_opaque_reg_cmd);
 	install_element(ENABLE_NODE, &neigh_discover_cmd);
+	install_element(ENABLE_NODE, &kwtest_cmd);
+	install_element(ENABLE_NODE, &kwload_cmd);
 
 	install_element(ENABLE_NODE, &show_debugging_sharpd_cmd);
 

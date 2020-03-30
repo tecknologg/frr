@@ -237,6 +237,9 @@ extern const struct xref_logmsg *zlog_msg_xref(struct zlog_msg *msg);
 /* pass NULL as textlen if you don't need it. */
 extern const char *zlog_msg_text(struct zlog_msg *msg, size_t *textlen);
 
+struct zlog_kw_frame;
+extern const struct zlog_kw_frame *zlog_msg_frame(struct zlog_msg *msg);
+
 /* timestamp formatting control flags */
 
 /* sub-second digit count */
@@ -254,6 +257,8 @@ extern const char *zlog_msg_text(struct zlog_msg *msg, size_t *textlen);
 
 extern size_t zlog_msg_ts(struct zlog_msg *msg, char *out, size_t outsz,
 			  uint32_t flags);
+extern void zlog_msg_tsraw(struct zlog_msg *msg, struct timespec *ts);
+extern int zlog_msg_prio(struct zlog_msg *msg);
 
 /* This list & struct implements the actual logging targets.  It is accessed
  * lock-free from all threads, and thus MUST only be changed atomically, i.e.
@@ -340,5 +345,90 @@ extern void zlog_tls_buffer_fini(void);
 #ifdef __cplusplus
 }
 #endif
+
+struct zlog_kw {
+	const char *name;
+};
+
+/* used to mark overwritten keys */
+extern struct zlog_kw zlkw_INVALID[1];
+
+struct zlog_kw_val {
+	struct zlog_kw *key;
+	const struct xref *origin;
+	unsigned start, end;
+};
+
+struct zlog_kw_heap {
+	unsigned refcount;
+	unsigned n_keywords;
+
+	struct zlog_kw_val keywords[0];
+};
+
+struct zlog_kw_frame {
+	struct zlog_kw_frame *up;
+	struct zlog_kw_heap *heapcopy;
+
+	unsigned n_alloc, n_used;
+	struct zlog_kw_val keywords[0];
+};
+
+struct zlog_kw_state; /* private */
+
+#define ZLOG_KW_FRAME(state, max_local_kws)                                    \
+	unsigned _prev_kw_count = zlog_kw_count();                             \
+	struct {                                                               \
+		struct zlog_kw_frame frame;                                    \
+		struct zlog_kw_val keywords[_prev_kw_count + max_local_kws];   \
+	} _zlog_kw_frame_var;                                                  \
+	struct zlog_kw_state *state __attribute__((                            \
+			cleanup(_zlog_kw_frame_fini))) =                       \
+		_zlog_kw_frame_init(&_zlog_kw_frame_var.frame,                 \
+				    _prev_kw_count + max_local_kws)            \
+	/* end */
+
+#define ZLOG_KW_FRAME_LOAD_SAVED(state, heapkws, add_local_kws)                \
+	ZLOG_KW_FRAME(state, ((heapkws) ? (heapkws)->n_keywords : 0)           \
+				+ add_local_kws);                              \
+	zlog_kw_apply(state, heapkws);                                         \
+	/* end */
+
+extern struct zlog_kw_state *_zlog_kw_frame_init(struct zlog_kw_frame *fvar,
+						 unsigned size);
+extern void _zlog_kw_frame_fini(struct zlog_kw_state **statep);
+
+extern void _zlog_kw_push(struct zlog_kw_state *state, const struct xref *xref,
+			  struct zlog_kw *key, const char *fmt, ...);
+
+#define zlog_kw_push(state, key, fmt, ...)                                     \
+	do {                                                                   \
+		static const struct xref _xref __attribute__((used)) =         \
+			XREF_INIT(XREFT_KWPUSH, NULL, __func__);               \
+		XREF_LINK(_xref);                                              \
+		_zlog_kw_push(state, &_xref, key, fmt, ## __VA_ARGS__);        \
+	} while (0)                                                            \
+	/* end */
+
+extern void zlog_kw_revert(struct zlog_kw_state *state);
+extern void zlog_kw_clear(struct zlog_kw_state *state);
+
+extern unsigned zlog_kw_count(void);
+extern const char *zlog_kw_get(struct zlog_kw *kw);
+extern void zlog_kw_dump(void);
+
+extern struct zlog_kw_heap *zlog_kw_save(void);
+extern void zlog_kw_apply(struct zlog_kw_state *state,
+			  struct zlog_kw_heap *heapkw);
+
+extern struct zlog_kw_heap *zlog_kw_ref(struct zlog_kw_heap *heapkw);
+extern void zlog_kw_unref(struct zlog_kw_heap **heapkw);
+
+extern size_t zlog_kw_frame_count(const struct zlog_kw_frame *frame);
+extern const struct zlog_kw_val *zlog_kw_frame_vals_next(
+	const struct zlog_kw_frame *frame, const struct zlog_kw_val *prev);
+extern const struct zlog_kw_val *zlog_kw_frame_vals_first(
+	const struct zlog_kw_frame *frame);
+extern const char *zlog_kw_frame_val_str(const struct zlog_kw_val *val);
 
 #endif /* _FRR_ZLOG_H */
