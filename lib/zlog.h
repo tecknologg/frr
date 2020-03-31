@@ -353,6 +353,13 @@ struct zlog_kw {
 /* used to mark overwritten keys */
 extern struct zlog_kw zlkw_INVALID[1];
 
+extern struct zlog_kw zlkw_VRF[1];
+extern struct zlog_kw zlkw_INTERFACE[1];
+extern struct zlog_kw zlkw_NEIGHBOR[1];
+extern struct zlog_kw zlkw_R_PREFIX[1];
+extern struct zlog_kw zlkw_NH_ADDRESS[1];
+extern struct zlog_kw zlkw_NH_INTERFACE[1];
+
 struct zlog_kw_val {
 	struct zlog_kw *key;
 	const struct xref *origin;

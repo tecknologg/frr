@@ -772,6 +772,13 @@ DEFINE_MTYPE_STATIC(LIB, KW_HEAP,  "Log key-value reference")
 
 struct zlog_kw zlkw_INVALID[1] = { { NULL } };
 
+struct zlog_kw zlkw_VRF[1] = { { "VRF" } };
+struct zlog_kw zlkw_INTERFACE[1] = { { "INTERFACE" } };
+struct zlog_kw zlkw_NEIGHBOR[1] = { { "NEIGHBOR" } };
+struct zlog_kw zlkw_R_PREFIX[1] = { { "R_PREFIX" } };
+struct zlog_kw zlkw_NH_ADDRESS[1] = { { "NH_ADDRESS" } };
+struct zlog_kw zlkw_NH_INTERFACE[1] = { { "NH_INTERFACE" } };
+
 struct zlog_kw_state {
 	struct zlog_kw_frame *current;
 
