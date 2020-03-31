@@ -57,8 +57,6 @@ static void free_state(vrf_id_t vrf_id, struct route_entry *re,
 static void copy_state(struct rnh *rnh, struct route_entry *re,
 		       struct route_node *rn);
 static int compare_state(struct route_entry *r1, struct route_entry *r2);
-static int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
-		       vrf_id_t vrf_id);
 static void print_rnh(struct route_node *rn, struct vty *vty);
 static int zebra_client_cleanup_rnh(struct zserv *client);
 
@@ -993,8 +991,8 @@ static int compare_state(struct route_entry *r1, struct route_entry *r2)
 	return 0;
 }
 
-static int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
-		       vrf_id_t vrf_id)
+int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
+		vrf_id_t vrf_id)
 {
 	struct stream *s;
 	struct route_entry *re;
