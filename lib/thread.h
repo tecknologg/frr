@@ -117,6 +117,7 @@ struct thread {
 	struct cpu_thread_history *hist; /* cache pointer to cpu_history */
 	unsigned long yield;		 /* yield time in microseconds */
 	const struct xref_threadsched *xref;   /* origin location */
+	struct zlog_kw_heap *keywords;
 	pthread_mutex_t mtx;   /* mutex for thread.c functions */
 };
 

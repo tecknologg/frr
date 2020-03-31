@@ -521,6 +521,8 @@ static void thread_add_unuse(struct thread_master *m, struct thread *thread)
 
 	assert(m != NULL && thread != NULL);
 
+	zlog_kw_unref(&thread->keywords);
+
 	thread->hist->total_active--;
 	memset(thread, 0, sizeof(struct thread));
 	thread->type = THREAD_UNUSED;
@@ -696,6 +698,7 @@ static struct thread *thread_get(struct thread_master *m, uint8_t type,
 	thread->arg = arg;
 	thread->yield = THREAD_YIELD_TIME_SLOT; /* default */
 	thread->ref = NULL;
+	thread->keywords = zlog_kw_save();
 
 	/*
 	 * So if the passed in funcname is not what we have
@@ -724,6 +727,8 @@ static struct thread *thread_get(struct thread_master *m, uint8_t type,
 
 static void thread_free(struct thread_master *master, struct thread *thread)
 {
+	zlog_kw_unref(&thread->keywords);
+
 	/* Update statistics. */
 	assert(master->alloc > 0);
 	master->alloc--;
@@ -1337,6 +1342,7 @@ static struct thread *thread_run(struct thread_master *m, struct thread *thread,
 				 struct thread *fetch)
 {
 	*fetch = *thread;
+	thread->keywords = NULL; /* transfer ownership / refcount */
 	thread_add_unuse(m, thread);
 	return fetch;
 }
@@ -1668,6 +1674,10 @@ void thread_call(struct thread *thread)
 	unsigned long exp;
 	unsigned long helper;
 #endif
+	ZLOG_KW_FRAME(kws, thread->keywords ? thread->keywords->n_keywords : 0);
+	zlog_kw_apply(kws, thread->keywords);
+	zlog_kw_unref(&thread->keywords);
+
 	RUSAGE_T before, after;
 
 	GETRUSAGE(&before);
