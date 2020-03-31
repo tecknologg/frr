@@ -751,6 +751,21 @@ DEFPY (kwtest,
 
 	vty_out(vty, "save contains %d kws\n", saved->n_keywords);
 
+	zlog(LOG_DEBUG,   "--- actively all:");
+	zlog(LOG_EMERG,   "emerg");
+	zlog(LOG_ALERT,   "alert");
+	zlog(LOG_CRIT,    "crit");
+	zlog(LOG_ERR,     "err");
+	zlog(LOG_WARNING, "warning");
+	zlog(LOG_NOTICE,  "notice");
+	zlog(LOG_INFO,    "info");
+	zlog(LOG_DEBUG,   "debug");
+	zlog(LOG_DEBUG,   "--- actively used:");
+	zlog(LOG_ERR,     "err");
+	zlog(LOG_WARNING, "warning");
+	zlog(LOG_INFO,    "info");
+	zlog(LOG_DEBUG,   "debug");
+
 	return CMD_SUCCESS;
 }
 
