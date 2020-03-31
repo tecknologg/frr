@@ -2287,7 +2287,8 @@ static void ospf_ls_ack(struct ip *iph, struct ospf_header *ospfh,
 
 static struct stream *ospf_recv_packet(struct ospf *ospf, int fd,
 				       struct interface **ifp,
-				       struct stream *ibuf)
+				       struct stream *ibuf,
+				       struct zlog_kw_state *kw_frame)
 {
 	int ret;
 	struct ip *iph;
@@ -2312,6 +2313,12 @@ static struct stream *ospf_recv_packet(struct ospf *ospf, int fd,
 				  safe_strerror(errno));
 		return NULL;
 	}
+
+	ifindex = getsockopt_ifindex(AF_INET, &msgh);
+	*ifp = if_lookup_by_index(ifindex, ospf->vrf_id);
+
+	zlog_kw_push(kw_frame, zlkw_INTERFACE, "%s", (*ifp)->name);
+
 	if ((unsigned int)ret < sizeof(struct ip)) {
 		flog_warn(
 			EC_OSPF_PACKET,
@@ -2324,6 +2331,8 @@ static struct stream *ospf_recv_packet(struct ospf *ospf, int fd,
 	   because this is at the beginning of the stream data buffer. */
 	iph = (struct ip *)STREAM_DATA(ibuf);
 	sockopt_iphdrincl_swab_systoh(iph);
+
+	zlog_kw_push(kw_frame, zlkw_NEIGHBOR, "%pI4", &iph->ip_src);
 
 	ip_len = iph->ip_len;
 
@@ -2353,10 +2362,6 @@ static struct stream *ospf_recv_packet(struct ospf *ospf, int fd,
 	 */
 	ip_len = ntohs(iph->ip_len) + (iph->ip_hl << 2);
 #endif
-
-	ifindex = getsockopt_ifindex(AF_INET, &msgh);
-
-	*ifp = if_lookup_by_index(ifindex, ospf->vrf_id);
 
 	if (ret != ip_len) {
 		flog_warn(
@@ -2941,6 +2946,7 @@ enum ospf_read_return_enum {
 
 static enum ospf_read_return_enum ospf_read_helper(struct ospf *ospf)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
 	int ret;
 	struct stream *ibuf;
 	struct ospf_interface *oi;
@@ -2951,7 +2957,7 @@ static enum ospf_read_return_enum ospf_read_helper(struct ospf *ospf)
 	struct interface *ifp = NULL;
 
 	stream_reset(ospf->ibuf);
-	ibuf = ospf_recv_packet(ospf, ospf->fd, &ifp, ospf->ibuf);
+	ibuf = ospf_recv_packet(ospf, ospf->fd, &ifp, ospf->ibuf, kw_frame);
 	if (ibuf == NULL)
 		return OSPF_READ_ERROR;
 
