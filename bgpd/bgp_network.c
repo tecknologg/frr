@@ -365,6 +365,7 @@ static void bgp_socket_set_buffer_size(const int fd)
 /* Accept bgp connection. */
 static int bgp_accept(struct thread *thread)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
 	int bgp_sock;
 	int accept_sock;
 	union sockunion su;
@@ -426,6 +427,7 @@ static int bgp_accept(struct thread *thread)
 		}
 		return -1;
 	}
+	zlog_kw_push(kw_frame, zlkw_NEIGHBOR, "%pSU", &su);
 	set_nonblocking(bgp_sock);
 
 	/* Obtain BGP instance this connection is meant for.

@@ -1642,6 +1642,8 @@ static int bgp_connect_fail(struct peer *peer)
  */
 int bgp_start(struct peer *peer)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
+
 	int status;
 
 	bgp_peer_conf_if_to_su_update(peer);
@@ -1654,6 +1656,8 @@ int bgp_start(struct peer *peer)
 		peer->last_reset = PEER_DOWN_NBR_ADDR;
 		return -1;
 	}
+
+	zlog_kw_push(kw_frame, zlkw_NEIGHBOR, "%pSU", &peer->su);
 
 	if (BGP_PEER_START_SUPPRESSED(peer)) {
 		if (bgp_debug_neighbor_events(peer))

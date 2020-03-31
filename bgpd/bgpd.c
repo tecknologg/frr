@@ -98,6 +98,9 @@ DEFINE_QOBJ_TYPE(bgp)
 DEFINE_QOBJ_TYPE(peer)
 DEFINE_HOOK(bgp_inst_delete, (struct bgp *bgp), (bgp))
 
+struct zlog_kw zlkw_BGP_INST_ASN[1] = {{ "BGP_INST_ASN" }};
+struct zlog_kw zlkw_BGP_INST_VIEW[1] = {{ "BGP_INST_VIEW" }};
+
 /* BGP process wide configuration.  */
 static struct bgp_master bgp_master;
 
@@ -1879,8 +1882,12 @@ void peer_as_change(struct peer *peer, as_t as, int as_specified)
 int peer_remote_as(struct bgp *bgp, union sockunion *su, const char *conf_if,
 		   as_t *as, int as_type, afi_t afi, safi_t safi)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
 	struct peer *peer;
 	as_t local_as;
+
+	zlog_kw_push(kw_frame, zlkw_BGP_INST_ASN, "%lu", bgp->as);
+	zlog_kw_push(kw_frame, zlkw_VRF, "%s", vrf_id_to_name(bgp->vrf_id));
 
 	if (conf_if)
 		peer = peer_lookup_by_conf_if(bgp, conf_if);
@@ -3048,7 +3055,8 @@ static void bgp_vrf_string_name_delete(void *data)
 
 /* BGP instance creation by `router bgp' commands. */
 static struct bgp *bgp_create(as_t *as, const char *name,
-			      enum bgp_instance_type inst_type)
+			      enum bgp_instance_type inst_type,
+			      struct zlog_kw_state *kw_frame)
 {
 	struct bgp *bgp;
 	afi_t afi;
@@ -3057,15 +3065,24 @@ static struct bgp *bgp_create(as_t *as, const char *name,
 	if ((bgp = XCALLOC(MTYPE_BGP, sizeof(struct bgp))) == NULL)
 		return NULL;
 
-	if (BGP_DEBUG(zebra, ZEBRA)) {
-		if (inst_type == BGP_INSTANCE_TYPE_DEFAULT)
+	zlog_kw_push(kw_frame, zlkw_BGP_INST_ASN, "%lu", *as);
+
+	if (inst_type == BGP_INSTANCE_TYPE_DEFAULT) {
+		zlog_kw_push(kw_frame, zlkw_VRF, "%s", vrf_get_default_name());
+
+		if (BGP_DEBUG(zebra, ZEBRA))
 			zlog_debug("Creating Default VRF, AS %u", *as);
-		else
-			zlog_debug("Creating %s %s, AS %u",
-				   (inst_type == BGP_INSTANCE_TYPE_VRF)
-					   ? "VRF"
-					   : "VIEW",
-				   name, *as);
+	} else if (inst_type == BGP_INSTANCE_TYPE_VRF) {
+		zlog_kw_push(kw_frame, zlkw_VRF, "%s", name);
+
+		if (BGP_DEBUG(zebra, ZEBRA))
+			zlog_debug("Creating VRF %s, AS %u", name, *as);
+	} else {
+		zlog_kw_push(kw_frame, zlkw_VRF, "%s", vrf_get_default_name());
+		zlog_kw_push(kw_frame, zlkw_BGP_INST_VIEW, "%s", name);
+
+		if (BGP_DEBUG(zebra, ZEBRA))
+			zlog_debug("Creating VIEW %s, AS %u", name, *as);
 	}
 
 	/* Default the EVPN VRF to the default one */
@@ -3342,6 +3359,7 @@ int bgp_handle_socket(struct bgp *bgp, struct vrf *vrf, vrf_id_t old_vrf_id,
 int bgp_lookup_by_as_name_type(struct bgp **bgp_val, as_t *as, const char *name,
 			       enum bgp_instance_type inst_type)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
 	struct bgp *bgp;
 
 	/* Multiple instance check. */
@@ -3382,7 +3400,7 @@ int bgp_get(struct bgp **bgp_val, as_t *as, const char *name,
 			return ret;
 	}
 
-	bgp = bgp_create(as, name, inst_type);
+	bgp = bgp_create(as, name, inst_type, kw_frame);
 	if (bgp_option_check(BGP_OPT_NO_ZEBRA) && name)
 		bgp->vrf_id = vrf_generate_id();
 	bgp_router_id_set(bgp, &bgp->router_id_zebra, true);
