@@ -302,7 +302,7 @@ void zebra_add_rnh_client(struct rnh *rnh, struct zserv *client,
 	 * We always need to respond with known information,
 	 * currently multiple daemons expect this behavior
 	 */
-	send_client(rnh, client, type, vrf_id);
+	send_client(rnh, client, type, vrf_id, 0);
 }
 
 void zebra_remove_rnh_client(struct rnh *rnh, struct zserv *client,
@@ -521,8 +521,8 @@ static void zebra_rnh_eval_import_check_entry(struct zebra_vrf *zvrf, afi_t afi,
 		}
 		/* state changed, notify clients */
 		for (ALL_LIST_ELEMENTS_RO(rnh->client_list, node, client)) {
-			send_client(rnh, client,
-				    RNH_IMPORT_CHECK_TYPE, zvrf->vrf->vrf_id);
+			send_client(rnh, client, RNH_IMPORT_CHECK_TYPE,
+				    zvrf->vrf->vrf_id, 0);
 		}
 	}
 }
@@ -584,7 +584,8 @@ static void zebra_rnh_notify_protocol_clients(struct zebra_vrf *zvrf, afi_t afi,
 					zebra_route_string(client->proto));
 		}
 
-		send_client(rnh, client, RNH_NEXTHOP_TYPE, zvrf->vrf->vrf_id);
+		send_client(rnh, client, RNH_NEXTHOP_TYPE, zvrf->vrf->vrf_id,
+			    0);
 	}
 
 	if (re)
@@ -992,7 +993,7 @@ static int compare_state(struct route_entry *r1, struct route_entry *r2)
 }
 
 int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
-		vrf_id_t vrf_id)
+		vrf_id_t vrf_id, uint32_t srte_color)
 {
 	struct stream *s;
 	struct route_entry *re;
@@ -1000,6 +1001,7 @@ int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
 	uint8_t num;
 	struct nexthop *nh;
 	struct route_node *rn;
+	uint32_t message = 0;
 	int cmd = (type == RNH_IMPORT_CHECK_TYPE) ? ZEBRA_IMPORT_CHECK_UPDATE
 						  : ZEBRA_NEXTHOP_UPDATE;
 
@@ -1010,6 +1012,11 @@ int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
 	s = stream_new(ZEBRA_MAX_PACKET_SIZ);
 
 	zclient_create_header(s, cmd, vrf_id);
+
+	/* Message flags. */
+	if (srte_color)
+		SET_FLAG(message, ZAPI_MESSAGE_SRTE);
+	stream_putl(s, message);
 
 	stream_putw(s, rn->p.family);
 	switch (rn->p.family) {
@@ -1027,6 +1034,9 @@ int send_client(struct rnh *rnh, struct zserv *client, rnh_type_t type,
 			 __FUNCTION__, rn->p.family);
 		break;
 	}
+	if (srte_color)
+		stream_putl(s, srte_color);
+
 	if (re) {
 		stream_putc(s, re->type);
 		stream_putw(s, re->instance);
