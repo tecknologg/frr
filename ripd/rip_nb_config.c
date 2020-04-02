@@ -40,6 +40,7 @@
  */
 int ripd_instance_create(struct nb_cb_create_args *args)
 {
+	ZLOG_KW_FRAME(kwframe, 8);
 	struct rip *rip;
 	struct vrf *vrf;
 	const char *vrf_name;
@@ -47,6 +48,7 @@ int ripd_instance_create(struct nb_cb_create_args *args)
 
 	vrf_name = yang_dnode_get_string(args->dnode, "./vrf");
 	vrf = vrf_lookup_by_name(vrf_name);
+	zlog_kw_push(kwframe, zlkw_VRF, vrf_name);
 
 	/*
 	 * Try to create a RIP socket only if the VRF is enabled, otherwise

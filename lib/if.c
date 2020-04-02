@@ -234,6 +234,7 @@ struct interface *if_create_ifindex(ifindex_t ifindex, vrf_id_t vrf_id)
 /* Create new interface structure. */
 void if_update_to_new_vrf(struct interface *ifp, vrf_id_t vrf_id)
 {
+	ZLOG_KW_FRAME(kwframe, 8);
 	struct vrf *old_vrf, *vrf;
 
 	/* remove interface from old master vrf list */
@@ -249,8 +250,12 @@ void if_update_to_new_vrf(struct interface *ifp, vrf_id_t vrf_id)
 	ifp->vrf_id = vrf_id;
 	vrf = vrf_get(ifp->vrf_id, NULL);
 
-	if (ifp->name[0] != '\0')
+	zlog_kw_push(kwframe, zlkw_VRF, vrf->name);
+
+	if (ifp->name[0] != '\0') {
+		zlog_kw_push(kwframe, zlkw_INTERFACE, ifp->name);
 		IFNAME_RB_INSERT(vrf, ifp);
+	}
 
 	if (ifp->ifindex != IFINDEX_INTERNAL)
 		IFINDEX_RB_INSERT(vrf, ifp);
@@ -1328,6 +1333,7 @@ void if_zapi_callbacks(int (*create)(struct interface *ifp),
  */
 static int lib_interface_create(struct nb_cb_create_args *args)
 {
+	ZLOG_KW_FRAME(kwframe, 8);
 	const char *ifname;
 	const char *vrfname;
 	struct vrf *vrf;
@@ -1335,6 +1341,9 @@ static int lib_interface_create(struct nb_cb_create_args *args)
 
 	ifname = yang_dnode_get_string(args->dnode, "./name");
 	vrfname = yang_dnode_get_string(args->dnode, "./vrf");
+
+	zlog_kw_push(kwframe, zlkw_VRF, vrfname);
+	zlog_kw_push(kwframe, zlkw_INTERFACE, ifname);
 
 	switch (args->event) {
 	case NB_EV_VALIDATE:

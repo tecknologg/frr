@@ -31,6 +31,7 @@
 #include "northbound_cli.h"
 #include "northbound_db.h"
 #include "frrstr.h"
+#include "zlog.h"
 
 DEFINE_MTYPE_STATIC(LIB, NB_NODE, "Northbound Node")
 DEFINE_MTYPE_STATIC(LIB, NB_CONFIG, "Northbound Configuration")
@@ -59,6 +60,13 @@ static struct {
 
 /* Knob to record config transaction */
 static bool nb_db_enabled;
+
+struct nb_config_entry {
+	char xpath[XPATH_MAXLEN];
+	void *entry;
+	struct zlog_kw_heap *keywords;
+};
+
 /*
  * Global lock used to prevent multiple configuration transactions from
  * happening concurrently.
@@ -89,6 +97,12 @@ static int nb_oper_data_iter_node(const struct lys_node *snode,
 				  struct yang_translator *translator,
 				  bool first, uint32_t flags,
 				  nb_oper_data_cb cb, void *arg);
+
+static struct nb_config_entry *nb_running_get_entry_worker(
+					 const struct lyd_node *dnode,
+					 const char *xpath,
+					 bool abort_if_not_found,
+					 bool rec_search);
 
 static int nb_node_check_config_only(const struct lys_node *snode, void *arg)
 {
@@ -1174,6 +1188,9 @@ static int nb_callback_configuration(struct nb_context *context,
 	char xpath[XPATH_MAXLEN];
 	const struct nb_node *nb_node = change->cb.nb_node;
 	const struct lyd_node *dnode = change->cb.dnode;
+	struct nb_config_entry *entry = nb_running_get_entry_worker(
+			dnode, NULL, false, true);
+	ZLOG_KW_FRAME_LOAD_SAVED(kwframe, entry ? entry->keywords : NULL, 0);
 	union nb_resource *resource;
 	int ret = NB_ERR;
 
@@ -1423,9 +1440,17 @@ static void nb_transaction_apply_finish(struct nb_transaction *transaction,
 	}
 
 	/* Call the 'apply_finish' callbacks, sorted by their priorities. */
-	RB_FOREACH (cb, nb_config_cbs, &cbs)
+	RB_FOREACH (cb, nb_config_cbs, &cbs) {
+		struct nb_config_entry *entry;
+
+		entry = nb_running_get_entry_worker(cb->dnode, NULL,
+				false, true);
+		ZLOG_KW_FRAME_LOAD_SAVED(kwframe,
+					 entry ? entry->keywords : NULL, 0);
+
 		nb_callback_apply_finish(transaction->context, cb->nb_node,
 					 cb->dnode, errmsg, errmsg_len);
+	}
 
 	/* Release memory. */
 	while (!RB_EMPTY(nb_config_cbs, &cbs)) {
@@ -1971,10 +1996,6 @@ int nb_notification_send(const char *xpath, struct list *arguments)
 }
 
 /* Running configuration user pointers management. */
-struct nb_config_entry {
-	char xpath[XPATH_MAXLEN];
-	void *entry;
-};
 
 static bool running_config_entry_cmp(const void *value1, const void *value2)
 {
@@ -2001,7 +2022,10 @@ static void *running_config_entry_alloc(void *p)
 
 static void running_config_entry_free(void *arg)
 {
-	XFREE(MTYPE_NB_CONFIG_ENTRY, arg);
+	struct nb_config_entry *entry = arg;
+
+	zlog_kw_unref(&entry->keywords);
+	XFREE(MTYPE_NB_CONFIG_ENTRY, entry);
 }
 
 void nb_running_set_entry(const struct lyd_node *dnode, void *entry)
@@ -2012,6 +2036,9 @@ void nb_running_set_entry(const struct lyd_node *dnode, void *entry)
 	config = hash_get(running_config_entries, &s,
 			  running_config_entry_alloc);
 	config->entry = entry;
+
+	zlog_kw_unref(&config->keywords);
+	config->keywords = zlog_kw_save();
 }
 
 void nb_running_move_tree(const char *xpath_from, const char *xpath_to)
@@ -2070,7 +2097,8 @@ void *nb_running_unset_entry(const struct lyd_node *dnode)
 	return entry;
 }
 
-static void *nb_running_get_entry_worker(const struct lyd_node *dnode,
+static struct nb_config_entry *nb_running_get_entry_worker(
+					 const struct lyd_node *dnode,
 					 const char *xpath,
 					 bool abort_if_not_found,
 					 bool rec_search)
@@ -2090,7 +2118,7 @@ static void *nb_running_get_entry_worker(const struct lyd_node *dnode,
 		yang_dnode_get_path(dnode, s.xpath, sizeof(s.xpath));
 		config = hash_lookup(running_config_entries, &s);
 		if (config)
-			return config->entry;
+			return config;
 
 		rec_flag = rec_search;
 
@@ -2110,15 +2138,21 @@ static void *nb_running_get_entry_worker(const struct lyd_node *dnode,
 void *nb_running_get_entry(const struct lyd_node *dnode, const char *xpath,
 			   bool abort_if_not_found)
 {
-	return nb_running_get_entry_worker(dnode, xpath, abort_if_not_found,
+	struct nb_config_entry *conf;
+
+	conf = nb_running_get_entry_worker(dnode, xpath, abort_if_not_found,
 					   true);
+	return conf ? conf->entry : NULL;
 }
 
 void *nb_running_get_entry_non_rec(const struct lyd_node *dnode,
 				   const char *xpath, bool abort_if_not_found)
 {
-	return nb_running_get_entry_worker(dnode, xpath, abort_if_not_found,
+	struct nb_config_entry *conf;
+
+	conf = nb_running_get_entry_worker(dnode, xpath, abort_if_not_found,
 					   false);
+	return conf ? conf->entry : NULL;
 }
 
 /* Logging functions. */
