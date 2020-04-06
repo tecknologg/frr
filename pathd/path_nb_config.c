@@ -337,6 +337,52 @@ int pathd_te_sr_policy_candidate_path_name_modify(enum nb_event event,
 }
 
 /*
+ * XPath: /frr-pathd:pathd/sr-policy/candidate-path/metrics
+ */
+int pathd_te_sr_policy_candidate_path_metrics_destroy(
+	enum nb_event event, const struct lyd_node *dnode)
+{
+	struct srte_candidate *candidate;
+	enum srte_candidate_metric_type type;
+
+	if (event != NB_EV_APPLY)
+		return NB_OK;
+
+	candidate = nb_running_get_entry(dnode, NULL, true);
+	assert(NULL != candidate);
+
+	type = yang_dnode_get_enum(dnode, "./type");
+	srte_candidate_unset_metric(candidate, type);
+
+	return NB_OK;
+}
+
+void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
+	const struct lyd_node *dnode)
+{
+	struct lyd_node *n;
+	struct srte_candidate *candidate;
+	enum srte_candidate_metric_type type;
+	float value;
+	bool is_bound = false, is_computed = false;
+
+	candidate = nb_running_get_entry(dnode, NULL, true);
+	assert(NULL != candidate);
+
+	type = yang_dnode_get_enum(dnode, "./type");
+	value = (float)yang_dnode_get_dec64(dnode, "./value");
+	n = yang_dnode_get(dnode, "./is-bound");
+	if (NULL != n)
+		is_bound = yang_dnode_get_bool(n, NULL);
+	n = yang_dnode_get(dnode, "./is-computed");
+	if (NULL != n)
+		is_computed = yang_dnode_get_bool(n, NULL);
+
+	srte_candidate_set_metric(candidate, type, value, is_bound,
+				  is_computed);
+}
+
+/*
  * XPath: /frr-pathd:pathd/sr-policy/candidate-path/protocol-origin
  */
 int pathd_te_sr_policy_candidate_path_protocol_origin_modify(

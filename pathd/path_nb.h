@@ -80,6 +80,11 @@ const void *pathd_te_sr_policy_candidate_path_lookup_entry(
 int pathd_te_sr_policy_candidate_path_name_modify(enum nb_event event,
 						  const struct lyd_node *dnode,
 						  union nb_resource *resource);
+int pathd_te_sr_policy_candidate_path_metrics_destroy(
+	enum nb_event event, const struct lyd_node *dnode);
+void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
+	const struct lyd_node *dnode);
+
 struct yang_data *
 pathd_te_sr_policy_candidate_path_is_best_candidate_path_get_elem(
 	const char *xpath, const void *list_entry);
