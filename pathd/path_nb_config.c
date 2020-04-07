@@ -360,7 +360,6 @@ int pathd_te_sr_policy_candidate_path_metrics_destroy(
 void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
 	const struct lyd_node *dnode)
 {
-	struct lyd_node *n;
 	struct srte_candidate *candidate;
 	enum srte_candidate_metric_type type;
 	float value;
@@ -371,12 +370,10 @@ void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
 
 	type = yang_dnode_get_enum(dnode, "./type");
 	value = (float)yang_dnode_get_dec64(dnode, "./value");
-	n = yang_dnode_get(dnode, "./is-bound");
-	if (NULL != n)
-		is_bound = yang_dnode_get_bool(n, NULL);
-	n = yang_dnode_get(dnode, "./is-computed");
-	if (NULL != n)
-		is_computed = yang_dnode_get_bool(n, NULL);
+	if (yang_dnode_exists(dnode, "./is-bound"))
+		is_bound = yang_dnode_get_bool(dnode, "./is-bound");
+	if (yang_dnode_exists(dnode, "./is-computed"))
+		is_computed = yang_dnode_get_bool(dnode, "./is-computed");
 
 	srte_candidate_set_metric(candidate, type, value, is_bound,
 				  is_computed);
