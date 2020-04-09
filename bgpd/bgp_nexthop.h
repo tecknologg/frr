@@ -68,6 +68,7 @@ struct bgp_nexthop_cache {
 	/* Back pointer to the cache tree this entry belongs to. */
 	struct bgp_nexthop_cache_head *tree;
 
+	uint32_t srte_color;
 	struct prefix prefix;
 	void *nht_info; /* In BGP, peer session */
 	LIST_HEAD(path_list, bgp_path_info) paths;
@@ -104,10 +105,12 @@ extern int bgp_multiaccess_check_v6(struct in6_addr nexthop, struct peer *peer);
 extern int bgp_config_write_scan_time(struct vty *);
 extern int bgp_nexthop_self(struct bgp *, struct in_addr);
 extern struct bgp_nexthop_cache *bnc_new(struct bgp_nexthop_cache_head *tree,
-					 struct prefix *prefix);
+					 struct prefix *prefix,
+					 uint32_t srte_color);
 extern void bnc_free(struct bgp_nexthop_cache *bnc);
 extern struct bgp_nexthop_cache *bnc_find(struct bgp_nexthop_cache_head *tree,
-					  struct prefix *prefix);
+					  struct prefix *prefix,
+					  uint32_t srte_color);
 extern void bnc_nexthop_free(struct bgp_nexthop_cache *bnc);
 extern const char *bnc_str(struct bgp_nexthop_cache *bnc, char *buf, int size);
 extern void bgp_scan_init(struct bgp *bgp);
