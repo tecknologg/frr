@@ -257,7 +257,6 @@ void zebra_sr_policy_new_rnh(const struct rnh *rnh)
 
 		zebra_sr_policy_notify_update(policy);
 	}
-
 }
 
 static void zebra_sr_policy_activate(struct zebra_sr_policy *policy,
