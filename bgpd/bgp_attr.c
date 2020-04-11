@@ -564,7 +564,8 @@ bool attrhash_cmp(const void *p1, const void *p2)
 		    && overlay_index_same(attr1, attr2)
 		    && attr1->nh_ifindex == attr2->nh_ifindex
 		    && attr1->nh_lla_ifindex == attr2->nh_lla_ifindex
-		    && attr1->distance == attr2->distance)
+		    && attr1->distance == attr2->distance
+		    && attr1->srte_color == attr2->srte_color)
 			return true;
 	}
 
