@@ -380,6 +380,11 @@ static void vty_show_ip_route_detail(struct vty *vty, struct route_node *rn,
 						sizeof buf, 1));
 			}
 
+			/* SR-TE information */
+			if (nexthop->srte_color)
+				vty_out(vty, ", SR-TE color %u",
+					nexthop->srte_color);
+
 			vty_out(vty, "\n");
 		}
 		vty_out(vty, "\n");
@@ -640,6 +645,11 @@ static void vty_show_ip_route(struct vty *vty, struct route_node *rn,
 				json_object_object_add(json_nexthop, "labels",
 						       json_labels);
 			}
+
+			if (nexthop->srte_color)
+				json_object_int_add(json_nexthop,
+						    "srteColor",
+						    nexthop->srte_color);
 
 			json_object_array_add(json_nexthops, json_nexthop);
 		}
