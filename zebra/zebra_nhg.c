@@ -1385,12 +1385,19 @@ static int nexthop_active(afi_t afi, struct route_entry *re,
 		policy = zebra_sr_policy_find(nexthop->srte_color, &endpoint);
 		if (policy && policy->status == ZEBRA_SR_POLICY_UP) {
 			resolved = 0;
-			for (ALL_NEXTHOPS_PTR(policy->lsp->nhlfe_list,
-					      newhop)) {
+
+			for (zebra_nhlfe_t *nhlfe = policy->lsp->nhlfe_list;
+			     nhlfe; nhlfe = nhlfe->next) {
+				if (!CHECK_FLAG(nhlfe->flags,
+						NHLFE_FLAG_SELECTED)
+				    || CHECK_FLAG(nhlfe->flags,
+						  NHLFE_FLAG_DELETED))
+					continue;
+
 				SET_FLAG(nexthop->flags,
 					 NEXTHOP_FLAG_RECURSIVE);
-				nexthop_set_resolved(afi, newhop, nexthop,
-						     policy);
+				nexthop_set_resolved(afi, nhlfe->nexthop,
+						     nexthop, policy);
 				resolved = 1;
 			}
 			if (resolved)
