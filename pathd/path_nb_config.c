@@ -406,7 +406,6 @@ int pathd_te_sr_policy_candidate_path_metrics_destroy(
 		return NB_OK;
 
 	candidate = nb_running_get_entry(dnode, NULL, true);
-	assert(NULL != candidate);
 
 	type = yang_dnode_get_enum(dnode, "./type");
 	srte_candidate_unset_metric(candidate, type);
@@ -423,7 +422,6 @@ void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
 	bool is_bound = false, is_computed = false;
 
 	candidate = nb_running_get_entry(dnode, NULL, true);
-	assert(NULL != candidate);
 
 	type = yang_dnode_get_enum(dnode, "./type");
 	value = (float)yang_dnode_get_dec64(dnode, "./value");
