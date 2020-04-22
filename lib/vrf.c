@@ -1053,8 +1053,7 @@ vrf_id_t vrf_generate_id(void)
 /*
  * XPath: /frr-vrf:lib/vrf
  */
-static int lib_vrf_create(enum nb_event event, const struct lyd_node *dnode,
-			  union nb_resource *resource)
+static int lib_vrf_create(NB_CB_CREATE_ARGS)
 {
 	const char *vrfname;
 	struct vrf *vrfp;
@@ -1071,7 +1070,7 @@ static int lib_vrf_create(enum nb_event event, const struct lyd_node *dnode,
 	return NB_OK;
 }
 
-static int lib_vrf_destroy(enum nb_event event, const struct lyd_node *dnode)
+static int lib_vrf_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct vrf *vrfp;
 
@@ -1099,8 +1098,7 @@ static int lib_vrf_destroy(enum nb_event event, const struct lyd_node *dnode)
 	return NB_OK;
 }
 
-static const void *lib_vrf_get_next(const void *parent_list_entry,
-				    const void *list_entry)
+static const void *lib_vrf_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	struct vrf *vrfp = (struct vrf *)list_entry;
 
@@ -1113,7 +1111,7 @@ static const void *lib_vrf_get_next(const void *parent_list_entry,
 	return vrfp;
 }
 
-static int lib_vrf_get_keys(const void *list_entry, struct yang_list_keys *keys)
+static int lib_vrf_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	struct vrf *vrfp = (struct vrf *)list_entry;
 
@@ -1123,8 +1121,7 @@ static int lib_vrf_get_keys(const void *list_entry, struct yang_list_keys *keys)
 	return NB_OK;
 }
 
-static const void *lib_vrf_lookup_entry(const void *parent_list_entry,
-					const struct yang_list_keys *keys)
+static const void *lib_vrf_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const char *vrfname = keys->key[0];
 
@@ -1136,8 +1133,7 @@ static const void *lib_vrf_lookup_entry(const void *parent_list_entry,
 /*
  * XPath: /frr-vrf:lib/vrf/id
  */
-static struct yang_data *lib_vrf_state_id_get_elem(const char *xpath,
-						   const void *list_entry)
+static struct yang_data *lib_vrf_state_id_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	struct vrf *vrfp = (struct vrf *)list_entry;
 
@@ -1147,8 +1143,7 @@ static struct yang_data *lib_vrf_state_id_get_elem(const char *xpath,
 /*
  * XPath: /frr-vrf:lib/vrf/active
  */
-static struct yang_data *lib_vrf_state_active_get_elem(const char *xpath,
-						       const void *list_entry)
+static struct yang_data *lib_vrf_state_active_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	struct vrf *vrfp = (struct vrf *)list_entry;
 

@@ -39,8 +39,7 @@
  * XPath: /frr-ripngd:ripngd/instance/state/neighbors/neighbor
  */
 const void *
-ripngd_instance_state_neighbors_neighbor_get_next(const void *parent_list_entry,
-						  const void *list_entry)
+	ripngd_instance_state_neighbors_neighbor_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	const struct ripng *ripng = parent_list_entry;
 	struct listnode *node;
@@ -53,8 +52,7 @@ ripngd_instance_state_neighbors_neighbor_get_next(const void *parent_list_entry,
 	return node;
 }
 
-int ripngd_instance_state_neighbors_neighbor_get_keys(
-	const void *list_entry, struct yang_list_keys *keys)
+int ripngd_instance_state_neighbors_neighbor_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct listnode *node = list_entry;
 	const struct ripng_peer *peer = listgetdata(node);
@@ -67,7 +65,7 @@ int ripngd_instance_state_neighbors_neighbor_get_keys(
 }
 
 const void *ripngd_instance_state_neighbors_neighbor_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys)
+	NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const struct ripng *ripng = parent_list_entry;
 	struct in6_addr address;
@@ -88,7 +86,7 @@ const void *ripngd_instance_state_neighbors_neighbor_lookup_entry(
  * XPath: /frr-ripngd:ripngd/instance/state/neighbors/neighbor/address
  */
 struct yang_data *ripngd_instance_state_neighbors_neighbor_address_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct listnode *node = list_entry;
 	const struct ripng_peer *peer = listgetdata(node);
@@ -100,7 +98,7 @@ struct yang_data *ripngd_instance_state_neighbors_neighbor_address_get_elem(
  * XPath: /frr-ripngd:ripngd/instance/state/neighbors/neighbor/last-update
  */
 struct yang_data *ripngd_instance_state_neighbors_neighbor_last_update_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	/* TODO: yang:date-and-time is tricky */
 	return NULL;
@@ -110,8 +108,8 @@ struct yang_data *ripngd_instance_state_neighbors_neighbor_last_update_get_elem(
  * XPath: /frr-ripngd:ripngd/instance/state/neighbors/neighbor/bad-packets-rcvd
  */
 struct yang_data *
-ripngd_instance_state_neighbors_neighbor_bad_packets_rcvd_get_elem(
-	const char *xpath, const void *list_entry)
+	ripngd_instance_state_neighbors_neighbor_bad_packets_rcvd_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct listnode *node = list_entry;
 	const struct ripng_peer *peer = listgetdata(node);
@@ -123,8 +121,8 @@ ripngd_instance_state_neighbors_neighbor_bad_packets_rcvd_get_elem(
  * XPath: /frr-ripngd:ripngd/instance/state/neighbors/neighbor/bad-routes-rcvd
  */
 struct yang_data *
-ripngd_instance_state_neighbors_neighbor_bad_routes_rcvd_get_elem(
-	const char *xpath, const void *list_entry)
+	ripngd_instance_state_neighbors_neighbor_bad_routes_rcvd_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct listnode *node = list_entry;
 	const struct ripng_peer *peer = listgetdata(node);
@@ -135,9 +133,7 @@ ripngd_instance_state_neighbors_neighbor_bad_routes_rcvd_get_elem(
 /*
  * XPath: /frr-ripngd:ripngd/instance/state/routes/route
  */
-const void *
-ripngd_instance_state_routes_route_get_next(const void *parent_list_entry,
-					    const void *list_entry)
+const void *ripngd_instance_state_routes_route_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	const struct ripng *ripng = parent_list_entry;
 	struct agg_node *rn;
@@ -152,8 +148,7 @@ ripngd_instance_state_routes_route_get_next(const void *parent_list_entry,
 	return rn;
 }
 
-int ripngd_instance_state_routes_route_get_keys(const void *list_entry,
-						struct yang_list_keys *keys)
+int ripngd_instance_state_routes_route_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct agg_node *rn = list_entry;
 
@@ -164,8 +159,8 @@ int ripngd_instance_state_routes_route_get_keys(const void *list_entry,
 	return NB_OK;
 }
 
-const void *ripngd_instance_state_routes_route_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys)
+const void *
+	ripngd_instance_state_routes_route_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const struct ripng *ripng = parent_list_entry;
 	struct prefix prefix;
@@ -186,8 +181,7 @@ const void *ripngd_instance_state_routes_route_lookup_entry(
  * XPath: /frr-ripngd:ripngd/instance/state/routes/route/prefix
  */
 struct yang_data *
-ripngd_instance_state_routes_route_prefix_get_elem(const char *xpath,
-						   const void *list_entry)
+	ripngd_instance_state_routes_route_prefix_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct agg_node *rn = list_entry;
 	const struct ripng_info *rinfo = listnode_head(rn->info);
@@ -198,9 +192,8 @@ ripngd_instance_state_routes_route_prefix_get_elem(const char *xpath,
 /*
  * XPath: /frr-ripngd:ripngd/instance/state/routes/route/next-hop
  */
-struct yang_data *
-ripngd_instance_state_routes_route_next_hop_get_elem(const char *xpath,
-						     const void *list_entry)
+struct yang_data *ripngd_instance_state_routes_route_next_hop_get_elem(
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct agg_node *rn = list_entry;
 	const struct ripng_info *rinfo = listnode_head(rn->info);
@@ -211,9 +204,8 @@ ripngd_instance_state_routes_route_next_hop_get_elem(const char *xpath,
 /*
  * XPath: /frr-ripngd:ripngd/instance/state/routes/route/interface
  */
-struct yang_data *
-ripngd_instance_state_routes_route_interface_get_elem(const char *xpath,
-						      const void *list_entry)
+struct yang_data *ripngd_instance_state_routes_route_interface_get_elem(
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct agg_node *rn = list_entry;
 	const struct ripng_info *rinfo = listnode_head(rn->info);
@@ -227,8 +219,7 @@ ripngd_instance_state_routes_route_interface_get_elem(const char *xpath,
  * XPath: /frr-ripngd:ripngd/instance/state/routes/route/metric
  */
 struct yang_data *
-ripngd_instance_state_routes_route_metric_get_elem(const char *xpath,
-						   const void *list_entry)
+	ripngd_instance_state_routes_route_metric_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct agg_node *rn = list_entry;
 	const struct ripng_info *rinfo = listnode_head(rn->info);

@@ -23,129 +23,70 @@
 extern const struct frr_yang_module_info frr_ripngd_info;
 
 /* Mandatory callbacks. */
-int ripngd_instance_create(enum nb_event event, const struct lyd_node *dnode,
-			   union nb_resource *resource);
-int ripngd_instance_destroy(enum nb_event event, const struct lyd_node *dnode);
-const void *ripngd_instance_get_next(const void *parent_list_entry,
-				     const void *list_entry);
-int ripngd_instance_get_keys(const void *list_entry,
-			     struct yang_list_keys *keys);
-const void *ripngd_instance_lookup_entry(const void *parent_list_entry,
-					 const struct yang_list_keys *keys);
-int ripngd_instance_allow_ecmp_modify(enum nb_event event,
-				      const struct lyd_node *dnode,
-				      union nb_resource *resource);
-int ripngd_instance_default_information_originate_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int ripngd_instance_default_metric_modify(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource);
-int ripngd_instance_network_create(enum nb_event event,
-				   const struct lyd_node *dnode,
-				   union nb_resource *resource);
-int ripngd_instance_network_destroy(enum nb_event event,
-				    const struct lyd_node *dnode);
-int ripngd_instance_interface_create(enum nb_event event,
-				     const struct lyd_node *dnode,
-				     union nb_resource *resource);
-int ripngd_instance_interface_destroy(enum nb_event event,
-				      const struct lyd_node *dnode);
-int ripngd_instance_offset_list_create(enum nb_event event,
-				       const struct lyd_node *dnode,
-				       union nb_resource *resource);
-int ripngd_instance_offset_list_destroy(enum nb_event event,
-					const struct lyd_node *dnode);
-int ripngd_instance_offset_list_access_list_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource);
-int ripngd_instance_offset_list_metric_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource);
-int ripngd_instance_passive_interface_create(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource);
-int ripngd_instance_passive_interface_destroy(enum nb_event event,
-					      const struct lyd_node *dnode);
-int ripngd_instance_redistribute_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource);
-int ripngd_instance_redistribute_destroy(enum nb_event event,
-					 const struct lyd_node *dnode);
-int ripngd_instance_redistribute_route_map_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource);
-int ripngd_instance_redistribute_route_map_destroy(
-	enum nb_event event, const struct lyd_node *dnode);
-int ripngd_instance_redistribute_metric_modify(enum nb_event event,
-					       const struct lyd_node *dnode,
-					       union nb_resource *resource);
-int ripngd_instance_redistribute_metric_destroy(enum nb_event event,
-						const struct lyd_node *dnode);
-int ripngd_instance_static_route_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource);
-int ripngd_instance_static_route_destroy(enum nb_event event,
-					 const struct lyd_node *dnode);
-int ripngd_instance_aggregate_address_create(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource);
-int ripngd_instance_aggregate_address_destroy(enum nb_event event,
-					      const struct lyd_node *dnode);
-int ripngd_instance_timers_flush_interval_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource);
-int ripngd_instance_timers_holddown_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int ripngd_instance_timers_update_interval_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource);
+int ripngd_instance_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_destroy(NB_CB_DESTROY_ARGS);
+const void *ripngd_instance_get_next(NB_CB_GET_NEXT_ARGS);
+int ripngd_instance_get_keys(NB_CB_GET_KEYS_ARGS);
+const void *ripngd_instance_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS);
+int ripngd_instance_allow_ecmp_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_default_information_originate_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_default_metric_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_network_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_network_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_interface_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_interface_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_offset_list_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_offset_list_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_offset_list_access_list_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_offset_list_metric_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_passive_interface_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_passive_interface_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_redistribute_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_redistribute_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_redistribute_route_map_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_redistribute_route_map_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_redistribute_metric_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_redistribute_metric_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_static_route_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_static_route_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_aggregate_address_create(NB_CB_CREATE_ARGS);
+int ripngd_instance_aggregate_address_destroy(NB_CB_DESTROY_ARGS);
+int ripngd_instance_timers_flush_interval_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_timers_holddown_interval_modify(NB_CB_MODIFY_ARGS);
+int ripngd_instance_timers_update_interval_modify(NB_CB_MODIFY_ARGS);
 const void *
-ripngd_instance_state_neighbors_neighbor_get_next(const void *parent_list_entry,
-						  const void *list_entry);
-int ripngd_instance_state_neighbors_neighbor_get_keys(
-	const void *list_entry, struct yang_list_keys *keys);
+	ripngd_instance_state_neighbors_neighbor_get_next(NB_CB_GET_NEXT_ARGS);
+int ripngd_instance_state_neighbors_neighbor_get_keys(NB_CB_GET_KEYS_ARGS);
 const void *ripngd_instance_state_neighbors_neighbor_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys);
+	NB_CB_LOOKUP_ENTRY_ARGS);
 struct yang_data *ripngd_instance_state_neighbors_neighbor_address_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *ripngd_instance_state_neighbors_neighbor_last_update_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-ripngd_instance_state_neighbors_neighbor_bad_packets_rcvd_get_elem(
-	const char *xpath, const void *list_entry);
+	ripngd_instance_state_neighbors_neighbor_bad_packets_rcvd_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-ripngd_instance_state_neighbors_neighbor_bad_routes_rcvd_get_elem(
-	const char *xpath, const void *list_entry);
-const void *
-ripngd_instance_state_routes_route_get_next(const void *parent_list_entry,
-					    const void *list_entry);
-int ripngd_instance_state_routes_route_get_keys(const void *list_entry,
-						struct yang_list_keys *keys);
+	ripngd_instance_state_neighbors_neighbor_bad_routes_rcvd_get_elem(
+		NB_CB_GET_ELEM_ARGS);
+const void *ripngd_instance_state_routes_route_get_next(NB_CB_GET_NEXT_ARGS);
+int ripngd_instance_state_routes_route_get_keys(NB_CB_GET_KEYS_ARGS);
 const void *ripngd_instance_state_routes_route_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys);
+	NB_CB_LOOKUP_ENTRY_ARGS);
 struct yang_data *
-ripngd_instance_state_routes_route_prefix_get_elem(const char *xpath,
-						   const void *list_entry);
+	ripngd_instance_state_routes_route_prefix_get_elem(NB_CB_GET_ELEM_ARGS);
+struct yang_data *ripngd_instance_state_routes_route_next_hop_get_elem(
+	NB_CB_GET_ELEM_ARGS);
+struct yang_data *ripngd_instance_state_routes_route_interface_get_elem(
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-ripngd_instance_state_routes_route_next_hop_get_elem(const char *xpath,
-						     const void *list_entry);
-struct yang_data *
-ripngd_instance_state_routes_route_interface_get_elem(const char *xpath,
-						      const void *list_entry);
-struct yang_data *
-ripngd_instance_state_routes_route_metric_get_elem(const char *xpath,
-						   const void *list_entry);
-int clear_ripng_route_rpc(const char *xpath, const struct list *input,
-			  struct list *output);
-int lib_interface_ripng_split_horizon_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource);
+	ripngd_instance_state_routes_route_metric_get_elem(NB_CB_GET_ELEM_ARGS);
+int clear_ripng_route_rpc(NB_CB_RPC_ARGS);
+int lib_interface_ripng_split_horizon_modify(NB_CB_MODIFY_ARGS);
 
 /* Optional 'apply_finish' callbacks. */
-void ripngd_instance_redistribute_apply_finish(const struct lyd_node *dnode);
-void ripngd_instance_timers_apply_finish(const struct lyd_node *dnode);
+void ripngd_instance_redistribute_apply_finish(NB_CB_APPLY_FINISH_ARGS);
+void ripngd_instance_timers_apply_finish(NB_CB_APPLY_FINISH_ARGS);
 
 /* Optional 'cli_show' callbacks. */
 void cli_show_router_ripng(struct vty *vty, struct lyd_node *dnode,

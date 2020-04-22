@@ -46,70 +46,62 @@ static struct nb_callback_info {
 		.operation = NB_OP_CREATE,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"enum nb_event event, const struct lyd_node *dnode, union nb_resource *resource",
+		.arguments = "NB_CB_CREATE_ARGS",
 	},
 	{
 		.operation = NB_OP_MODIFY,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"enum nb_event event, const struct lyd_node *dnode, union nb_resource *resource",
+		.arguments = "NB_CB_MODIFY_ARGS",
 	},
 	{
 		.operation = NB_OP_DESTROY,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"enum nb_event event, const struct lyd_node *dnode",
+		.arguments = "NB_CB_DESTROY_ARGS",
 	},
 	{
 		.operation = NB_OP_MOVE,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"enum nb_event event, const struct lyd_node *dnode",
+		.arguments = "NB_CB_MOVE_ARGS",
 	},
 	{
 		.operation = NB_OP_APPLY_FINISH,
 		.optional = true,
 		.return_type = "void ",
 		.return_value = "",
-		.arguments = "const struct lyd_node *dnode",
+		.arguments = "NB_CB_APPLY_FINISH_ARGS",
 	},
 	{
 		.operation = NB_OP_GET_ELEM,
 		.return_type = "struct yang_data *",
 		.return_value = "NULL",
-		.arguments = "const char *xpath, const void *list_entry",
+		.arguments = "NB_CB_GET_ELEM_ARGS",
 	},
 	{
 		.operation = NB_OP_GET_NEXT,
 		.return_type = "const void *",
 		.return_value = "NULL",
-		.arguments =
-			"const void *parent_list_entry, const void *list_entry",
+		.arguments = "NB_CB_GET_NEXT_ARGS",
 	},
 	{
 		.operation = NB_OP_GET_KEYS,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"const void *list_entry, struct yang_list_keys *keys",
+		.arguments = "NB_CB_GET_KEYS_ARGS",
 	},
 	{
 		.operation = NB_OP_LOOKUP_ENTRY,
 		.return_type = "const void *",
 		.return_value = "NULL",
-		.arguments =
-			"const void *parent_list_entry, const struct yang_list_keys *keys",
+		.arguments = "NB_CB_LOOKUP_ENTRY_ARGS",
 	},
 	{
 		.operation = NB_OP_RPC,
 		.return_type = "int ",
 		.return_value = "NB_OK",
-		.arguments =
-			"const char *xpath, const struct list *input, struct list *output",
+		.arguments = "NB_CB_RPC_ARGS",
 	},
 	{
 		/* sentinel */

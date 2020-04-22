@@ -26,171 +26,134 @@
 extern const struct frr_yang_module_info frr_bfdd_info;
 
 /* Mandatory callbacks. */
-int bfdd_bfd_create(enum nb_event event, const struct lyd_node *dnode,
-		    union nb_resource *resource);
-int bfdd_bfd_destroy(enum nb_event event, const struct lyd_node *dnode);
-int bfdd_bfd_sessions_single_hop_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource);
-int bfdd_bfd_sessions_single_hop_destroy(enum nb_event event,
-					 const struct lyd_node *dnode);
-const void *bfdd_bfd_sessions_single_hop_get_next(const void *parent_list_entry,
-						  const void *list_entry);
-int bfdd_bfd_sessions_single_hop_get_keys(const void *list_entry,
-					  struct yang_list_keys *keys);
-const void *
-bfdd_bfd_sessions_single_hop_lookup_entry(const void *parent_list_entry,
-					  const struct yang_list_keys *keys);
-int bfdd_bfd_sessions_single_hop_source_addr_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int bfdd_bfd_sessions_single_hop_source_addr_destroy(
-	enum nb_event event, const struct lyd_node *dnode);
-int bfdd_bfd_sessions_single_hop_detection_multiplier_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+int bfdd_bfd_create(NB_CB_CREATE_ARGS);
+int bfdd_bfd_destroy(NB_CB_DESTROY_ARGS);
+int bfdd_bfd_sessions_single_hop_create(NB_CB_CREATE_ARGS);
+int bfdd_bfd_sessions_single_hop_destroy(NB_CB_DESTROY_ARGS);
+const void *bfdd_bfd_sessions_single_hop_get_next(NB_CB_GET_NEXT_ARGS);
+int bfdd_bfd_sessions_single_hop_get_keys(NB_CB_GET_KEYS_ARGS);
+const void *bfdd_bfd_sessions_single_hop_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS);
+int bfdd_bfd_sessions_single_hop_source_addr_modify(NB_CB_MODIFY_ARGS);
+int bfdd_bfd_sessions_single_hop_source_addr_destroy(NB_CB_DESTROY_ARGS);
+int bfdd_bfd_sessions_single_hop_detection_multiplier_modify(NB_CB_MODIFY_ARGS);
 int bfdd_bfd_sessions_single_hop_desired_transmission_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	NB_CB_MODIFY_ARGS);
 int bfdd_bfd_sessions_single_hop_required_receive_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int bfdd_bfd_sessions_single_hop_administrative_down_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int bfdd_bfd_sessions_single_hop_echo_mode_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource);
+	NB_CB_MODIFY_ARGS);
+int bfdd_bfd_sessions_single_hop_administrative_down_modify(NB_CB_MODIFY_ARGS);
+int bfdd_bfd_sessions_single_hop_echo_mode_modify(NB_CB_MODIFY_ARGS);
 int bfdd_bfd_sessions_single_hop_desired_echo_transmission_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	NB_CB_MODIFY_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_local_discriminator_get_elem(
-	const char *xpath, const void *list_entry);
-struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_local_state_get_elem(const char *xpath,
-							const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_local_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS);
+struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_state_get_elem(
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_diagnostic_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_multiplier_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_remote_discriminator_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_remote_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_state_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_diagnostic_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_multiplier_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_negotiated_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_receive_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_negotiated_receive_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_detection_mode_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_down_time_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_up_time_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_session_down_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_session_down_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_session_up_count_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_control_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_control_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_control_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_control_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_echo_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_negotiated_echo_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_echo_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_single_hop_stats_echo_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_echo_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry);
-int bfdd_bfd_sessions_multi_hop_create(enum nb_event event,
-				       const struct lyd_node *dnode,
-				       union nb_resource *resource);
-int bfdd_bfd_sessions_multi_hop_destroy(enum nb_event event,
-					const struct lyd_node *dnode);
-const void *bfdd_bfd_sessions_multi_hop_get_next(const void *parent_list_entry,
-						 const void *list_entry);
-int bfdd_bfd_sessions_multi_hop_get_keys(const void *list_entry,
-					 struct yang_list_keys *keys);
-const void *
-bfdd_bfd_sessions_multi_hop_lookup_entry(const void *parent_list_entry,
-					 const struct yang_list_keys *keys);
-int bfdd_bfd_sessions_multi_hop_detection_multiplier_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	bfdd_bfd_sessions_single_hop_stats_echo_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
+int bfdd_bfd_sessions_multi_hop_create(NB_CB_CREATE_ARGS);
+int bfdd_bfd_sessions_multi_hop_destroy(NB_CB_DESTROY_ARGS);
+const void *bfdd_bfd_sessions_multi_hop_get_next(NB_CB_GET_NEXT_ARGS);
+int bfdd_bfd_sessions_multi_hop_get_keys(NB_CB_GET_KEYS_ARGS);
+const void *bfdd_bfd_sessions_multi_hop_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS);
+int bfdd_bfd_sessions_multi_hop_detection_multiplier_modify(NB_CB_MODIFY_ARGS);
 int bfdd_bfd_sessions_multi_hop_desired_transmission_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	NB_CB_MODIFY_ARGS);
 int bfdd_bfd_sessions_multi_hop_required_receive_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int bfdd_bfd_sessions_multi_hop_administrative_down_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	NB_CB_MODIFY_ARGS);
+int bfdd_bfd_sessions_multi_hop_administrative_down_modify(NB_CB_MODIFY_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_local_discriminator_get_elem(
-	const char *xpath, const void *list_entry);
-struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_local_state_get_elem(const char *xpath,
-						       const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_local_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS);
+struct yang_data *bfdd_bfd_sessions_multi_hop_stats_local_state_get_elem(
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_local_diagnostic_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_local_multiplier_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_remote_discriminator_get_elem(
-	const char *xpath, const void *list_entry);
-struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_remote_state_get_elem(const char *xpath,
-							const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_remote_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS);
+struct yang_data *bfdd_bfd_sessions_multi_hop_stats_remote_state_get_elem(
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_remote_diagnostic_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_remote_multiplier_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_negotiated_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_negotiated_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_negotiated_receive_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_negotiated_receive_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_detection_mode_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_last_down_time_get_elem(
-	const char *xpath, const void *list_entry);
-struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_last_up_time_get_elem(const char *xpath,
-							const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
+struct yang_data *bfdd_bfd_sessions_multi_hop_stats_last_up_time_get_elem(
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_session_down_count_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *bfdd_bfd_sessions_multi_hop_stats_session_up_count_get_elem(
-	const char *xpath, const void *list_entry);
+	NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_control_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_control_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_control_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_control_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_negotiated_echo_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_negotiated_echo_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_echo_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_echo_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 struct yang_data *
-bfdd_bfd_sessions_multi_hop_stats_echo_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry);
+	bfdd_bfd_sessions_multi_hop_stats_echo_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS);
 
 /* Optional 'cli_show' callbacks. */
 void bfd_cli_show_header(struct vty *vty, struct lyd_node *dnode,

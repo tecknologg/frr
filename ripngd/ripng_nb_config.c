@@ -39,8 +39,7 @@
 /*
  * XPath: /frr-ripngd:ripngd/instance
  */
-int ripngd_instance_create(enum nb_event event, const struct lyd_node *dnode,
-			   union nb_resource *resource)
+int ripngd_instance_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	struct vrf *vrf;
@@ -87,7 +86,7 @@ int ripngd_instance_create(enum nb_event event, const struct lyd_node *dnode,
 	return NB_OK;
 }
 
-int ripngd_instance_destroy(enum nb_event event, const struct lyd_node *dnode)
+int ripngd_instance_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -100,8 +99,7 @@ int ripngd_instance_destroy(enum nb_event event, const struct lyd_node *dnode)
 	return NB_OK;
 }
 
-const void *ripngd_instance_get_next(const void *parent_list_entry,
-				     const void *list_entry)
+const void *ripngd_instance_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	struct ripng *ripng = (struct ripng *)list_entry;
 
@@ -113,8 +111,7 @@ const void *ripngd_instance_get_next(const void *parent_list_entry,
 	return ripng;
 }
 
-int ripngd_instance_get_keys(const void *list_entry,
-			     struct yang_list_keys *keys)
+int ripngd_instance_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct ripng *ripng = list_entry;
 
@@ -124,8 +121,7 @@ int ripngd_instance_get_keys(const void *list_entry,
 	return NB_OK;
 }
 
-const void *ripngd_instance_lookup_entry(const void *parent_list_entry,
-					 const struct yang_list_keys *keys)
+const void *ripngd_instance_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const char *vrf_name = keys->key[0];
 
@@ -135,9 +131,7 @@ const void *ripngd_instance_lookup_entry(const void *parent_list_entry,
 /*
  * XPath: /frr-ripngd:ripngd/instance/allow-ecmp
  */
-int ripngd_instance_allow_ecmp_modify(enum nb_event event,
-				      const struct lyd_node *dnode,
-				      union nb_resource *resource)
+int ripngd_instance_allow_ecmp_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -155,9 +149,7 @@ int ripngd_instance_allow_ecmp_modify(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/default-information-originate
  */
-int ripngd_instance_default_information_originate_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+int ripngd_instance_default_information_originate_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 	bool default_information;
@@ -184,9 +176,7 @@ int ripngd_instance_default_information_originate_modify(
 /*
  * XPath: /frr-ripngd:ripngd/instance/default-metric
  */
-int ripngd_instance_default_metric_modify(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource)
+int ripngd_instance_default_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -202,9 +192,7 @@ int ripngd_instance_default_metric_modify(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/network
  */
-int ripngd_instance_network_create(enum nb_event event,
-				   const struct lyd_node *dnode,
-				   union nb_resource *resource)
+int ripngd_instance_network_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix p;
@@ -219,8 +207,7 @@ int ripngd_instance_network_create(enum nb_event event,
 	return ripng_enable_network_add(ripng, &p);
 }
 
-int ripngd_instance_network_destroy(enum nb_event event,
-				    const struct lyd_node *dnode)
+int ripngd_instance_network_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix p;
@@ -238,9 +225,7 @@ int ripngd_instance_network_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/interface
  */
-int ripngd_instance_interface_create(enum nb_event event,
-				     const struct lyd_node *dnode,
-				     union nb_resource *resource)
+int ripngd_instance_interface_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	const char *ifname;
@@ -254,8 +239,7 @@ int ripngd_instance_interface_create(enum nb_event event,
 	return ripng_enable_if_add(ripng, ifname);
 }
 
-int ripngd_instance_interface_destroy(enum nb_event event,
-				      const struct lyd_node *dnode)
+int ripngd_instance_interface_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	const char *ifname;
@@ -272,9 +256,7 @@ int ripngd_instance_interface_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/offset-list
  */
-int ripngd_instance_offset_list_create(enum nb_event event,
-				       const struct lyd_node *dnode,
-				       union nb_resource *resource)
+int ripngd_instance_offset_list_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	const char *ifname;
@@ -292,8 +274,7 @@ int ripngd_instance_offset_list_create(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_offset_list_destroy(enum nb_event event,
-					const struct lyd_node *dnode)
+int ripngd_instance_offset_list_destroy(NB_CB_DESTROY_ARGS)
 {
 	int direct;
 	struct ripng_offset_list *offset;
@@ -318,9 +299,7 @@ int ripngd_instance_offset_list_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/offset-list/access-list
  */
-int ripngd_instance_offset_list_access_list_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource)
+int ripngd_instance_offset_list_access_list_modify(NB_CB_MODIFY_ARGS)
 {
 	int direct;
 	struct ripng_offset_list *offset;
@@ -343,9 +322,7 @@ int ripngd_instance_offset_list_access_list_modify(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/offset-list/metric
  */
-int ripngd_instance_offset_list_metric_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource)
+int ripngd_instance_offset_list_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	int direct;
 	uint8_t metric;
@@ -366,9 +343,7 @@ int ripngd_instance_offset_list_metric_modify(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/passive-interface
  */
-int ripngd_instance_passive_interface_create(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+int ripngd_instance_passive_interface_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	const char *ifname;
@@ -382,8 +357,7 @@ int ripngd_instance_passive_interface_create(enum nb_event event,
 	return ripng_passive_interface_set(ripng, ifname);
 }
 
-int ripngd_instance_passive_interface_destroy(enum nb_event event,
-					      const struct lyd_node *dnode)
+int ripngd_instance_passive_interface_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	const char *ifname;
@@ -400,9 +374,7 @@ int ripngd_instance_passive_interface_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/redistribute
  */
-int ripngd_instance_redistribute_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource)
+int ripngd_instance_redistribute_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -418,8 +390,7 @@ int ripngd_instance_redistribute_create(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_redistribute_destroy(enum nb_event event,
-					 const struct lyd_node *dnode)
+int ripngd_instance_redistribute_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -445,7 +416,7 @@ int ripngd_instance_redistribute_destroy(enum nb_event event,
 	return NB_OK;
 }
 
-void ripngd_instance_redistribute_apply_finish(const struct lyd_node *dnode)
+void ripngd_instance_redistribute_apply_finish(NB_CB_APPLY_FINISH_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -460,9 +431,7 @@ void ripngd_instance_redistribute_apply_finish(const struct lyd_node *dnode)
 /*
  * XPath: /frr-ripngd:ripngd/instance/redistribute/route-map
  */
-int ripngd_instance_redistribute_route_map_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+int ripngd_instance_redistribute_route_map_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -483,8 +452,7 @@ int ripngd_instance_redistribute_route_map_modify(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_redistribute_route_map_destroy(enum nb_event event,
-						   const struct lyd_node *dnode)
+int ripngd_instance_redistribute_route_map_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -505,9 +473,7 @@ int ripngd_instance_redistribute_route_map_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/redistribute/metric
  */
-int ripngd_instance_redistribute_metric_modify(enum nb_event event,
-					       const struct lyd_node *dnode,
-					       union nb_resource *resource)
+int ripngd_instance_redistribute_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -526,8 +492,7 @@ int ripngd_instance_redistribute_metric_modify(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_redistribute_metric_destroy(enum nb_event event,
-						const struct lyd_node *dnode)
+int ripngd_instance_redistribute_metric_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	int type;
@@ -547,9 +512,7 @@ int ripngd_instance_redistribute_metric_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/static-route
  */
-int ripngd_instance_static_route_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource)
+int ripngd_instance_static_route_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix_ipv6 p;
@@ -567,8 +530,7 @@ int ripngd_instance_static_route_create(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_static_route_destroy(enum nb_event event,
-					 const struct lyd_node *dnode)
+int ripngd_instance_static_route_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix_ipv6 p;
@@ -589,9 +551,7 @@ int ripngd_instance_static_route_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/aggregate-address
  */
-int ripngd_instance_aggregate_address_create(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+int ripngd_instance_aggregate_address_create(NB_CB_CREATE_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix_ipv6 p;
@@ -608,8 +568,7 @@ int ripngd_instance_aggregate_address_create(enum nb_event event,
 	return NB_OK;
 }
 
-int ripngd_instance_aggregate_address_destroy(enum nb_event event,
-					      const struct lyd_node *dnode)
+int ripngd_instance_aggregate_address_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct ripng *ripng;
 	struct prefix_ipv6 p;
@@ -629,7 +588,7 @@ int ripngd_instance_aggregate_address_destroy(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/timers
  */
-void ripngd_instance_timers_apply_finish(const struct lyd_node *dnode)
+void ripngd_instance_timers_apply_finish(NB_CB_APPLY_FINISH_ARGS)
 {
 	struct ripng *ripng;
 
@@ -642,9 +601,7 @@ void ripngd_instance_timers_apply_finish(const struct lyd_node *dnode)
 /*
  * XPath: /frr-ripngd:ripngd/instance/timers/flush-interval
  */
-int ripngd_instance_timers_flush_interval_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+int ripngd_instance_timers_flush_interval_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -660,9 +617,7 @@ int ripngd_instance_timers_flush_interval_modify(enum nb_event event,
 /*
  * XPath: /frr-ripngd:ripngd/instance/timers/holddown-interval
  */
-int ripngd_instance_timers_holddown_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+int ripngd_instance_timers_holddown_interval_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -678,9 +633,7 @@ int ripngd_instance_timers_holddown_interval_modify(
 /*
  * XPath: /frr-ripngd:ripngd/instance/timers/update-interval
  */
-int ripngd_instance_timers_update_interval_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+int ripngd_instance_timers_update_interval_modify(NB_CB_MODIFY_ARGS)
 {
 	struct ripng *ripng;
 
@@ -696,9 +649,7 @@ int ripngd_instance_timers_update_interval_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-ripngd:ripng/split-horizon
  */
-int lib_interface_ripng_split_horizon_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+int lib_interface_ripng_split_horizon_modify(NB_CB_MODIFY_ARGS)
 {
 	struct interface *ifp;
 	struct ripng_interface *ri;

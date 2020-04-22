@@ -33,8 +33,7 @@
  * lib_route_map_entry_set_destroy: unset `set` commands.
  * lib_route_map_entry_match_destroy: unset `match` commands.
  */
-int lib_route_map_entry_match_destroy(enum nb_event event,
-				      const struct lyd_node *dnode)
+int lib_route_map_entry_match_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	int rv;
@@ -54,8 +53,7 @@ int lib_route_map_entry_match_destroy(enum nb_event event,
 	return NB_OK;
 }
 
-int lib_route_map_entry_set_destroy(enum nb_event event,
-				    const struct lyd_node *dnode)
+int lib_route_map_entry_set_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	int rv;
@@ -89,8 +87,7 @@ routemap_hook_context_insert(struct route_map_index *rmi)
 	return rhc;
 }
 
-void
-routemap_hook_context_free(struct routemap_hook_context *rhc)
+void routemap_hook_context_free(struct routemap_hook_context *rhc)
 {
 	struct route_map_index *rmi = rhc->rhc_rmi;
 
@@ -101,9 +98,7 @@ routemap_hook_context_free(struct routemap_hook_context *rhc)
 /*
  * XPath: /frr-route-map:lib/route-map
  */
-static int lib_route_map_create(enum nb_event event,
-				const struct lyd_node *dnode,
-				union nb_resource *resource)
+static int lib_route_map_create(NB_CB_CREATE_ARGS)
 {
 	struct route_map *rm;
 	const char *rm_name;
@@ -124,8 +119,7 @@ static int lib_route_map_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_destroy(enum nb_event event,
-				 const struct lyd_node *dnode)
+static int lib_route_map_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_map *rm;
 
@@ -147,9 +141,7 @@ static int lib_route_map_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry
  */
-static int lib_route_map_entry_create(enum nb_event event,
-				      const struct lyd_node *dnode,
-				      union nb_resource *resource)
+static int lib_route_map_entry_create(NB_CB_CREATE_ARGS)
 {
 	struct route_map_index *rmi;
 	struct route_map *rm;
@@ -176,8 +168,7 @@ static int lib_route_map_entry_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_destroy(enum nb_event event,
-				       const struct lyd_node *dnode)
+static int lib_route_map_entry_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_map_index *rmi;
 
@@ -199,9 +190,7 @@ static int lib_route_map_entry_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/description
  */
-static int lib_route_map_entry_description_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+static int lib_route_map_entry_description_modify(NB_CB_MODIFY_ARGS)
 {
 	struct route_map_index *rmi;
 	const char *description;
@@ -229,8 +218,7 @@ static int lib_route_map_entry_description_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_description_destroy(enum nb_event event,
-						   const struct lyd_node *dnode)
+static int lib_route_map_entry_description_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_map_index *rmi;
 
@@ -252,9 +240,7 @@ static int lib_route_map_entry_description_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/action
  */
-static int lib_route_map_entry_action_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+static int lib_route_map_entry_action_modify(NB_CB_MODIFY_ARGS)
 {
 	struct route_map_index *rmi;
 
@@ -277,9 +263,7 @@ static int lib_route_map_entry_action_modify(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/call
  */
-static int lib_route_map_entry_call_modify(enum nb_event event,
-					   const struct lyd_node *dnode,
-					   union nb_resource *resource)
+static int lib_route_map_entry_call_modify(NB_CB_MODIFY_ARGS)
 {
 	struct route_map_index *rmi;
 	const char *rm_name, *rmn_name;
@@ -317,8 +301,7 @@ static int lib_route_map_entry_call_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_call_destroy(enum nb_event event,
-					    const struct lyd_node *dnode)
+static int lib_route_map_entry_call_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_map_index *rmi;
 
@@ -343,9 +326,7 @@ static int lib_route_map_entry_call_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/exit-policy
  */
-static int lib_route_map_entry_exit_policy_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+static int lib_route_map_entry_exit_policy_modify(NB_CB_MODIFY_ARGS)
 {
 	struct route_map_index *rmi;
 	int rm_action;
@@ -398,9 +379,7 @@ static int lib_route_map_entry_exit_policy_modify(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/goto-value
  */
-static int lib_route_map_entry_goto_value_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+static int lib_route_map_entry_goto_value_modify(NB_CB_MODIFY_ARGS)
 {
 	struct route_map_index *rmi;
 	uint16_t rmi_index;
@@ -428,8 +407,7 @@ static int lib_route_map_entry_goto_value_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_goto_value_destroy(enum nb_event event,
-						  const struct lyd_node *dnode)
+static int lib_route_map_entry_goto_value_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_map_index *rmi;
 
@@ -451,10 +429,7 @@ static int lib_route_map_entry_goto_value_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/match-condition
  */
-static int
-lib_route_map_entry_match_condition_create(enum nb_event event,
-					   const struct lyd_node *dnode,
-					   union nb_resource *resource)
+static int lib_route_map_entry_match_condition_create(NB_CB_CREATE_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	struct route_map_index *rmi;
@@ -475,9 +450,7 @@ lib_route_map_entry_match_condition_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-lib_route_map_entry_match_condition_destroy(enum nb_event event,
-					    const struct lyd_node *dnode)
+static int lib_route_map_entry_match_condition_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	int rv;
@@ -495,9 +468,8 @@ lib_route_map_entry_match_condition_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/interface
  */
-static int lib_route_map_entry_match_condition_interface_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+static int
+	lib_route_map_entry_match_condition_interface_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *ifname;
@@ -531,7 +503,7 @@ static int lib_route_map_entry_match_condition_interface_modify(
 }
 
 static int lib_route_map_entry_match_condition_interface_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -540,8 +512,7 @@ static int lib_route_map_entry_match_condition_interface_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/access-list-num
  */
 static int lib_route_map_entry_match_condition_access_list_num_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *acl;
@@ -586,7 +557,7 @@ static int lib_route_map_entry_match_condition_access_list_num_modify(
 }
 
 static int lib_route_map_entry_match_condition_access_list_num_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -596,15 +567,14 @@ static int lib_route_map_entry_match_condition_access_list_num_destroy(
  * /frr-route-map:lib/route-map/entry/match-condition/access-list-num-extended
  */
 static int lib_route_map_entry_match_condition_access_list_num_extended_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	return lib_route_map_entry_match_condition_access_list_num_modify(
 		event, dnode, resource);
 }
 
 static int lib_route_map_entry_match_condition_access_list_num_extended_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_condition_access_list_num_destroy(
 		event, dnode);
@@ -613,9 +583,8 @@ static int lib_route_map_entry_match_condition_access_list_num_extended_destroy(
 /*
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/list-name
  */
-static int lib_route_map_entry_match_condition_list_name_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+static int
+	lib_route_map_entry_match_condition_list_name_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *acl;
@@ -706,7 +675,7 @@ static int lib_route_map_entry_match_condition_list_name_modify(
 }
 
 static int lib_route_map_entry_match_condition_list_name_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -715,8 +684,7 @@ static int lib_route_map_entry_match_condition_list_name_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/ipv4-next-hop-type
  */
 static int lib_route_map_entry_match_condition_ipv4_next_hop_type_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *type;
@@ -750,7 +718,7 @@ static int lib_route_map_entry_match_condition_ipv4_next_hop_type_modify(
 }
 
 static int lib_route_map_entry_match_condition_ipv4_next_hop_type_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -759,8 +727,7 @@ static int lib_route_map_entry_match_condition_ipv4_next_hop_type_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/ipv6-next-hop-type
  */
 static int lib_route_map_entry_match_condition_ipv6_next_hop_type_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *type;
@@ -794,7 +761,7 @@ static int lib_route_map_entry_match_condition_ipv6_next_hop_type_modify(
 }
 
 static int lib_route_map_entry_match_condition_ipv6_next_hop_type_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -802,10 +769,7 @@ static int lib_route_map_entry_match_condition_ipv6_next_hop_type_destroy(
 /*
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/metric
  */
-static int
-lib_route_map_entry_match_condition_metric_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+static int lib_route_map_entry_match_condition_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *type;
@@ -838,8 +802,7 @@ lib_route_map_entry_match_condition_metric_modify(enum nb_event event,
 }
 
 static int
-lib_route_map_entry_match_condition_metric_destroy(enum nb_event event,
-						   const struct lyd_node *dnode)
+	lib_route_map_entry_match_condition_metric_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -847,10 +810,7 @@ lib_route_map_entry_match_condition_metric_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/match-condition/tag
  */
-static int
-lib_route_map_entry_match_condition_tag_modify(enum nb_event event,
-					       const struct lyd_node *dnode,
-					       union nb_resource *resource)
+static int lib_route_map_entry_match_condition_tag_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *tag;
@@ -882,9 +842,7 @@ lib_route_map_entry_match_condition_tag_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-lib_route_map_entry_match_condition_tag_destroy(enum nb_event event,
-						const struct lyd_node *dnode)
+static int lib_route_map_entry_match_condition_tag_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_match_destroy(event, dnode);
 }
@@ -892,16 +850,13 @@ lib_route_map_entry_match_condition_tag_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action
  */
-static int lib_route_map_entry_set_action_create(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+static int lib_route_map_entry_set_action_create(NB_CB_CREATE_ARGS)
 {
 	return lib_route_map_entry_match_condition_create(event, dnode,
 							  resource);
 }
 
-static int lib_route_map_entry_set_action_destroy(enum nb_event event,
-						  const struct lyd_node *dnode)
+static int lib_route_map_entry_set_action_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	int rv;
@@ -919,10 +874,7 @@ static int lib_route_map_entry_set_action_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action/ipv4-address
  */
-static int
-lib_route_map_entry_set_action_ipv4_address_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource)
+static int lib_route_map_entry_set_action_ipv4_address_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *address;
@@ -969,8 +921,8 @@ lib_route_map_entry_set_action_ipv4_address_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_set_action_ipv4_address_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+static int
+	lib_route_map_entry_set_action_ipv4_address_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_destroy(event, dnode);
 }
@@ -978,10 +930,7 @@ static int lib_route_map_entry_set_action_ipv4_address_destroy(
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action/ipv6-address
  */
-static int
-lib_route_map_entry_set_action_ipv6_address_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource)
+static int lib_route_map_entry_set_action_ipv6_address_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *address;
@@ -1029,8 +978,8 @@ lib_route_map_entry_set_action_ipv6_address_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_route_map_entry_set_action_ipv6_address_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+static int
+	lib_route_map_entry_set_action_ipv6_address_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_destroy(event, dnode);
 }
@@ -1073,19 +1022,14 @@ static int set_action_modify(enum nb_event event, const struct lyd_node *dnode,
 	return NB_OK;
 }
 
-static int
-lib_route_map_entry_set_action_value_modify(enum nb_event event,
-					    const struct lyd_node *dnode,
-					    union nb_resource *resource)
+static int lib_route_map_entry_set_action_value_modify(NB_CB_MODIFY_ARGS)
 {
 	const char *metric = yang_dnode_get_string(dnode, NULL);
 
 	return set_action_modify(event, dnode, resource, metric);
 }
 
-static int
-lib_route_map_entry_set_action_value_destroy(enum nb_event event,
-					     const struct lyd_node *dnode)
+static int lib_route_map_entry_set_action_value_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_destroy(event, dnode);
 }
@@ -1093,17 +1037,12 @@ lib_route_map_entry_set_action_value_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action/add-metric
  */
-static int
-lib_route_map_entry_set_action_add_metric_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+static int lib_route_map_entry_set_action_add_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	return set_action_modify(event, dnode, resource, "+metric");
 }
 
-static int
-lib_route_map_entry_set_action_add_metric_destroy(enum nb_event event,
-						  const struct lyd_node *dnode)
+static int lib_route_map_entry_set_action_add_metric_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_action_value_destroy(event, dnode);
 }
@@ -1111,15 +1050,14 @@ lib_route_map_entry_set_action_add_metric_destroy(enum nb_event event,
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action/subtract-metric
  */
-static int lib_route_map_entry_set_action_subtract_metric_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+static int
+	lib_route_map_entry_set_action_subtract_metric_modify(NB_CB_MODIFY_ARGS)
 {
 	return set_action_modify(event, dnode, resource, "-metric");
 }
 
 static int lib_route_map_entry_set_action_subtract_metric_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_action_value_destroy(event, dnode);
 }
@@ -1128,14 +1066,13 @@ static int lib_route_map_entry_set_action_subtract_metric_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/set-action/use-round-trip-time
  */
 static int lib_route_map_entry_set_action_use_round_trip_time_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	return set_action_modify(event, dnode, resource, "rtt");
 }
 
 static int lib_route_map_entry_set_action_use_round_trip_time_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_action_value_destroy(event, dnode);
 }
@@ -1144,14 +1081,13 @@ static int lib_route_map_entry_set_action_use_round_trip_time_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/set-action/add-round-trip-time
  */
 static int lib_route_map_entry_set_action_add_round_trip_time_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	return set_action_modify(event, dnode, resource, "+rtt");
 }
 
 static int lib_route_map_entry_set_action_add_round_trip_time_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_action_value_destroy(event, dnode);
 }
@@ -1160,14 +1096,13 @@ static int lib_route_map_entry_set_action_add_round_trip_time_destroy(
  * XPath: /frr-route-map:lib/route-map/entry/set-action/subtract-round-trip-time
  */
 static int lib_route_map_entry_set_action_subtract_round_trip_time_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	return set_action_modify(event, dnode, resource, "-rtt");
 }
 
 static int lib_route_map_entry_set_action_subtract_round_trip_time_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_action_value_destroy(event, dnode);
 }
@@ -1175,10 +1110,7 @@ static int lib_route_map_entry_set_action_subtract_round_trip_time_destroy(
 /*
  * XPath: /frr-route-map:lib/route-map/entry/set-action/tag
  */
-static int
-lib_route_map_entry_set_action_tag_modify(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource)
+static int lib_route_map_entry_set_action_tag_modify(NB_CB_MODIFY_ARGS)
 {
 	struct routemap_hook_context *rhc;
 	const char *tag;
@@ -1213,9 +1145,7 @@ lib_route_map_entry_set_action_tag_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-lib_route_map_entry_set_action_tag_destroy(enum nb_event event,
-					   const struct lyd_node *dnode)
+static int lib_route_map_entry_set_action_tag_destroy(NB_CB_DESTROY_ARGS)
 {
 	return lib_route_map_entry_set_destroy(event, dnode);
 }

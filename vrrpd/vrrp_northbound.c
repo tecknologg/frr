@@ -33,9 +33,7 @@
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group
  */
-static int lib_interface_vrrp_vrrp_group_create(enum nb_event event,
-						const struct lyd_node *dnode,
-						union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_create(NB_CB_CREATE_ARGS)
 {
 	struct interface *ifp;
 	uint8_t vrid;
@@ -54,8 +52,7 @@ static int lib_interface_vrrp_vrrp_group_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_interface_vrrp_vrrp_group_destroy(enum nb_event event,
-						 const struct lyd_node *dnode)
+static int lib_interface_vrrp_vrrp_group_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct vrrp_vrouter *vr;
 
@@ -68,9 +65,7 @@ static int lib_interface_vrrp_vrrp_group_destroy(enum nb_event event,
 	return NB_OK;
 }
 
-static const void *
-lib_interface_vrrp_vrrp_group_get_next(const void *parent_list_entry,
-				       const void *list_entry)
+static const void *lib_interface_vrrp_vrrp_group_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	struct list *l = hash_to_list(vrrp_vrouters_hash);
 	struct listnode *ln;
@@ -100,8 +95,7 @@ done:
 	return curr;
 }
 
-static int lib_interface_vrrp_vrrp_group_get_keys(const void *list_entry,
-						  struct yang_list_keys *keys)
+static int lib_interface_vrrp_vrrp_group_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -112,8 +106,7 @@ static int lib_interface_vrrp_vrrp_group_get_keys(const void *list_entry,
 }
 
 static const void *
-lib_interface_vrrp_vrrp_group_lookup_entry(const void *parent_list_entry,
-					   const struct yang_list_keys *keys)
+	lib_interface_vrrp_vrrp_group_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	uint32_t vrid = strtoul(keys->key[0], NULL, 10);
 	const struct interface *ifp = parent_list_entry;
@@ -124,10 +117,7 @@ lib_interface_vrrp_vrrp_group_lookup_entry(const void *parent_list_entry,
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/version
  */
-static int
-lib_interface_vrrp_vrrp_group_version_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_version_modify(NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -170,8 +160,7 @@ static void vrrp_yang_add_del_virtual_address(const struct lyd_node *dnode,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/virtual-address
  */
 static int lib_interface_vrrp_vrrp_group_v4_virtual_address_create(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_CREATE_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -182,7 +171,7 @@ static int lib_interface_vrrp_vrrp_group_v4_virtual_address_create(
 }
 
 static int lib_interface_vrrp_vrrp_group_v4_virtual_address_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -197,8 +186,8 @@ static int lib_interface_vrrp_vrrp_group_v4_virtual_address_destroy(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/current-priority
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_current_priority_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_current_priority_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -210,8 +199,8 @@ lib_interface_vrrp_vrrp_group_v4_current_priority_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/vrrp-interface
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_vrrp_interface_get_elem(const char *xpath,
-							 const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_vrrp_interface_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -228,8 +217,8 @@ lib_interface_vrrp_vrrp_group_v4_vrrp_interface_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/source-address
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_source_address_get_elem(const char *xpath,
-							 const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_source_address_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 	struct yang_data *val = NULL;
@@ -247,8 +236,7 @@ lib_interface_vrrp_vrrp_group_v4_source_address_get_elem(const char *xpath,
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/state
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_state_get_elem(const char *xpath,
-						const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_state_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -260,8 +248,8 @@ lib_interface_vrrp_vrrp_group_v4_state_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/master-advertisement-interval
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_master_advertisement_interval_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_master_advertisement_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -272,8 +260,7 @@ lib_interface_vrrp_vrrp_group_v4_master_advertisement_interval_get_elem(
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/skew-time
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_skew_time_get_elem(const char *xpath,
-						    const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_skew_time_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -285,8 +272,8 @@ lib_interface_vrrp_vrrp_group_v4_skew_time_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/counter/state-transition
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_counter_state_transition_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_counter_state_transition_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -298,8 +285,8 @@ lib_interface_vrrp_vrrp_group_v4_counter_state_transition_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/counter/tx/advertisement
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_counter_tx_advertisement_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_counter_tx_advertisement_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -311,8 +298,8 @@ lib_interface_vrrp_vrrp_group_v4_counter_tx_advertisement_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/counter/tx/gratuitous-arp
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_counter_tx_gratuitous_arp_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_counter_tx_gratuitous_arp_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -324,8 +311,8 @@ lib_interface_vrrp_vrrp_group_v4_counter_tx_gratuitous_arp_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v4/counter/rx/advertisement
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v4_counter_rx_advertisement_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v4_counter_rx_advertisement_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -337,8 +324,7 @@ lib_interface_vrrp_vrrp_group_v4_counter_rx_advertisement_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/virtual-address
  */
 static int lib_interface_vrrp_vrrp_group_v6_virtual_address_create(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_CREATE_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -349,7 +335,7 @@ static int lib_interface_vrrp_vrrp_group_v6_virtual_address_create(
 }
 
 static int lib_interface_vrrp_vrrp_group_v6_virtual_address_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -364,8 +350,8 @@ static int lib_interface_vrrp_vrrp_group_v6_virtual_address_destroy(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/current-priority
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_current_priority_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_current_priority_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -377,8 +363,8 @@ lib_interface_vrrp_vrrp_group_v6_current_priority_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/vrrp-interface
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_vrrp_interface_get_elem(const char *xpath,
-							 const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_vrrp_interface_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 	struct yang_data *val = NULL;
@@ -394,8 +380,8 @@ lib_interface_vrrp_vrrp_group_v6_vrrp_interface_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/source-address
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_source_address_get_elem(const char *xpath,
-							 const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_source_address_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 	struct yang_data *val = NULL;
@@ -410,8 +396,7 @@ lib_interface_vrrp_vrrp_group_v6_source_address_get_elem(const char *xpath,
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/state
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_state_get_elem(const char *xpath,
-						const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_state_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -423,8 +408,8 @@ lib_interface_vrrp_vrrp_group_v6_state_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/master-advertisement-interval
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_master_advertisement_interval_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_master_advertisement_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -435,8 +420,7 @@ lib_interface_vrrp_vrrp_group_v6_master_advertisement_interval_get_elem(
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/skew-time
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_skew_time_get_elem(const char *xpath,
-						    const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_skew_time_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -448,8 +432,8 @@ lib_interface_vrrp_vrrp_group_v6_skew_time_get_elem(const char *xpath,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/counter/state-transition
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_counter_state_transition_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_counter_state_transition_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -461,8 +445,8 @@ lib_interface_vrrp_vrrp_group_v6_counter_state_transition_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/counter/tx/advertisement
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_counter_tx_advertisement_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_counter_tx_advertisement_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct vrrp_vrouter *vr = list_entry;
 
@@ -474,8 +458,8 @@ lib_interface_vrrp_vrrp_group_v6_counter_tx_advertisement_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/counter/tx/neighbor-advertisement
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_counter_tx_neighbor_advertisement_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_counter_tx_neighbor_advertisement_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	/* TODO: implement me. */
 	return NULL;
@@ -486,8 +470,8 @@ lib_interface_vrrp_vrrp_group_v6_counter_tx_neighbor_advertisement_get_elem(
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/v6/counter/rx/advertisement
  */
 static struct yang_data *
-lib_interface_vrrp_vrrp_group_v6_counter_rx_advertisement_get_elem(
-	const char *xpath, const void *list_entry)
+	lib_interface_vrrp_vrrp_group_v6_counter_rx_advertisement_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	/* TODO: implement me. */
 	return NULL;
@@ -496,10 +480,7 @@ lib_interface_vrrp_vrrp_group_v6_counter_rx_advertisement_get_elem(
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/priority
  */
-static int
-lib_interface_vrrp_vrrp_group_priority_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_priority_modify(NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -517,10 +498,7 @@ lib_interface_vrrp_vrrp_group_priority_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/preempt
  */
-static int
-lib_interface_vrrp_vrrp_group_preempt_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_preempt_modify(NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -538,10 +516,7 @@ lib_interface_vrrp_vrrp_group_preempt_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/accept-mode
  */
-static int
-lib_interface_vrrp_vrrp_group_accept_mode_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_accept_mode_modify(NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -561,8 +536,7 @@ lib_interface_vrrp_vrrp_group_accept_mode_modify(enum nb_event event,
  * /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/advertisement-interval
  */
 static int lib_interface_vrrp_vrrp_group_advertisement_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;
@@ -580,10 +554,7 @@ static int lib_interface_vrrp_vrrp_group_advertisement_interval_modify(
 /*
  * XPath: /frr-interface:lib/interface/frr-vrrpd:vrrp/vrrp-group/shutdown
  */
-static int
-lib_interface_vrrp_vrrp_group_shutdown_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource)
+static int lib_interface_vrrp_vrrp_group_shutdown_modify(NB_CB_MODIFY_ARGS)
 {
 	if (event != NB_EV_APPLY)
 		return NB_OK;

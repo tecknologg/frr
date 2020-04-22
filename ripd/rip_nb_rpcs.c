@@ -78,8 +78,7 @@ static void clear_rip_route(struct rip *rip)
 	}
 }
 
-int clear_rip_route_rpc(const char *xpath, const struct list *input,
-			struct list *output)
+int clear_rip_route_rpc(NB_CB_RPC_ARGS)
 {
 	struct rip *rip;
 	struct yang_data *yang_vrf;

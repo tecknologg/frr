@@ -74,9 +74,7 @@ static struct eigrp_interface *eigrp_interface_lookup(const struct eigrp *eigrp,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance
  */
-static int eigrpd_instance_create(enum nb_event event,
-				  const struct lyd_node *dnode,
-				  union nb_resource *resource)
+static int eigrpd_instance_create(NB_CB_CREATE_ARGS)
 {
 	struct eigrp *eigrp;
 	const char *vrf;
@@ -104,8 +102,7 @@ static int eigrpd_instance_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_destroy(enum nb_event event,
-				   const struct lyd_node *dnode)
+static int eigrpd_instance_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -127,9 +124,7 @@ static int eigrpd_instance_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/router-id
  */
-static int eigrpd_instance_router_id_modify(enum nb_event event,
-					    const struct lyd_node *dnode,
-					    union nb_resource *resource)
+static int eigrpd_instance_router_id_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -148,8 +143,7 @@ static int eigrpd_instance_router_id_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_router_id_destroy(enum nb_event event,
-					     const struct lyd_node *dnode)
+static int eigrpd_instance_router_id_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -171,10 +165,7 @@ static int eigrpd_instance_router_id_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/passive-interface
  */
-static int
-eigrpd_instance_passive_interface_create(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_passive_interface_create(NB_CB_CREATE_ARGS)
 {
 	struct eigrp_interface *eif;
 	struct eigrp *eigrp;
@@ -214,9 +205,7 @@ eigrpd_instance_passive_interface_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_passive_interface_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_passive_interface_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp_interface *eif;
 	struct eigrp *eigrp;
@@ -245,9 +234,7 @@ eigrpd_instance_passive_interface_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/active-time
  */
-static int eigrpd_instance_active_time_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource)
+static int eigrpd_instance_active_time_modify(NB_CB_MODIFY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -266,9 +253,7 @@ static int eigrpd_instance_active_time_modify(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/variance
  */
-static int eigrpd_instance_variance_modify(enum nb_event event,
-					   const struct lyd_node *dnode,
-					   union nb_resource *resource)
+static int eigrpd_instance_variance_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -287,8 +272,7 @@ static int eigrpd_instance_variance_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_variance_destroy(enum nb_event event,
-					    const struct lyd_node *dnode)
+static int eigrpd_instance_variance_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -310,9 +294,7 @@ static int eigrpd_instance_variance_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/maximum-paths
  */
-static int eigrpd_instance_maximum_paths_modify(enum nb_event event,
-						const struct lyd_node *dnode,
-						union nb_resource *resource)
+static int eigrpd_instance_maximum_paths_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -331,8 +313,7 @@ static int eigrpd_instance_maximum_paths_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_maximum_paths_destroy(enum nb_event event,
-						 const struct lyd_node *dnode)
+static int eigrpd_instance_maximum_paths_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -354,10 +335,7 @@ static int eigrpd_instance_maximum_paths_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K1
  */
-static int
-eigrpd_instance_metric_weights_K1_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K1_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -376,9 +354,7 @@ eigrpd_instance_metric_weights_K1_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K1_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K1_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -400,10 +376,7 @@ eigrpd_instance_metric_weights_K1_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K2
  */
-static int
-eigrpd_instance_metric_weights_K2_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K2_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -422,9 +395,7 @@ eigrpd_instance_metric_weights_K2_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K2_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K2_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -446,10 +417,7 @@ eigrpd_instance_metric_weights_K2_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K3
  */
-static int
-eigrpd_instance_metric_weights_K3_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K3_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -468,9 +436,7 @@ eigrpd_instance_metric_weights_K3_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K3_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K3_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -492,10 +458,7 @@ eigrpd_instance_metric_weights_K3_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K4
  */
-static int
-eigrpd_instance_metric_weights_K4_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K4_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -514,9 +477,7 @@ eigrpd_instance_metric_weights_K4_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K4_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K4_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -538,10 +499,7 @@ eigrpd_instance_metric_weights_K4_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K5
  */
-static int
-eigrpd_instance_metric_weights_K5_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K5_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -560,9 +518,7 @@ eigrpd_instance_metric_weights_K5_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K5_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K5_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -584,10 +540,7 @@ eigrpd_instance_metric_weights_K5_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/metric-weights/K6
  */
-static int
-eigrpd_instance_metric_weights_K6_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int eigrpd_instance_metric_weights_K6_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -606,9 +559,7 @@ eigrpd_instance_metric_weights_K6_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_metric_weights_K6_destroy(enum nb_event event,
-					  const struct lyd_node *dnode)
+static int eigrpd_instance_metric_weights_K6_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 
@@ -630,9 +581,7 @@ eigrpd_instance_metric_weights_K6_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/network
  */
-static int eigrpd_instance_network_create(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource)
+static int eigrpd_instance_network_create(NB_CB_CREATE_ARGS)
 {
 	struct route_node *rnode;
 	struct prefix prefix;
@@ -668,8 +617,7 @@ static int eigrpd_instance_network_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_network_destroy(enum nb_event event,
-					   const struct lyd_node *dnode)
+static int eigrpd_instance_network_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct route_node *rnode;
 	struct prefix prefix;
@@ -707,9 +655,7 @@ static int eigrpd_instance_network_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/neighbor
  */
-static int eigrpd_instance_neighbor_create(enum nb_event event,
-					   const struct lyd_node *dnode,
-					   union nb_resource *resource)
+static int eigrpd_instance_neighbor_create(NB_CB_CREATE_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -725,8 +671,7 @@ static int eigrpd_instance_neighbor_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_neighbor_destroy(enum nb_event event,
-					    const struct lyd_node *dnode)
+static int eigrpd_instance_neighbor_destroy(NB_CB_DESTROY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -745,9 +690,7 @@ static int eigrpd_instance_neighbor_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute
  */
-static int eigrpd_instance_redistribute_create(enum nb_event event,
-					       const struct lyd_node *dnode,
-					       union nb_resource *resource)
+static int eigrpd_instance_redistribute_create(NB_CB_CREATE_ARGS)
 {
 	struct eigrp_metrics metrics;
 	const char *vrfname;
@@ -778,8 +721,7 @@ static int eigrpd_instance_redistribute_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int eigrpd_instance_redistribute_destroy(enum nb_event event,
-						const struct lyd_node *dnode)
+static int eigrpd_instance_redistribute_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp *eigrp;
 	uint32_t proto;
@@ -803,10 +745,7 @@ static int eigrpd_instance_redistribute_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/route-map
  */
-static int
-eigrpd_instance_redistribute_route_map_modify(enum nb_event event,
-					      const struct lyd_node *dnode,
-					      union nb_resource *resource)
+static int eigrpd_instance_redistribute_route_map_modify(NB_CB_MODIFY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -822,9 +761,7 @@ eigrpd_instance_redistribute_route_map_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-eigrpd_instance_redistribute_route_map_destroy(enum nb_event event,
-					       const struct lyd_node *dnode)
+static int eigrpd_instance_redistribute_route_map_destroy(NB_CB_DESTROY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -843,9 +780,8 @@ eigrpd_instance_redistribute_route_map_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/metrics/bandwidth
  */
-static int eigrpd_instance_redistribute_metrics_bandwidth_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+static int
+	eigrpd_instance_redistribute_metrics_bandwidth_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp_metrics metrics;
 	struct eigrp *eigrp;
@@ -869,7 +805,7 @@ static int eigrpd_instance_redistribute_metrics_bandwidth_modify(
 }
 
 static int eigrpd_instance_redistribute_metrics_bandwidth_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	struct eigrp_metrics metrics;
 	struct eigrp *eigrp;
@@ -895,19 +831,14 @@ static int eigrpd_instance_redistribute_metrics_bandwidth_destroy(
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/metrics/delay
  */
-static int
-eigrpd_instance_redistribute_metrics_delay_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource)
+static int eigrpd_instance_redistribute_metrics_delay_modify(NB_CB_MODIFY_ARGS)
 {
-	return eigrpd_instance_redistribute_metrics_bandwidth_modify(event,
-								     dnode,
-								     resource);
+	return eigrpd_instance_redistribute_metrics_bandwidth_modify(
+		event, dnode, resource);
 }
 
 static int
-eigrpd_instance_redistribute_metrics_delay_destroy(enum nb_event event,
-						   const struct lyd_node *dnode)
+	eigrpd_instance_redistribute_metrics_delay_destroy(NB_CB_DESTROY_ARGS)
 {
 	return eigrpd_instance_redistribute_metrics_bandwidth_destroy(event,
 								      dnode);
@@ -917,16 +848,14 @@ eigrpd_instance_redistribute_metrics_delay_destroy(enum nb_event event,
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/metrics/reliability
  */
 static int eigrpd_instance_redistribute_metrics_reliability_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_MODIFY_ARGS)
 {
-	return eigrpd_instance_redistribute_metrics_bandwidth_modify(event,
-								     dnode,
-								     resource);
+	return eigrpd_instance_redistribute_metrics_bandwidth_modify(
+		event, dnode, resource);
 }
 
 static int eigrpd_instance_redistribute_metrics_reliability_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	return eigrpd_instance_redistribute_metrics_bandwidth_destroy(event,
 								      dnode);
@@ -935,19 +864,13 @@ static int eigrpd_instance_redistribute_metrics_reliability_destroy(
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/metrics/load
  */
-static int
-eigrpd_instance_redistribute_metrics_load_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource)
+static int eigrpd_instance_redistribute_metrics_load_modify(NB_CB_MODIFY_ARGS)
 {
-	return eigrpd_instance_redistribute_metrics_bandwidth_modify(event,
-								     dnode,
-								     resource);
+	return eigrpd_instance_redistribute_metrics_bandwidth_modify(
+		event, dnode, resource);
 }
 
-static int
-eigrpd_instance_redistribute_metrics_load_destroy(enum nb_event event,
-						  const struct lyd_node *dnode)
+static int eigrpd_instance_redistribute_metrics_load_destroy(NB_CB_DESTROY_ARGS)
 {
 	return eigrpd_instance_redistribute_metrics_bandwidth_destroy(event,
 								      dnode);
@@ -956,19 +879,13 @@ eigrpd_instance_redistribute_metrics_load_destroy(enum nb_event event,
 /*
  * XPath: /frr-eigrpd:eigrpd/instance/redistribute/metrics/mtu
  */
-static int
-eigrpd_instance_redistribute_metrics_mtu_modify(enum nb_event event,
-						const struct lyd_node *dnode,
-						union nb_resource *resource)
+static int eigrpd_instance_redistribute_metrics_mtu_modify(NB_CB_MODIFY_ARGS)
 {
-	return eigrpd_instance_redistribute_metrics_bandwidth_modify(event,
-								     dnode,
-								     resource);
+	return eigrpd_instance_redistribute_metrics_bandwidth_modify(
+		event, dnode, resource);
 }
 
-static int
-eigrpd_instance_redistribute_metrics_mtu_destroy(enum nb_event event,
-						 const struct lyd_node *dnode)
+static int eigrpd_instance_redistribute_metrics_mtu_destroy(NB_CB_DESTROY_ARGS)
 {
 	return eigrpd_instance_redistribute_metrics_bandwidth_destroy(event,
 								      dnode);
@@ -977,9 +894,7 @@ eigrpd_instance_redistribute_metrics_mtu_destroy(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/delay
  */
-static int lib_interface_eigrp_delay_modify(enum nb_event event,
-					    const struct lyd_node *dnode,
-					    union nb_resource *resource)
+static int lib_interface_eigrp_delay_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp_interface *ei;
 	struct interface *ifp;
@@ -1020,9 +935,7 @@ static int lib_interface_eigrp_delay_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/bandwidth
  */
-static int lib_interface_eigrp_bandwidth_modify(enum nb_event event,
-						const struct lyd_node *dnode,
-						union nb_resource *resource)
+static int lib_interface_eigrp_bandwidth_modify(NB_CB_MODIFY_ARGS)
 {
 	struct interface *ifp;
 	struct eigrp_interface *ei;
@@ -1063,10 +976,7 @@ static int lib_interface_eigrp_bandwidth_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/hello-interval
  */
-static int
-lib_interface_eigrp_hello_interval_modify(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource)
+static int lib_interface_eigrp_hello_interval_modify(NB_CB_MODIFY_ARGS)
 {
 	struct interface *ifp;
 	struct eigrp_interface *ei;
@@ -1106,9 +1016,7 @@ lib_interface_eigrp_hello_interval_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/hold-time
  */
-static int lib_interface_eigrp_hold_time_modify(enum nb_event event,
-						const struct lyd_node *dnode,
-						union nb_resource *resource)
+static int lib_interface_eigrp_hold_time_modify(NB_CB_MODIFY_ARGS)
 {
 	struct interface *ifp;
 	struct eigrp_interface *ei;
@@ -1148,10 +1056,7 @@ static int lib_interface_eigrp_hold_time_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/split-horizon
  */
-static int
-lib_interface_eigrp_split_horizon_modify(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource)
+static int lib_interface_eigrp_split_horizon_modify(NB_CB_MODIFY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -1170,9 +1075,7 @@ lib_interface_eigrp_split_horizon_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/instance
  */
-static int lib_interface_eigrp_instance_create(enum nb_event event,
-					       const struct lyd_node *dnode,
-					       union nb_resource *resource)
+static int lib_interface_eigrp_instance_create(NB_CB_CREATE_ARGS)
 {
 	struct eigrp_interface *eif;
 	struct interface *ifp;
@@ -1214,8 +1117,7 @@ static int lib_interface_eigrp_instance_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_interface_eigrp_instance_destroy(enum nb_event event,
-						const struct lyd_node *dnode)
+static int lib_interface_eigrp_instance_destroy(NB_CB_DESTROY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -1236,8 +1138,7 @@ static int lib_interface_eigrp_instance_destroy(enum nb_event event,
  * /frr-interface:lib/interface/frr-eigrpd:eigrp/instance/summarize-addresses
  */
 static int lib_interface_eigrp_instance_summarize_addresses_create(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource)
+	NB_CB_CREATE_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -1254,7 +1155,7 @@ static int lib_interface_eigrp_instance_summarize_addresses_create(
 }
 
 static int lib_interface_eigrp_instance_summarize_addresses_destroy(
-	enum nb_event event, const struct lyd_node *dnode)
+	NB_CB_DESTROY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -1273,10 +1174,7 @@ static int lib_interface_eigrp_instance_summarize_addresses_destroy(
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/instance/authentication
  */
-static int
-lib_interface_eigrp_instance_authentication_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource)
+static int lib_interface_eigrp_instance_authentication_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp_interface *eif;
 
@@ -1298,10 +1196,7 @@ lib_interface_eigrp_instance_authentication_modify(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/frr-eigrpd:eigrp/instance/keychain
  */
-static int
-lib_interface_eigrp_instance_keychain_modify(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource)
+static int lib_interface_eigrp_instance_keychain_modify(NB_CB_MODIFY_ARGS)
 {
 	struct eigrp_interface *eif;
 	struct keychain *keychain;
@@ -1333,9 +1228,7 @@ lib_interface_eigrp_instance_keychain_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int
-lib_interface_eigrp_instance_keychain_destroy(enum nb_event event,
-					      const struct lyd_node *dnode)
+static int lib_interface_eigrp_instance_keychain_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct eigrp_interface *eif;
 

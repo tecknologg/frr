@@ -366,6 +366,56 @@ struct nb_callbacks {
 };
 
 /*
+ * Macros for the northbound callbacks parameters.
+ */
+/* clang-format off */
+#define NB_CB_CREATE_ARGS                                                      \
+	enum nb_event event,	                                               \
+	const struct lyd_node *dnode,                                          \
+	union nb_resource *resource
+
+#define NB_CB_MODIFY_ARGS                                                      \
+	enum nb_event event,	                                               \
+	const struct lyd_node *dnode,                                          \
+	union nb_resource *resource
+
+#define NB_CB_DESTROY_ARGS                                                     \
+	enum nb_event event,	                                               \
+	const struct lyd_node *dnode
+
+#define NB_CB_MOVE_ARGS                                                        \
+	enum nb_event event,	                                               \
+	const struct lyd_node *dnode
+
+#define NB_CB_PRE_VALIDATE_ARGS                                                \
+	const struct lyd_node *dnode
+
+#define NB_CB_APPLY_FINISH_ARGS                                                \
+	const struct lyd_node *dnode
+
+#define NB_CB_GET_ELEM_ARGS                                                    \
+	const char *xpath,                                                     \
+	const void *list_entry
+
+#define NB_CB_GET_NEXT_ARGS                                                    \
+	const void *parent_list_entry,                                         \
+	const void *list_entry
+
+#define NB_CB_GET_KEYS_ARGS                                                    \
+	const void *list_entry,                                                \
+	struct yang_list_keys *keys
+
+#define NB_CB_LOOKUP_ENTRY_ARGS                                                \
+	const void *parent_list_entry,                                         \
+       	const struct yang_list_keys *keys
+
+#define NB_CB_RPC_ARGS                                                         \
+	const char *xpath,                                                     \
+	const struct list *input,                                              \
+	struct list *output
+/* clang-format on */
+
+/*
  * Northbound-specific data that is allocated for each schema node of the native
  * YANG modules.
  */

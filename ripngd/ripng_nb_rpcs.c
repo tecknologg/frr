@@ -80,8 +80,7 @@ static void clear_ripng_route(struct ripng *ripng)
 	}
 }
 
-int clear_ripng_route_rpc(const char *xpath, const struct list *input,
-			  struct list *output)
+int clear_ripng_route_rpc(NB_CB_RPC_ARGS)
 {
 	struct ripng *ripng;
 	struct yang_data *yang_vrf;

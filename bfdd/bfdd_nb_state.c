@@ -31,15 +31,12 @@
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop
  */
-const void *bfdd_bfd_sessions_single_hop_get_next(const void *parent_list_entry
-						  __attribute__((__unused__)),
-						  const void *list_entry)
+const void *bfdd_bfd_sessions_single_hop_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	return bfd_session_next(list_entry, false);
 }
 
-int bfdd_bfd_sessions_single_hop_get_keys(const void *list_entry,
-					  struct yang_list_keys *keys)
+int bfdd_bfd_sessions_single_hop_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 	char dstbuf[INET6_ADDRSTRLEN];
@@ -54,10 +51,7 @@ int bfdd_bfd_sessions_single_hop_get_keys(const void *list_entry,
 	return NB_OK;
 }
 
-const void *
-bfdd_bfd_sessions_single_hop_lookup_entry(const void *parent_list_entry
-					  __attribute__((__unused__)),
-					  const struct yang_list_keys *keys)
+const void *bfdd_bfd_sessions_single_hop_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const char *dest_addr = keys->key[0];
 	const char *ifname = keys->key[1];
@@ -76,8 +70,8 @@ bfdd_bfd_sessions_single_hop_lookup_entry(const void *parent_list_entry
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/local-discriminator
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_local_discriminator_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_local_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -87,9 +81,8 @@ bfdd_bfd_sessions_single_hop_stats_local_discriminator_get_elem(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/local-state
  */
-struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_local_state_get_elem(const char *xpath,
-							const void *list_entry)
+struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_state_get_elem(
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -100,7 +93,7 @@ bfdd_bfd_sessions_single_hop_stats_local_state_get_elem(const char *xpath,
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/local-diagnostic
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_diagnostic_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -111,7 +104,7 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_diagnostic_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/local-multiplier
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_multiplier_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -122,8 +115,8 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_local_multiplier_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/remote-discriminator
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_remote_discriminator_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_remote_discriminator_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -136,9 +129,8 @@ bfdd_bfd_sessions_single_hop_stats_remote_discriminator_get_elem(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/remote-state
  */
-struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_remote_state_get_elem(const char *xpath,
-							 const void *list_entry)
+struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_state_get_elem(
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -149,7 +141,7 @@ bfdd_bfd_sessions_single_hop_stats_remote_state_get_elem(const char *xpath,
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/remote-diagnostic
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_diagnostic_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -160,7 +152,7 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_diagnostic_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/remote-multiplier
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_multiplier_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -172,8 +164,8 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_remote_multiplier_get_elem(
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/negotiated-transmission-interval
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_negotiated_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -185,8 +177,8 @@ bfdd_bfd_sessions_single_hop_stats_negotiated_transmission_interval_get_elem(
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/negotiated-receive-interval
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_receive_interval_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_negotiated_receive_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -197,7 +189,7 @@ bfdd_bfd_sessions_single_hop_stats_negotiated_receive_interval_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/detection-mode
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_detection_mode_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 	int detection_mode;
@@ -223,8 +215,7 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_detection_mode_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/last-down-time
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_down_time_get_elem(
-	const char *xpath __attribute__((__unused__)),
-	const void *list_entry __attribute__((__unused__)))
+	NB_CB_GET_ELEM_ARGS)
 {
 	/*
 	 * TODO: implement me.
@@ -238,8 +229,7 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_down_time_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/last-up-time
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_up_time_get_elem(
-	const char *xpath __attribute__((__unused__)),
-	const void *list_entry __attribute__((__unused__)))
+	NB_CB_GET_ELEM_ARGS)
 {
 	/*
 	 * TODO: implement me.
@@ -253,8 +243,8 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_last_up_time_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/session-down-count
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_session_down_count_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_session_down_count_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -265,7 +255,7 @@ bfdd_bfd_sessions_single_hop_stats_session_down_count_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/session-up-count
  */
 struct yang_data *bfdd_bfd_sessions_single_hop_stats_session_up_count_get_elem(
-	const char *xpath, const void *list_entry)
+	NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -277,8 +267,8 @@ struct yang_data *bfdd_bfd_sessions_single_hop_stats_session_up_count_get_elem(
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/control-packet-input-count
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_control_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_control_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -290,8 +280,8 @@ bfdd_bfd_sessions_single_hop_stats_control_packet_input_count_get_elem(
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/control-packet-output-count
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_control_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_control_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -303,8 +293,8 @@ bfdd_bfd_sessions_single_hop_stats_control_packet_output_count_get_elem(
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/negotiated-echo-transmission-interval
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_negotiated_echo_transmission_interval_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_negotiated_echo_transmission_interval_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -315,8 +305,8 @@ bfdd_bfd_sessions_single_hop_stats_negotiated_echo_transmission_interval_get_ele
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/echo-packet-input-count
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_echo_packet_input_count_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_echo_packet_input_count_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -327,8 +317,8 @@ bfdd_bfd_sessions_single_hop_stats_echo_packet_input_count_get_elem(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/stats/echo-packet-output-count
  */
 struct yang_data *
-bfdd_bfd_sessions_single_hop_stats_echo_packet_output_count_get_elem(
-	const char *xpath, const void *list_entry)
+	bfdd_bfd_sessions_single_hop_stats_echo_packet_output_count_get_elem(
+		NB_CB_GET_ELEM_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 
@@ -338,15 +328,12 @@ bfdd_bfd_sessions_single_hop_stats_echo_packet_output_count_get_elem(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/multi-hop
  */
-const void *bfdd_bfd_sessions_multi_hop_get_next(const void *parent_list_entry
-						 __attribute__((__unused__)),
-						 const void *list_entry)
+const void *bfdd_bfd_sessions_multi_hop_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	return bfd_session_next(list_entry, true);
 }
 
-int bfdd_bfd_sessions_multi_hop_get_keys(const void *list_entry,
-					 struct yang_list_keys *keys)
+int bfdd_bfd_sessions_multi_hop_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct bfd_session *bs = list_entry;
 	char dstbuf[INET6_ADDRSTRLEN], srcbuf[INET6_ADDRSTRLEN];
@@ -363,10 +350,7 @@ int bfdd_bfd_sessions_multi_hop_get_keys(const void *list_entry,
 	return NB_OK;
 }
 
-const void *
-bfdd_bfd_sessions_multi_hop_lookup_entry(const void *parent_list_entry
-					 __attribute__((__unused__)),
-					 const struct yang_list_keys *keys)
+const void *bfdd_bfd_sessions_multi_hop_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const char *source_addr = keys->key[0];
 	const char *dest_addr = keys->key[1];

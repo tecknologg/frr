@@ -185,15 +185,13 @@ static int bfd_session_destroy(enum nb_event event,
 /*
  * XPath: /frr-bfdd:bfdd/bfd
  */
-int bfdd_bfd_create(enum nb_event event,
-		    const struct lyd_node *dnode __attribute__((__unused__)),
-		    union nb_resource *resource __attribute__((__unused__)))
+int bfdd_bfd_create(NB_CB_CREATE_ARGS)
 {
 	/* NOTHING */
 	return NB_OK;
 }
 
-int bfdd_bfd_destroy(enum nb_event event, const struct lyd_node *dnode)
+int bfdd_bfd_destroy(NB_CB_DESTROY_ARGS)
 {
 	switch (event) {
 	case NB_EV_VALIDATE:
@@ -219,15 +217,12 @@ int bfdd_bfd_destroy(enum nb_event event, const struct lyd_node *dnode)
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop
  */
-int bfdd_bfd_sessions_single_hop_create(enum nb_event event,
-					const struct lyd_node *dnode,
-					union nb_resource *resource)
+int bfdd_bfd_sessions_single_hop_create(NB_CB_CREATE_ARGS)
 {
 	return bfd_session_create(event, dnode, resource, false);
 }
 
-int bfdd_bfd_sessions_single_hop_destroy(enum nb_event event,
-					 const struct lyd_node *dnode)
+int bfdd_bfd_sessions_single_hop_destroy(NB_CB_DESTROY_ARGS)
 {
 	return bfd_session_destroy(event, dnode, false);
 }
@@ -235,19 +230,12 @@ int bfdd_bfd_sessions_single_hop_destroy(enum nb_event event,
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/source-addr
  */
-int bfdd_bfd_sessions_single_hop_source_addr_modify(enum nb_event event
-						    __attribute__((__unused__)),
-						    const struct lyd_node *dnode
-						    __attribute__((__unused__)),
-						    union nb_resource *resource
-						    __attribute__((__unused__)))
+int bfdd_bfd_sessions_single_hop_source_addr_modify(NB_CB_MODIFY_ARGS)
 {
 	return NB_OK;
 }
 
-int bfdd_bfd_sessions_single_hop_source_addr_destroy(
-	enum nb_event event __attribute__((__unused__)),
-	const struct lyd_node *dnode __attribute__((__unused__)))
+int bfdd_bfd_sessions_single_hop_source_addr_destroy(NB_CB_DESTROY_ARGS)
 {
 	return NB_OK;
 }
@@ -255,9 +243,7 @@ int bfdd_bfd_sessions_single_hop_source_addr_destroy(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/detection-multiplier
  */
-int bfdd_bfd_sessions_single_hop_detection_multiplier_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource __attribute__((__unused__)))
+int bfdd_bfd_sessions_single_hop_detection_multiplier_modify(NB_CB_MODIFY_ARGS)
 {
 	uint8_t detection_multiplier = yang_dnode_get_uint8(dnode, NULL);
 	struct bfd_session *bs;
@@ -287,8 +273,7 @@ int bfdd_bfd_sessions_single_hop_detection_multiplier_modify(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/desired-transmission-interval
  */
 int bfdd_bfd_sessions_single_hop_desired_transmission_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource __attribute__((__unused__)))
+	NB_CB_MODIFY_ARGS)
 {
 	uint32_t tx_interval = yang_dnode_get_uint32(dnode, NULL);
 	struct bfd_session *bs;
@@ -324,8 +309,7 @@ int bfdd_bfd_sessions_single_hop_desired_transmission_interval_modify(
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/required-receive-interval
  */
 int bfdd_bfd_sessions_single_hop_required_receive_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource __attribute__((__unused__)))
+	NB_CB_MODIFY_ARGS)
 {
 	uint32_t rx_interval = yang_dnode_get_uint32(dnode, NULL);
 	struct bfd_session *bs;
@@ -360,9 +344,7 @@ int bfdd_bfd_sessions_single_hop_required_receive_interval_modify(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/administrative-down
  */
-int bfdd_bfd_sessions_single_hop_administrative_down_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource __attribute__((__unused__)))
+int bfdd_bfd_sessions_single_hop_administrative_down_modify(NB_CB_MODIFY_ARGS)
 {
 	bool shutdown = yang_dnode_get_bool(dnode, NULL);
 	struct bfd_session *bs;
@@ -423,10 +405,7 @@ int bfdd_bfd_sessions_single_hop_administrative_down_modify(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/single-hop/echo-mode
  */
-int bfdd_bfd_sessions_single_hop_echo_mode_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource
-						  __attribute__((__unused__)))
+int bfdd_bfd_sessions_single_hop_echo_mode_modify(NB_CB_MODIFY_ARGS)
 {
 	bool echo = yang_dnode_get_bool(dnode, NULL);
 	struct bfd_session *bs;
@@ -469,8 +448,7 @@ int bfdd_bfd_sessions_single_hop_echo_mode_modify(enum nb_event event,
  * /frr-bfdd:bfdd/bfd/sessions/single-hop/desired-echo-transmission-interval
  */
 int bfdd_bfd_sessions_single_hop_desired_echo_transmission_interval_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource __attribute__((__unused__)))
+	NB_CB_MODIFY_ARGS)
 {
 	uint32_t echo_interval = yang_dnode_get_uint32(dnode, NULL);
 	struct bfd_session *bs;
@@ -504,15 +482,12 @@ int bfdd_bfd_sessions_single_hop_desired_echo_transmission_interval_modify(
 /*
  * XPath: /frr-bfdd:bfdd/bfd/sessions/multi-hop
  */
-int bfdd_bfd_sessions_multi_hop_create(enum nb_event event,
-				       const struct lyd_node *dnode,
-				       union nb_resource *resource)
+int bfdd_bfd_sessions_multi_hop_create(NB_CB_CREATE_ARGS)
 {
 	return bfd_session_create(event, dnode, resource, true);
 }
 
-int bfdd_bfd_sessions_multi_hop_destroy(enum nb_event event,
-					const struct lyd_node *dnode)
+int bfdd_bfd_sessions_multi_hop_destroy(NB_CB_DESTROY_ARGS)
 {
 	return bfd_session_destroy(event, dnode, true);
 }

@@ -1489,9 +1489,7 @@ void if_zapi_callbacks(int (*create)(struct interface *ifp),
 /*
  * XPath: /frr-interface:lib/interface
  */
-static int lib_interface_create(enum nb_event event,
-				const struct lyd_node *dnode,
-				union nb_resource *resource)
+static int lib_interface_create(NB_CB_CREATE_ARGS)
 {
 	const char *ifname;
 	const char *vrfname;
@@ -1549,8 +1547,7 @@ static int lib_interface_create(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_interface_destroy(enum nb_event event,
-				 const struct lyd_node *dnode)
+static int lib_interface_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct interface *ifp;
 
@@ -1581,8 +1578,7 @@ static int lib_interface_destroy(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface
  */
-static const void *lib_interface_get_next(const void *parent_list_entry,
-					  const void *list_entry)
+static const void *lib_interface_get_next(NB_CB_GET_NEXT_ARGS)
 {
 	struct vrf *vrf;
 	struct interface *pif = (struct interface *)list_entry;
@@ -1606,8 +1602,7 @@ static const void *lib_interface_get_next(const void *parent_list_entry,
 	return pif;
 }
 
-static int lib_interface_get_keys(const void *list_entry,
-				  struct yang_list_keys *keys)
+static int lib_interface_get_keys(NB_CB_GET_KEYS_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1622,8 +1617,7 @@ static int lib_interface_get_keys(const void *list_entry,
 	return NB_OK;
 }
 
-static const void *lib_interface_lookup_entry(const void *parent_list_entry,
-					      const struct yang_list_keys *keys)
+static const void *lib_interface_lookup_entry(NB_CB_LOOKUP_ENTRY_ARGS)
 {
 	const char *ifname = keys->key[0];
 	const char *vrfname = keys->key[1];
@@ -1635,9 +1629,7 @@ static const void *lib_interface_lookup_entry(const void *parent_list_entry,
 /*
  * XPath: /frr-interface:lib/interface/description
  */
-static int lib_interface_description_modify(enum nb_event event,
-					    const struct lyd_node *dnode,
-					    union nb_resource *resource)
+static int lib_interface_description_modify(NB_CB_MODIFY_ARGS)
 {
 	struct interface *ifp;
 	const char *description;
@@ -1653,8 +1645,7 @@ static int lib_interface_description_modify(enum nb_event event,
 	return NB_OK;
 }
 
-static int lib_interface_description_destroy(enum nb_event event,
-					     const struct lyd_node *dnode)
+static int lib_interface_description_destroy(NB_CB_DESTROY_ARGS)
 {
 	struct interface *ifp;
 
@@ -1670,8 +1661,7 @@ static int lib_interface_description_destroy(enum nb_event event,
 /*
  * XPath: /frr-interface:lib/interface/state/if-index
  */
-struct yang_data *lib_interface_state_if_index_get_elem(const char *xpath,
-							const void *list_entry)
+struct yang_data *lib_interface_state_if_index_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1681,8 +1671,7 @@ struct yang_data *lib_interface_state_if_index_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/mtu
  */
-struct yang_data *lib_interface_state_mtu_get_elem(const char *xpath,
-						   const void *list_entry)
+struct yang_data *lib_interface_state_mtu_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1692,8 +1681,7 @@ struct yang_data *lib_interface_state_mtu_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/mtu6
  */
-struct yang_data *lib_interface_state_mtu6_get_elem(const char *xpath,
-						    const void *list_entry)
+struct yang_data *lib_interface_state_mtu6_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1703,8 +1691,7 @@ struct yang_data *lib_interface_state_mtu6_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/speed
  */
-struct yang_data *lib_interface_state_speed_get_elem(const char *xpath,
-						     const void *list_entry)
+struct yang_data *lib_interface_state_speed_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1714,8 +1701,7 @@ struct yang_data *lib_interface_state_speed_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/metric
  */
-struct yang_data *lib_interface_state_metric_get_elem(const char *xpath,
-						      const void *list_entry)
+struct yang_data *lib_interface_state_metric_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 
@@ -1725,8 +1711,7 @@ struct yang_data *lib_interface_state_metric_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/flags
  */
-struct yang_data *lib_interface_state_flags_get_elem(const char *xpath,
-						     const void *list_entry)
+struct yang_data *lib_interface_state_flags_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	/* TODO: implement me. */
 	return NULL;
@@ -1735,8 +1720,7 @@ struct yang_data *lib_interface_state_flags_get_elem(const char *xpath,
 /*
  * XPath: /frr-interface:lib/interface/state/type
  */
-struct yang_data *lib_interface_state_type_get_elem(const char *xpath,
-						    const void *list_entry)
+struct yang_data *lib_interface_state_type_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	/* TODO: implement me. */
 	return NULL;
@@ -1746,8 +1730,7 @@ struct yang_data *lib_interface_state_type_get_elem(const char *xpath,
  * XPath: /frr-interface:lib/interface/state/phy-address
  */
 struct yang_data *
-lib_interface_state_phy_address_get_elem(const char *xpath,
-					 const void *list_entry)
+lib_interface_state_phy_address_get_elem(NB_CB_GET_ELEM_ARGS)
 {
 	const struct interface *ifp = list_entry;
 	struct ethaddr macaddr;
