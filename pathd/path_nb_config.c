@@ -69,6 +69,25 @@ int pathd_te_segment_list_destroy(enum nb_event event,
 }
 
 /*
+ * XPath: /frr-pathd:pathd/segment-list/protocol-origin
+ */
+int pathd_te_segment_list_protocol_origin_modify(enum nb_event event,
+						 const struct lyd_node *dnode,
+						 union nb_resource *resource)
+{
+	struct srte_segment_list *segment_list;
+
+	if (event != NB_EV_APPLY)
+		return NB_OK;
+
+	segment_list = nb_running_get_entry(dnode, NULL, true);
+	segment_list->protocol_origin = yang_dnode_get_enum(dnode, NULL);
+	SET_FLAG(segment_list->flags, F_SEGMENT_LIST_MODIFIED);
+
+	return NB_OK;
+}
+
+/*
  * XPath: /frr-pathd:pathd/segment-list/segment
  */
 int pathd_te_segment_list_segment_create(enum nb_event event,

@@ -39,6 +39,9 @@ int pathd_te_segment_list_segment_create(enum nb_event event,
 					 union nb_resource *resource);
 int pathd_te_segment_list_segment_destroy(enum nb_event event,
 					  const struct lyd_node *dnode);
+int pathd_te_segment_list_protocol_origin_modify(enum nb_event event,
+						 const struct lyd_node *dnode,
+						 union nb_resource *resource);
 int pathd_te_segment_list_segment_sid_value_modify(enum nb_event event,
 						   const struct lyd_node *dnode,
 						   union nb_resource *resource);
