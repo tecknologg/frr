@@ -168,8 +168,12 @@ int nb_cli_apply_changes(struct vty *vty, const char *xpath_base_fmt, ...)
 
 	/* Do an implicit "commit" when using the classic CLI mode. */
 	if (frr_get_cli_mode() == FRR_CLI_CLASSIC) {
-		ret = nb_candidate_commit(vty->candidate_config, NB_CLIENT_CLI,
-					  vty, false, NULL, NULL);
+		struct nb_context context = {};
+
+		context.client = NB_CLIENT_CLI;
+		context.user = vty;
+		ret = nb_candidate_commit(vty->candidate_config, &context,
+					  false, NULL, NULL);
 		if (ret != NB_OK && ret != NB_ERR_NO_CHANGES) {
 			vty_out(vty, "%% Configuration failed: %s.\n\n",
 				nb_err_name(ret));
@@ -216,12 +220,16 @@ void nb_cli_confirmed_commit_clean(struct vty *vty)
 
 int nb_cli_confirmed_commit_rollback(struct vty *vty)
 {
+	struct nb_context context = {};
 	uint32_t transaction_id;
 	int ret;
 
+
 	/* Perform the rollback. */
+	context.client = NB_CLIENT_CLI;
+	context.user = vty;
 	ret = nb_candidate_commit(
-		vty->confirmed_commit_rollback, NB_CLIENT_CLI, vty, true,
+		vty->confirmed_commit_rollback, &context, true,
 		"Rollback to previous configuration - confirmed commit has timed out",
 		&transaction_id);
 	if (ret == NB_OK)
@@ -251,6 +259,7 @@ static int nb_cli_confirmed_commit_timeout(struct thread *thread)
 static int nb_cli_commit(struct vty *vty, bool force,
 			 unsigned int confirmed_timeout, char *comment)
 {
+	struct nb_context context = {};
 	uint32_t transaction_id = 0;
 	int ret;
 
@@ -294,8 +303,10 @@ static int nb_cli_commit(struct vty *vty, bool force,
 				 &vty->t_confirmed_commit_timeout);
 	}
 
-	ret = nb_candidate_commit(vty->candidate_config, NB_CLIENT_CLI, vty,
-				  true, comment, &transaction_id);
+	context.client = NB_CLIENT_CLI;
+	context.user = vty;
+	ret = nb_candidate_commit(vty->candidate_config, &context, true,
+				  comment, &transaction_id);
 
 	/* Map northbound return code to CLI return code. */
 	switch (ret) {
@@ -1529,6 +1540,7 @@ DEFPY (show_yang_module_translator,
 static int nb_cli_rollback_configuration(struct vty *vty,
 					 uint32_t transaction_id)
 {
+	struct nb_context context = {};
 	struct nb_config *candidate;
 	char comment[80];
 	int ret;
@@ -1543,8 +1555,9 @@ static int nb_cli_rollback_configuration(struct vty *vty,
 	snprintf(comment, sizeof(comment), "Rollback to transaction %u",
 		 transaction_id);
 
-	ret = nb_candidate_commit(candidate, NB_CLIENT_CLI, vty, true, comment,
-				  NULL);
+	context.client = NB_CLIENT_CLI;
+	context.user = vty;
+	ret = nb_candidate_commit(candidate, &context, true, comment, NULL);
 	nb_config_free(candidate);
 	switch (ret) {
 	case NB_OK:

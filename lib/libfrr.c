@@ -872,11 +872,13 @@ static int frr_config_read_in(struct thread *t)
 	 * reading the configuration file.
 	 */
 	if (frr_get_cli_mode() == FRR_CLI_TRANSACTIONAL) {
+		struct nb_context context = {};
 		int ret;
 
-		ret = nb_candidate_commit(vty_shared_candidate_config,
-					  NB_CLIENT_CLI, NULL, true,
-					  "Read configuration file", NULL);
+		context.client = NB_CLIENT_CLI;
+		ret = nb_candidate_commit(vty_shared_candidate_config, &context,
+					  true, "Read configuration file",
+					  NULL);
 		if (ret != NB_OK && ret != NB_ERR_NO_CHANGES)
 			zlog_err("%s: failed to read configuration file.",
 				 __func__);

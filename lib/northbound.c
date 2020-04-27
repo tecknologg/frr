@@ -68,8 +68,7 @@ static int nb_callback_configuration(const enum nb_event event,
 				     struct nb_config_change *change);
 static struct nb_transaction *nb_transaction_new(struct nb_config *config,
 						 struct nb_config_cbs *changes,
-						 enum nb_client client,
-						 const void *user,
+						 struct nb_context *context,
 						 const char *comment);
 static void nb_transaction_free(struct nb_transaction *transaction);
 static int nb_transaction_process(enum nb_event event,
@@ -646,8 +645,7 @@ int nb_candidate_validate(struct nb_config *candidate)
 }
 
 int nb_candidate_commit_prepare(struct nb_config *candidate,
-				enum nb_client client, const void *user,
-				const char *comment,
+				struct nb_context *context, const char *comment,
 				struct nb_transaction **transaction)
 {
 	struct nb_config_cbs changes;
@@ -673,7 +671,7 @@ int nb_candidate_commit_prepare(struct nb_config *candidate,
 	}
 
 	*transaction =
-		nb_transaction_new(candidate, &changes, client, user, comment);
+		nb_transaction_new(candidate, &changes, context, comment);
 	if (*transaction == NULL) {
 		flog_warn(EC_LIB_NB_TRANSACTION_CREATION_FAILED,
 			  "%s: failed to create transaction", __func__);
@@ -709,14 +707,14 @@ void nb_candidate_commit_apply(struct nb_transaction *transaction,
 	nb_transaction_free(transaction);
 }
 
-int nb_candidate_commit(struct nb_config *candidate, enum nb_client client,
-			const void *user, bool save_transaction,
-			const char *comment, uint32_t *transaction_id)
+int nb_candidate_commit(struct nb_config *candidate, struct nb_context *context,
+			bool save_transaction, const char *comment,
+			uint32_t *transaction_id)
 {
 	struct nb_transaction *transaction = NULL;
 	int ret;
 
-	ret = nb_candidate_commit_prepare(candidate, client, user, comment,
+	ret = nb_candidate_commit_prepare(candidate, context, comment,
 					  &transaction);
 	/*
 	 * Apply the changes if the preparation phase succeeded. Otherwise abort
@@ -1028,13 +1026,14 @@ static int nb_callback_configuration(const enum nb_event event,
 	return ret;
 }
 
-static struct nb_transaction *
-nb_transaction_new(struct nb_config *config, struct nb_config_cbs *changes,
-		   enum nb_client client, const void *user, const char *comment)
+static struct nb_transaction *nb_transaction_new(struct nb_config *config,
+						 struct nb_config_cbs *changes,
+						 struct nb_context *context,
+						 const char *comment)
 {
 	struct nb_transaction *transaction;
 
-	if (nb_running_lock_check(client, user)) {
+	if (nb_running_lock_check(context->client, context->user)) {
 		flog_warn(
 			EC_LIB_NB_TRANSACTION_CREATION_FAILED,
 			"%s: running configuration is locked by another client",
@@ -1052,7 +1051,7 @@ nb_transaction_new(struct nb_config *config, struct nb_config_cbs *changes,
 	transaction_in_progress = true;
 
 	transaction = XCALLOC(MTYPE_TMP, sizeof(*transaction));
-	transaction->client = client;
+	transaction->context = context;
 	if (comment)
 		strlcpy(transaction->comment, comment,
 			sizeof(transaction->comment));

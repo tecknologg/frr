@@ -318,7 +318,7 @@ class NorthboundImpl final : public frr::Northbound::Service
 		return grpc::Status::OK;
 	}
 
-	grpc::Status Commit(grpc::ServerContext *context,
+	grpc::Status Commit(grpc::ServerContext *_context,
 			    frr::CommitRequest const *request,
 			    frr::CommitResponse *response) override
 	{
@@ -363,6 +363,10 @@ class NorthboundImpl final : public frr::Northbound::Service
 			break;
 		}
 
+		/* Initialize the northbound context. */
+		struct nb_context context = {};
+		context.client = NB_CLIENT_GRPC;
+
 		// Execute the user request.
 		switch (phase) {
 		case frr::CommitRequest::VALIDATE:
@@ -370,8 +374,8 @@ class NorthboundImpl final : public frr::Northbound::Service
 			break;
 		case frr::CommitRequest::PREPARE:
 			ret = nb_candidate_commit_prepare(
-				candidate->config, NB_CLIENT_GRPC, NULL,
-				comment.c_str(), &candidate->transaction);
+				candidate->config, &context, comment.c_str(),
+				&candidate->transaction);
 			break;
 		case frr::CommitRequest::ABORT:
 			nb_candidate_commit_abort(candidate->transaction);
@@ -381,9 +385,9 @@ class NorthboundImpl final : public frr::Northbound::Service
 						  &transaction_id);
 			break;
 		case frr::CommitRequest::ALL:
-			ret = nb_candidate_commit(
-				candidate->config, NB_CLIENT_GRPC, NULL, true,
-				comment.c_str(), &transaction_id);
+			ret = nb_candidate_commit(candidate->config, &context,
+						  true, comment.c_str(),
+						  &transaction_id);
 			break;
 		}
 

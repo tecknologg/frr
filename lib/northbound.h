@@ -91,6 +91,9 @@ union nb_resource {
  */
 
 struct nb_cb_create_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/*
 	 * The transaction phase. Refer to the documentation comments of
 	 * nb_event for more details.
@@ -110,6 +113,9 @@ struct nb_cb_create_args {
 };
 
 struct nb_cb_modify_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/*
 	 * The transaction phase. Refer to the documentation comments of
 	 * nb_event for more details.
@@ -129,6 +135,9 @@ struct nb_cb_modify_args {
 };
 
 struct nb_cb_destroy_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/*
 	 * The transaction phase. Refer to the documentation comments of
 	 * nb_event for more details.
@@ -140,6 +149,9 @@ struct nb_cb_destroy_args {
 };
 
 struct nb_cb_move_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/*
 	 * The transaction phase. Refer to the documentation comments of
 	 * nb_event for more details.
@@ -151,11 +163,17 @@ struct nb_cb_move_args {
 };
 
 struct nb_cb_pre_validate_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/* libyang data node associated with the 'pre_validate' callback. */
 	const struct lyd_node *dnode;
 };
 
 struct nb_cb_apply_finish_args {
+	/* Context of the configuration transaction. */
+	struct nb_context *context;
+
 	/* libyang data node associated with the 'apply_finish' callback. */
 	const struct lyd_node *dnode;
 };
@@ -528,6 +546,29 @@ enum nb_client {
 	NB_CLIENT_PCEP,
 };
 
+/* Northbound context. */
+struct nb_context {
+	/* Northbound client. */
+	enum nb_client client;
+
+	/* Northbound user (can be NULL). */
+	const void *user;
+
+	/* Client-specific data. */
+	union {
+		struct {
+		} cli;
+		struct {
+		} confd;
+		struct {
+		} sysrepo;
+		struct {
+		} grpc;
+		struct {
+		} pcep;
+	} u;
+};
+
 /* Northbound configuration. */
 struct nb_config {
 	struct lyd_node *dnode;
@@ -554,7 +595,7 @@ struct nb_config_change {
 
 /* Northbound configuration transaction. */
 struct nb_transaction {
-	enum nb_client client;
+	struct nb_context *context;
 	char comment[80];
 	struct nb_config *config;
 	struct nb_config_cbs changes;
@@ -768,11 +809,8 @@ extern int nb_candidate_validate(struct nb_config *candidate);
  * candidate
  *    Candidate configuration to commit.
  *
- * client
- *    Northbound client performing the commit.
- *
- * user
- *    Northbound user performing the commit (can be NULL).
+ * context
+ *    Context of the northbound transaction.
  *
  * comment
  *    Optional comment describing the commit.
@@ -794,7 +832,7 @@ extern int nb_candidate_validate(struct nb_config *candidate);
  *    - NB_ERR for other errors.
  */
 extern int nb_candidate_commit_prepare(struct nb_config *candidate,
-				       enum nb_client client, const void *user,
+				       struct nb_context *context,
 				       const char *comment,
 				       struct nb_transaction **transaction);
 
@@ -836,11 +874,8 @@ extern void nb_candidate_commit_apply(struct nb_transaction *transaction,
  *    Candidate configuration to commit. It's preserved regardless if the commit
  *    operation fails or not.
  *
- * client
- *    Northbound client performing the commit.
- *
- * user
- *    Northbound user performing the commit (can be NULL).
+ * context
+ *    Context of the northbound transaction.
  *
  * save_transaction
  *    Specify whether the transaction should be recorded in the transactions log
@@ -863,7 +898,7 @@ extern void nb_candidate_commit_apply(struct nb_transaction *transaction,
  *    - NB_ERR for other errors.
  */
 extern int nb_candidate_commit(struct nb_config *candidate,
-			       enum nb_client client, const void *user,
+			       struct nb_context *context,
 			       bool save_transaction, const char *comment,
 			       uint32_t *transaction_id);
 
