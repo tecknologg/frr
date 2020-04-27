@@ -22,102 +22,67 @@
 extern const struct frr_yang_module_info frr_pathd_info;
 
 /* Mandatory callbacks. */
-int pathd_te_segment_list_create(enum nb_event event,
-				 const struct lyd_node *dnode,
-				 union nb_resource *resource);
-int pathd_te_segment_list_destroy(enum nb_event event,
-				  const struct lyd_node *dnode);
-const void *pathd_te_segment_list_get_next(const void *parent_list_entry,
-					   const void *list_entry);
-int pathd_te_segment_list_get_keys(const void *list_entry,
-				   struct yang_list_keys *keys);
+int pathd_te_segment_list_create(struct nb_cb_create_args *args);
+int pathd_te_segment_list_destroy(struct nb_cb_destroy_args *args);
+const void *pathd_te_segment_list_get_next(struct nb_cb_get_next_args *args);
+int pathd_te_segment_list_get_keys(struct nb_cb_get_keys_args *args);
 const void *
-pathd_te_segment_list_lookup_entry(const void *parent_list_entry,
-				   const struct yang_list_keys *keys);
-int pathd_te_segment_list_segment_create(enum nb_event event,
-					 const struct lyd_node *dnode,
-					 union nb_resource *resource);
-int pathd_te_segment_list_segment_destroy(enum nb_event event,
-					  const struct lyd_node *dnode);
-int pathd_te_segment_list_protocol_origin_modify(enum nb_event event,
-						 const struct lyd_node *dnode,
-						 union nb_resource *resource);
-int pathd_te_segment_list_originator_modify(enum nb_event event,
-					    const struct lyd_node *dnode,
-					    union nb_resource *resource);
-int pathd_te_segment_list_segment_sid_value_modify(enum nb_event event,
-						   const struct lyd_node *dnode,
-						   union nb_resource *resource);
-int pathd_te_segment_list_segment_nai_destroy(enum nb_event event,
-					      const struct lyd_node *dnode);
+pathd_te_segment_list_lookup_entry(struct nb_cb_lookup_entry_args *args);
+int pathd_te_segment_list_segment_create(struct nb_cb_create_args *args);
+int pathd_te_segment_list_segment_destroy(struct nb_cb_destroy_args *args);
+int pathd_te_segment_list_protocol_origin_modify(
+	struct nb_cb_modify_args *args);
+int pathd_te_segment_list_originator_modify(struct nb_cb_modify_args *args);
+int pathd_te_segment_list_segment_sid_value_modify(
+	struct nb_cb_modify_args *args);
+int pathd_te_segment_list_segment_nai_destroy(struct nb_cb_destroy_args *args);
 void pathd_te_segment_list_segment_nai_apply_finish(
-	const struct lyd_node *dnode);
-int pathd_te_sr_policy_create(enum nb_event event, const struct lyd_node *dnode,
-			      union nb_resource *resource);
-int pathd_te_sr_policy_destroy(enum nb_event event,
-			       const struct lyd_node *dnode);
-const void *pathd_te_sr_policy_get_next(const void *parent_list_entry,
-					const void *list_entry);
-int pathd_te_sr_policy_get_keys(const void *list_entry,
-				struct yang_list_keys *keys);
-const void *pathd_te_sr_policy_lookup_entry(const void *parent_list_entry,
-					    const struct yang_list_keys *keys);
-int pathd_te_sr_policy_name_modify(enum nb_event event,
-				   const struct lyd_node *dnode,
-				   union nb_resource *resource);
-int pathd_te_sr_policy_name_destroy(enum nb_event event,
-				    const struct lyd_node *dnode);
-int pathd_te_sr_policy_binding_sid_modify(enum nb_event event,
-					  const struct lyd_node *dnode,
-					  union nb_resource *resource);
-int pathd_te_sr_policy_binding_sid_destroy(enum nb_event event,
-					   const struct lyd_node *dnode);
-struct yang_data *
-pathd_te_sr_policy_is_operational_get_elem(const char *xpath,
-					   const void *list_entry);
-int pathd_te_sr_policy_candidate_path_create(enum nb_event event,
-					     const struct lyd_node *dnode,
-					     union nb_resource *resource);
-int pathd_te_sr_policy_candidate_path_destroy(enum nb_event event,
-					      const struct lyd_node *dnode);
+	struct nb_cb_apply_finish_args *args);
+int pathd_te_sr_policy_create(struct nb_cb_create_args *args);
+int pathd_te_sr_policy_destroy(struct nb_cb_destroy_args *args);
+const void *pathd_te_sr_policy_get_next(struct nb_cb_get_next_args *args);
+int pathd_te_sr_policy_get_keys(struct nb_cb_get_keys_args *args);
 const void *
-pathd_te_sr_policy_candidate_path_get_next(const void *parent_list_entry,
-					   const void *list_entry);
-int pathd_te_sr_policy_candidate_path_get_keys(const void *list_entry,
-					       struct yang_list_keys *keys);
+pathd_te_sr_policy_lookup_entry(struct nb_cb_lookup_entry_args *args);
+int pathd_te_sr_policy_name_modify(struct nb_cb_modify_args *args);
+int pathd_te_sr_policy_name_destroy(struct nb_cb_destroy_args *args);
+int pathd_te_sr_policy_binding_sid_modify(struct nb_cb_modify_args *args);
+int pathd_te_sr_policy_binding_sid_destroy(struct nb_cb_destroy_args *args);
+struct yang_data *
+pathd_te_sr_policy_is_operational_get_elem(struct nb_cb_get_elem_args *args);
+int pathd_te_sr_policy_candidate_path_create(struct nb_cb_create_args *args);
+int pathd_te_sr_policy_candidate_path_destroy(struct nb_cb_destroy_args *args);
+const void *
+pathd_te_sr_policy_candidate_path_get_next(struct nb_cb_get_next_args *args);
+int pathd_te_sr_policy_candidate_path_get_keys(
+	struct nb_cb_get_keys_args *args);
 const void *pathd_te_sr_policy_candidate_path_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys);
-int pathd_te_sr_policy_candidate_path_name_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource);
+	struct nb_cb_lookup_entry_args *args);
+int pathd_te_sr_policy_candidate_path_name_modify(
+	struct nb_cb_modify_args *args);
 int pathd_te_sr_policy_candidate_path_metrics_destroy(
-	enum nb_event event, const struct lyd_node *dnode);
+	struct nb_cb_destroy_args *args);
 void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
-	const struct lyd_node *dnode);
+	struct nb_cb_apply_finish_args *args);
 
 struct yang_data *
 pathd_te_sr_policy_candidate_path_is_best_candidate_path_get_elem(
-	const char *xpath, const void *list_entry);
+	struct nb_cb_get_elem_args *args);
 int pathd_te_sr_policy_candidate_path_protocol_origin_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	struct nb_cb_modify_args *args);
 int pathd_te_sr_policy_candidate_path_originator_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	struct nb_cb_modify_args *args);
 int pathd_te_sr_policy_candidate_path_discriminator_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
-int pathd_te_sr_policy_candidate_path_type_modify(enum nb_event event,
-						  const struct lyd_node *dnode,
-						  union nb_resource *resource);
+	struct nb_cb_modify_args *args);
+int pathd_te_sr_policy_candidate_path_type_modify(
+	struct nb_cb_modify_args *args);
 int pathd_te_sr_policy_candidate_path_segment_list_name_modify(
-	enum nb_event event, const struct lyd_node *dnode,
-	union nb_resource *resource);
+	struct nb_cb_modify_args *args);
 int pathd_te_sr_policy_candidate_path_segment_list_name_destroy(
-	enum nb_event event, const struct lyd_node *dnode);
+	struct nb_cb_destroy_args *args);
 
 /* Optional 'apply_finish' callbacks. */
-void pathd_apply_finish(const struct lyd_node *dnode);
+void pathd_apply_finish(struct nb_cb_apply_finish_args *args);
 
 /* Optional 'cli_show' callbacks. */
 void cli_show_te_path_segment_list(struct vty *vty, struct lyd_node *dnode,

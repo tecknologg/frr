@@ -23,9 +23,9 @@
 
 #include "pathd/path_nb.h"
 
-static int dummy_modify(enum nb_event event, const struct lyd_node *dnode,
-			union nb_resource *resource);
-static int dummy_destroy(enum nb_event event, const struct lyd_node *dnode);
+static int dummy_create(struct nb_cb_create_args *args);
+static int dummy_modify(struct nb_cb_modify_args *args);
+static int dummy_destroy(struct nb_cb_destroy_args *args);
 
 /* clang-format off */
 const struct frr_yang_module_info frr_pathd_info = {
@@ -83,7 +83,7 @@ const struct frr_yang_module_info frr_pathd_info = {
 		{
 			.xpath = "/frr-pathd:pathd/segment-list/segment/nai",
 			.cbs = {
-				.create = dummy_modify,
+				.create = dummy_create,
 				.destroy = pathd_te_segment_list_segment_nai_destroy,
 				.apply_finish = pathd_te_segment_list_segment_nai_apply_finish
 			},
@@ -199,7 +199,7 @@ const struct frr_yang_module_info frr_pathd_info = {
 		{
 			.xpath = "/frr-pathd:pathd/sr-policy/candidate-path/metrics",
 			.cbs = {
-				.create = dummy_modify,
+				.create = dummy_create,
 				.destroy = pathd_te_sr_policy_candidate_path_metrics_destroy,
 				.apply_finish = pathd_te_sr_policy_candidate_path_metrics_apply_finish
 			}
@@ -222,14 +222,17 @@ const struct frr_yang_module_info frr_pathd_info = {
 	}
 };
 
-
-int dummy_modify(enum nb_event event, const struct lyd_node *dnode,
-                 union nb_resource *resource)
+int dummy_create(struct nb_cb_create_args *args)
 {
 	return NB_OK;
 }
 
-int dummy_destroy(enum nb_event event, const struct lyd_node *dnode)
+int dummy_modify(struct nb_cb_modify_args *args)
+{
+	return NB_OK;
+}
+
+int dummy_destroy(struct nb_cb_destroy_args *args)
 {
 	return NB_OK;
 }

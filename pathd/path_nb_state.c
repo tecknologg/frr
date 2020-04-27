@@ -32,13 +32,12 @@
 /*
  * XPath: /frr-pathd:pathd/segment-list
  */
-const void *pathd_te_segment_list_get_next(const void *parent_list_entry,
-					   const void *list_entry)
+const void *pathd_te_segment_list_get_next(struct nb_cb_get_next_args *args)
 {
 	struct srte_segment_list *segment_list =
-		(struct srte_segment_list *)list_entry;
+		(struct srte_segment_list *)args->list_entry;
 
-	if (list_entry == NULL)
+	if (args->list_entry == NULL)
 		segment_list =
 			RB_MIN(srte_segment_list_head, &srte_segment_lists);
 	else
@@ -47,34 +46,32 @@ const void *pathd_te_segment_list_get_next(const void *parent_list_entry,
 	return segment_list;
 }
 
-int pathd_te_segment_list_get_keys(const void *list_entry,
-				   struct yang_list_keys *keys)
+int pathd_te_segment_list_get_keys(struct nb_cb_get_keys_args *args)
 {
 	const struct srte_segment_list *segment_list =
-		(struct srte_segment_list *)list_entry;
+		(struct srte_segment_list *)args->list_entry;
 
-	keys->num = 1;
-	snprintf(keys->key[0], sizeof(keys->key[0]), "%s", segment_list->name);
+	args->keys->num = 1;
+	snprintf(args->keys->key[0], sizeof(args->keys->key[0]), "%s",
+		 segment_list->name);
 
 	return NB_OK;
 }
 
 const void *
-pathd_te_segment_list_lookup_entry(const void *parent_list_entry,
-				   const struct yang_list_keys *keys)
+pathd_te_segment_list_lookup_entry(struct nb_cb_lookup_entry_args *args)
 {
-	return srte_segment_list_find(keys->key[0]);
+	return srte_segment_list_find(args->keys->key[0]);
 }
 
 /*
  * XPath: /frr-pathd:pathd/sr-policy
  */
-const void *pathd_te_sr_policy_get_next(const void *parent_list_entry,
-					const void *list_entry)
+const void *pathd_te_sr_policy_get_next(struct nb_cb_get_next_args *args)
 {
-	struct srte_policy *policy = (struct srte_policy *)list_entry;
+	struct srte_policy *policy = (struct srte_policy *)args->list_entry;
 
-	if (list_entry == NULL)
+	if (args->list_entry == NULL)
 		policy = RB_MIN(srte_policy_head, &srte_policies);
 	else
 		policy = RB_NEXT(srte_policy_head, policy);
@@ -82,27 +79,28 @@ const void *pathd_te_sr_policy_get_next(const void *parent_list_entry,
 	return policy;
 }
 
-int pathd_te_sr_policy_get_keys(const void *list_entry,
-				struct yang_list_keys *keys)
+int pathd_te_sr_policy_get_keys(struct nb_cb_get_keys_args *args)
 {
-	const struct srte_policy *policy = (struct srte_policy *)list_entry;
+	const struct srte_policy *policy =
+		(struct srte_policy *)args->list_entry;
 
-	keys->num = 2;
-	snprintf(keys->key[0], sizeof(keys->key[0]), "%u", policy->color);
-	(void)inet_ntop(AF_INET, &policy->endpoint, keys->key[1],
-			sizeof(keys->key[1]));
+	args->keys->num = 2;
+	snprintf(args->keys->key[0], sizeof(args->keys->key[0]), "%u",
+		 policy->color);
+	(void)inet_ntop(AF_INET, &policy->endpoint, args->keys->key[1],
+			sizeof(args->keys->key[1]));
 
 	return NB_OK;
 }
 
-const void *pathd_te_sr_policy_lookup_entry(const void *parent_list_entry,
-					    const struct yang_list_keys *keys)
+const void *
+pathd_te_sr_policy_lookup_entry(struct nb_cb_lookup_entry_args *args)
 {
 	uint32_t color;
 	struct ipaddr endpoint;
 
-	color = yang_str2uint32(keys->key[0]);
-	yang_str2ip(keys->key[1], &endpoint);
+	color = yang_str2uint32(args->keys->key[0]);
+	yang_str2ip(args->keys->key[1], &endpoint);
 
 	return srte_policy_find(color, &endpoint);
 }
@@ -111,29 +109,29 @@ const void *pathd_te_sr_policy_lookup_entry(const void *parent_list_entry,
  * XPath: /frr-pathd:pathd/sr-policy/is-operational
  */
 struct yang_data *
-pathd_te_sr_policy_is_operational_get_elem(const char *xpath,
-					   const void *list_entry)
+pathd_te_sr_policy_is_operational_get_elem(struct nb_cb_get_elem_args *args)
 {
-	struct srte_policy *policy = (struct srte_policy *)list_entry;
+	struct srte_policy *policy = (struct srte_policy *)args->list_entry;
 	bool is_operational = false;
 
 	if (policy->status == SRTE_POLICY_STATUS_UP)
 		is_operational = true;
 
-	return yang_data_new_bool(xpath, is_operational);
+	return yang_data_new_bool(args->xpath, is_operational);
 }
 
 /*
  * XPath: /frr-pathd:pathd/sr-policy/candidate-path
  */
 const void *
-pathd_te_sr_policy_candidate_path_get_next(const void *parent_list_entry,
-					   const void *list_entry)
+pathd_te_sr_policy_candidate_path_get_next(struct nb_cb_get_next_args *args)
 {
-	struct srte_policy *policy = (struct srte_policy *)parent_list_entry;
-	struct srte_candidate *candidate = (struct srte_candidate *)list_entry;
+	struct srte_policy *policy =
+		(struct srte_policy *)args->parent_list_entry;
+	struct srte_candidate *candidate =
+		(struct srte_candidate *)args->list_entry;
 
-	if (list_entry == NULL)
+	if (args->list_entry == NULL)
 		candidate =
 			RB_MIN(srte_candidate_head, &policy->candidate_paths);
 	else
@@ -142,26 +140,26 @@ pathd_te_sr_policy_candidate_path_get_next(const void *parent_list_entry,
 	return candidate;
 }
 
-int pathd_te_sr_policy_candidate_path_get_keys(const void *list_entry,
-					       struct yang_list_keys *keys)
+int pathd_te_sr_policy_candidate_path_get_keys(struct nb_cb_get_keys_args *args)
 {
 	const struct srte_candidate *candidate =
-		(struct srte_candidate *)list_entry;
+		(struct srte_candidate *)args->list_entry;
 
-	keys->num = 1;
-	snprintf(keys->key[0], sizeof(keys->key[0]), "%u",
+	args->keys->num = 1;
+	snprintf(args->keys->key[0], sizeof(args->keys->key[0]), "%u",
 		 candidate->preference);
 
 	return NB_OK;
 }
 
 const void *pathd_te_sr_policy_candidate_path_lookup_entry(
-	const void *parent_list_entry, const struct yang_list_keys *keys)
+	struct nb_cb_lookup_entry_args *args)
 {
-	struct srte_policy *policy = (struct srte_policy *)parent_list_entry;
+	struct srte_policy *policy =
+		(struct srte_policy *)args->parent_list_entry;
 	uint32_t preference;
 
-	preference = yang_str2uint32(keys->key[0]);
+	preference = yang_str2uint32(args->keys->key[0]);
 
 	return srte_candidate_find(policy, preference);
 }
@@ -171,10 +169,11 @@ const void *pathd_te_sr_policy_candidate_path_lookup_entry(
  */
 struct yang_data *
 pathd_te_sr_policy_candidate_path_is_best_candidate_path_get_elem(
-	const char *xpath, const void *list_entry)
+	struct nb_cb_get_elem_args *args)
 {
-	struct srte_candidate *candidate = (struct srte_candidate *)list_entry;
+	struct srte_candidate *candidate =
+		(struct srte_candidate *)args->list_entry;
 
 	return yang_data_new_bool(
-		xpath, CHECK_FLAG(candidate->flags, F_CANDIDATE_BEST));
+		args->xpath, CHECK_FLAG(candidate->flags, F_CANDIDATE_BEST));
 }
