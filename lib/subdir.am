@@ -435,11 +435,22 @@ am__v_CLIPPY_ = $(am__v_CLIPPY_$(AM_DEFAULT_VERBOSITY))
 am__v_CLIPPY_0 = @echo "  CLIPPY  " $@;
 am__v_CLIPPY_1 =
 
+AM_V_XRELFO = $(am__v_XRELFO_$(V))
+am__v_XRELFO_ = $(am__v_XRELFO_$(AM_DEFAULT_VERBOSITY))
+am__v_XRELFO_0 = @echo "  XRELFO  " $@;
+am__v_XRELFO_1 =
+
 CLIPPY_DEPS = $(CLIPPY) $(top_srcdir)/python/clidef.py
 
-SUFFIXES += _clippy.c
+SUFFIXES += _clippy.c .xref
 .c_clippy.c:
 	$(AM_V_CLIPPY) $(CLIPPY) $(top_srcdir)/python/clidef.py -o $@ $<
+
+%.xref: %
+	$(AM_V_XRELFO) $(CLIPPY) $(top_srcdir)/python/xrelfo.py -o $@ $<
+
+frr.xref: $(bin_PROGRAMS) $(sbin_PROGRAMS) $(lib_LTLIBRARIES) $(module_LTLIBRARIES)
+	$(AM_V_XRELFO) $(CLIPPY) $(top_srcdir)/python/xrelfo.py -o $@ $^
 
 ## automake's "ylwrap" is a great piece of GNU software... not.
 .l.c:
