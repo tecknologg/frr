@@ -490,6 +490,19 @@ void vzlogx(const struct xref_logmsg *xref, int prio,
 		vzlog_notls(xref, prio, fmt, ap);
 }
 
+void vzlogdbg(const struct xref_logdebug *xref, int prio, const char *fmt, va_list ap)
+{
+	struct zlog_tls *zlog_tls = zlog_tls_get();
+
+	if (!xref->debugflag->enable)
+		return;
+
+	if (zlog_tls)
+		vzlog_tls(zlog_tls, &xref->logmsg, prio, fmt, ap);
+	else
+		vzlog_notls(&xref->logmsg, prio, fmt, ap);
+}
+
 void zlog_sigsafe(const char *text, size_t len)
 {
 	struct zlog_target *zt;

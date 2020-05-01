@@ -29,6 +29,7 @@
 #include "frrcu.h"
 #include "memory.h"
 #include "hook.h"
+#include "typesafe.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,44 @@ DECLARE_MGROUP(LOG)
 extern char zlog_prefix[];
 extern size_t zlog_prefixsz;
 extern int zlog_tmpdirfd;
+
+PREDECL_RBTREE_UNIQ(zlog_debugflags)
+
+enum {
+	ZDF_CONFIG = (1 << 0),
+	ZDF_EPHEMERAL = (1 << 1),
+};
+
+struct zlog_debugflag {
+	atomic_uint_fast32_t enable;
+
+	const char *code_name;
+	const char *cli_name;
+
+	struct zlog_debugflags_item zdf_item;
+};
+
+extern void zlog_debugflag_register(struct zlog_debugflag *zdf);
+
+#define DECLARE_DEBUGFLAG(name) \
+	extern struct zlog_debugflag name[1];
+#define DEFINE_DEBUGFLAG(name, cli_name_) \
+	struct zlog_debugflag name[1] = { { \
+		.code_name = #name, \
+		.cli_name = cli_name_, \
+	} }; \
+	static void _zdfinit_##name(void) __attribute__((_CONSTRUCTOR(1200))); \
+	static void _zdfinit_##name(void) \
+	{ \
+		zlog_debugflag_register(name); \
+	}; \
+	/* end */
+
+struct vty;
+struct cmd_token;
+
+extern int zlog_debugflag_cli(struct zlog_debugflag *zdf, struct vty *vty,
+			       int argc, struct cmd_token *argv[]);
 
 struct xref_logmsg {
 	struct xref xref;
@@ -54,6 +93,16 @@ struct xrefdata_logmsg {
 	/* nothing more here right now */
 };
 
+struct xref_logdebug {
+	union {
+		/* make xref directly accessible */
+		struct xref xref;
+		struct xref_logmsg logmsg;
+	};
+
+	struct zlog_debugflag *debugflag;
+};
+
 /* These functions are set up to write to stdout/stderr without explicit
  * initialization and/or before config load.  There is no need to call e.g.
  * fprintf(stderr, ...) just because it's "too early" at startup.  Depending
@@ -64,6 +113,8 @@ struct xrefdata_logmsg {
 extern void vzlogx(const struct xref_logmsg *xref, int prio,
 		   const char *fmt, va_list ap);
 #define vzlog(prio, ...) vzlogx(NULL, prio, __VA_ARGS__)
+
+extern void vzlogdbg(const struct xref_logdebug *xref, int prio, const char *fmt, va_list ap);
 
 PRINTFRR(2, 3)
 static inline void zlog(int prio, const char *fmt, ...)
@@ -86,6 +137,16 @@ static inline void zlog_ref(const struct xref_logmsg *xref,
 	va_end(ap);
 }
 
+PRINTFRR(2, 3)
+static inline void zlog_dbgxref(const struct xref_logdebug *xref, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vzlogdbg(xref, LOG_DEBUG, fmt, ap);
+	va_end(ap);
+}
+
 #define _zlog_ref(prio, msg, ...) do {                                         \
 		static struct xrefdata _xrefdata = {                           \
 			.hashstr = (msg),                                      \
@@ -105,6 +166,26 @@ static inline void zlog_ref(const struct xref_logmsg *xref,
 #define zlog_info(...)   _zlog_ref(LOG_INFO, __VA_ARGS__)
 #define zlog_notice(...) _zlog_ref(LOG_NOTICE, __VA_ARGS__)
 #define zlog_debug(...)  _zlog_ref(LOG_DEBUG, __VA_ARGS__)
+
+#define zlog_debugif(zdf, msg, ...) do {                                       \
+		static struct xrefdata _xrefdata = {                           \
+			.hashstr = (msg),                                      \
+			.hashu32 = { LOG_DEBUG, 0 },                           \
+		};                                                             \
+		static const struct xref_logdebug _xref                        \
+				__attribute__((used)) = {                      \
+			.logmsg = {                                            \
+				.xref = XREF_INIT(XREFT_LOGMSG, &_xrefdata,    \
+						  __func__),                   \
+				.fmtstring = (msg),                            \
+				.priority = LOG_DEBUG,                         \
+			},                                                     \
+			.debugflag = (zdf),                                    \
+		};                                                             \
+		XREF_LINK(_xref.logmsg.xref);                                  \
+		zlog_dbgxref(&_xref, (msg), ## __VA_ARGS__);                   \
+	} while (0)
+
 
 #define _zlog_ecref(ec_, prio, msg, ...) do {                                  \
 		static struct xrefdata _xrefdata = {                           \
