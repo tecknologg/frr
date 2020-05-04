@@ -796,10 +796,14 @@ extern int nb_candidate_update(struct nb_config *candidate);
  * candidate
  *    Candidate configuration to validate.
  *
+ * context
+ *    Context of the northbound transaction.
+ *
  * Returns:
  *    NB_OK on success, NB_ERR_VALIDATION otherwise.
  */
-extern int nb_candidate_validate(struct nb_config *candidate);
+extern int nb_candidate_validate(struct nb_config *candidate,
+				 struct nb_context *context);
 
 /*
  * Create a new configuration transaction but do not commit it yet. Only

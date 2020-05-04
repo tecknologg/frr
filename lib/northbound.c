@@ -65,6 +65,7 @@ static bool transaction_in_progress;
 static int nb_callback_pre_validate(const struct nb_node *nb_node,
 				    const struct lyd_node *dnode);
 static int nb_callback_configuration(const enum nb_event event,
+				     struct nb_context *context,
 				     struct nb_config_change *change);
 static struct nb_transaction *nb_transaction_new(struct nb_config *config,
 						 struct nb_config_cbs *changes,
@@ -592,6 +593,7 @@ static int nb_candidate_validate_yang(struct nb_config *candidate)
 
 /* Perform code-level validation using the northbound callbacks. */
 static int nb_candidate_validate_code(struct nb_config *candidate,
+				      struct nb_context *context,
 				      struct nb_config_cbs *changes)
 {
 	struct nb_config_cb *cb;
@@ -620,7 +622,8 @@ static int nb_candidate_validate_code(struct nb_config *candidate,
 	RB_FOREACH (cb, nb_config_cbs, changes) {
 		struct nb_config_change *change = (struct nb_config_change *)cb;
 
-		ret = nb_callback_configuration(NB_EV_VALIDATE, change);
+		ret = nb_callback_configuration(NB_EV_VALIDATE, context,
+						change);
 		if (ret != NB_OK)
 			return NB_ERR_VALIDATION;
 	}
@@ -628,7 +631,8 @@ static int nb_candidate_validate_code(struct nb_config *candidate,
 	return NB_OK;
 }
 
-int nb_candidate_validate(struct nb_config *candidate)
+int nb_candidate_validate(struct nb_config *candidate,
+			  struct nb_context *context)
 {
 	struct nb_config_cbs changes;
 	int ret;
@@ -638,7 +642,7 @@ int nb_candidate_validate(struct nb_config *candidate)
 
 	RB_INIT(nb_config_cbs, &changes);
 	nb_config_diff(running_config, candidate, &changes);
-	ret = nb_candidate_validate_code(candidate, &changes);
+	ret = nb_candidate_validate_code(candidate, context, &changes);
 	nb_config_diff_del_changes(&changes);
 
 	return ret;
@@ -662,7 +666,7 @@ int nb_candidate_commit_prepare(struct nb_config *candidate,
 	if (RB_EMPTY(nb_config_cbs, &changes))
 		return NB_ERR_NO_CHANGES;
 
-	if (nb_candidate_validate_code(candidate, &changes) != NB_OK) {
+	if (nb_candidate_validate_code(candidate, context, &changes) != NB_OK) {
 		flog_warn(EC_LIB_NB_CANDIDATE_INVALID,
 			  "%s: failed to validate candidate configuration",
 			  __func__);
@@ -800,7 +804,8 @@ static void nb_log_config_callback(const enum nb_event event,
 }
 
 static int nb_callback_create(const struct nb_node *nb_node,
-			      enum nb_event event, const struct lyd_node *dnode,
+			      enum nb_event event, struct nb_context *context,
+			      const struct lyd_node *dnode,
 			      union nb_resource *resource)
 {
 	struct nb_cb_create_args args = {};
@@ -808,13 +813,15 @@ static int nb_callback_create(const struct nb_node *nb_node,
 	nb_log_config_callback(event, NB_OP_CREATE, dnode);
 
 	args.event = event;
+	args.context = context;
 	args.dnode = dnode;
 	args.resource = resource;
 	return nb_node->cbs.create(&args);
 }
 
 static int nb_callback_modify(const struct nb_node *nb_node,
-			      enum nb_event event, const struct lyd_node *dnode,
+			      enum nb_event event, struct nb_context *context,
+			      const struct lyd_node *dnode,
 			      union nb_resource *resource)
 {
 	struct nb_cb_modify_args args = {};
@@ -822,13 +829,14 @@ static int nb_callback_modify(const struct nb_node *nb_node,
 	nb_log_config_callback(event, NB_OP_MODIFY, dnode);
 
 	args.event = event;
+	args.context = context;
 	args.dnode = dnode;
 	args.resource = resource;
 	return nb_node->cbs.modify(&args);
 }
 
 static int nb_callback_destroy(const struct nb_node *nb_node,
-			       enum nb_event event,
+			       enum nb_event event, struct nb_context *context,
 			       const struct lyd_node *dnode)
 {
 	struct nb_cb_destroy_args args = {};
@@ -836,11 +844,13 @@ static int nb_callback_destroy(const struct nb_node *nb_node,
 	nb_log_config_callback(event, NB_OP_DESTROY, dnode);
 
 	args.event = event;
+	args.context = context;
 	args.dnode = dnode;
 	return nb_node->cbs.destroy(&args);
 }
 
 static int nb_callback_move(const struct nb_node *nb_node, enum nb_event event,
+			    struct nb_context *context,
 			    const struct lyd_node *dnode)
 {
 	struct nb_cb_move_args args = {};
@@ -848,6 +858,7 @@ static int nb_callback_move(const struct nb_node *nb_node, enum nb_event event,
 	nb_log_config_callback(event, NB_OP_MOVE, dnode);
 
 	args.event = event;
+	args.context = context;
 	args.dnode = dnode;
 	return nb_node->cbs.move(&args);
 }
@@ -864,12 +875,14 @@ static int nb_callback_pre_validate(const struct nb_node *nb_node,
 }
 
 static void nb_callback_apply_finish(const struct nb_node *nb_node,
+				     struct nb_context *context,
 				     const struct lyd_node *dnode)
 {
 	struct nb_cb_apply_finish_args args = {};
 
 	nb_log_config_callback(NB_EV_APPLY, NB_OP_APPLY_FINISH, dnode);
 
+	args.context = context;
 	args.dnode = dnode;
 	nb_node->cbs.apply_finish(&args);
 }
@@ -951,6 +964,7 @@ int nb_callback_rpc(const struct nb_node *nb_node, const char *xpath,
  * configuration change.
  */
 static int nb_callback_configuration(const enum nb_event event,
+				     struct nb_context *context,
 				     struct nb_config_change *change)
 {
 	enum nb_operation operation = change->cb.operation;
@@ -968,16 +982,18 @@ static int nb_callback_configuration(const enum nb_event event,
 
 	switch (operation) {
 	case NB_OP_CREATE:
-		ret = nb_callback_create(nb_node, event, dnode, resource);
+		ret = nb_callback_create(nb_node, event, context, dnode,
+					 resource);
 		break;
 	case NB_OP_MODIFY:
-		ret = nb_callback_modify(nb_node, event, dnode, resource);
+		ret = nb_callback_modify(nb_node, event, context, dnode,
+					 resource);
 		break;
 	case NB_OP_DESTROY:
-		ret = nb_callback_destroy(nb_node, event, dnode);
+		ret = nb_callback_destroy(nb_node, event, context, dnode);
 		break;
 	case NB_OP_MOVE:
-		ret = nb_callback_move(nb_node, event, dnode);
+		ret = nb_callback_move(nb_node, event, context, dnode);
 		break;
 	default:
 		yang_dnode_get_path(dnode, xpath, sizeof(xpath));
@@ -1086,7 +1102,8 @@ static int nb_transaction_process(enum nb_event event,
 			break;
 
 		/* Call the appropriate callback. */
-		ret = nb_callback_configuration(event, change);
+		ret = nb_callback_configuration(event, transaction->context,
+						change);
 		switch (event) {
 		case NB_EV_PREPARE:
 			if (ret != NB_OK)
@@ -1199,7 +1216,8 @@ static void nb_transaction_apply_finish(struct nb_transaction *transaction)
 
 	/* Call the 'apply_finish' callbacks, sorted by their priorities. */
 	RB_FOREACH (cb, nb_config_cbs, &cbs)
-		nb_callback_apply_finish(cb->nb_node, cb->dnode);
+		nb_callback_apply_finish(cb->nb_node, transaction->context,
+					 cb->dnode);
 
 	/* Release memory. */
 	while (!RB_EMPTY(nb_config_cbs, &cbs)) {

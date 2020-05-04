@@ -370,7 +370,8 @@ class NorthboundImpl final : public frr::Northbound::Service
 		// Execute the user request.
 		switch (phase) {
 		case frr::CommitRequest::VALIDATE:
-			ret = nb_candidate_validate(candidate->config);
+			ret = nb_candidate_validate(candidate->config,
+						    &context);
 			break;
 		case frr::CommitRequest::PREPARE:
 			ret = nb_candidate_commit_prepare(

@@ -701,8 +701,10 @@ DEFPY (config_commit_check,
        "Check if the configuration changes are valid\n")
 {
 	int ret;
+	struct nb_context context = {};
 
-	ret = nb_candidate_validate(vty->candidate_config);
+	context.client = NB_CLIENT_CLI;
+	ret = nb_candidate_validate(vty->candidate_config, &context);
 	if (ret != NB_OK) {
 		vty_out(vty,
 			"%% Failed to validate candidate configuration.\n\n");
