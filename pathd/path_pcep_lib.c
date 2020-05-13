@@ -108,6 +108,9 @@ pcep_session *pcep_lib_connect(struct pcc_opts *pcc_opts,
 	config->pcep_msg_versioning->draft_ietf_pce_segment_routing_07 =
 		pce_opts->draft07;
 
+	config->max_sid_depth =
+		pcc_opts->msd;
+
 	if (IS_IPADDR_V6(&pce_opts->addr)) {
 		sess = connect_pce_ipv6(config, &pce_opts->addr.ipaddr_v6);
 	} else {
