@@ -2411,3 +2411,21 @@ int lib_interface_isis_multi_topology_ipv6_dstsrc_modify(
 	return lib_interface_isis_multi_topology_common(
 		args->event, args->dnode, ISIS_MT_IPV6_DSTSRC);
 }
+
+/*
+ * XPath: /frr-interface:lib/interface/frr-isisd:isis/fast-reroute/ti-lfa/enable
+ */
+int lib_interface_isis_fast_reroute_ti_lfa_enable_modify(
+	struct nb_cb_modify_args *args)
+{
+	switch (args->event) {
+	case NB_EV_VALIDATE:
+	case NB_EV_PREPARE:
+	case NB_EV_ABORT:
+	case NB_EV_APPLY:
+		/* TODO: implement me. */
+		break;
+	}
+
+	return NB_OK;
+}

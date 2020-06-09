@@ -763,6 +763,13 @@ const struct frr_yang_module_info frr_isisd_info = {
 			},
 		},
 		{
+			.xpath = "/frr-interface:lib/interface/frr-isisd:isis/fast-reroute/ti-lfa/enable",
+			.cbs = {
+				.cli_show = cli_show_ip_isis_ti_lfa,
+				.modify = lib_interface_isis_fast_reroute_ti_lfa_enable_modify,
+			}
+		},
+		{
 			.xpath = "/frr-interface:lib/interface/state/frr-isisd:isis",
 			.cbs = {
 				.get_elem = lib_interface_state_isis_get_elem,

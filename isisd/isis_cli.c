@@ -2229,6 +2229,30 @@ void cli_show_ip_isis_priority(struct vty *vty, struct lyd_node *dnode,
 }
 
 /*
+ * XPath: /frr-interface:lib/interface/frr-isisd:isis/fast-reroute/ti-lfa/enable
+ */
+DEFPY(isis_ti_lfa, isis_ti_lfa_cmd, "[no] isis fast-reroute ti-lfa",
+      NO_STR
+      "IS-IS routing protocol\n"
+      "Interface IP Fast-reroute configuration\n"
+      "Enables TI-LFA computation\n")
+{
+	nb_cli_enqueue_change(vty,
+			      "./frr-isisd:isis/fast-reroute/ti-lfa/enable",
+			      NB_OP_MODIFY, no ? "false" : "true");
+
+	return nb_cli_apply_changes(vty, NULL);
+}
+
+void cli_show_ip_isis_ti_lfa(struct vty *vty, struct lyd_node *dnode,
+			     bool show_defaults)
+{
+	if (!yang_dnode_get_bool(dnode, NULL))
+		vty_out(vty, " no");
+	vty_out(vty, " isis fast-reroute ti-lfa\n");
+}
+
+/*
  * XPath: /frr-isisd:isis/instance/log-adjacency-changes
  */
 DEFPY(log_adj_changes, log_adj_changes_cmd, "[no] log-adjacency-changes",
@@ -2346,6 +2370,8 @@ void isis_cli_init(void)
 
 	install_element(INTERFACE_NODE, &isis_priority_cmd);
 	install_element(INTERFACE_NODE, &no_isis_priority_cmd);
+
+	install_element(INTERFACE_NODE, &isis_ti_lfa_cmd);
 
 	install_element(ISIS_NODE, &log_adj_changes_cmd);
 }

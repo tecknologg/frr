@@ -598,6 +598,21 @@ module frr-isisd {
           "IPv6 destination-source topology.";
       }
     }
+
+    container fast-reroute {
+      description
+        "Interface IP Fast-reroute configuration.";
+      container ti-lfa {
+        leaf enable {
+          type boolean;
+          default false;
+          description
+            "Enables TI-LFA computation.";
+        }
+        description
+          "TI-LFA configuration.";
+      }
+    }
   }
 
   grouping adjacency-state {
