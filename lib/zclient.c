@@ -887,7 +887,7 @@ static void zapi_nexthop_group_sort(struct zapi_nexthop *nh_grp,
  * Encode a single zapi nexthop
  */
 int zapi_nexthop_encode(struct stream *s, const struct zapi_nexthop *api_nh,
-			uint32_t api_flags)
+			uint32_t api_flags, uint32_t api_message)
 {
 	int i, ret = 0;
 	int nh_flags = api_nh->flags;
@@ -950,6 +950,10 @@ int zapi_nexthop_encode(struct stream *s, const struct zapi_nexthop *api_nh,
 	if (CHECK_FLAG(api_flags, ZEBRA_FLAG_EVPN_ROUTE))
 		stream_put(s, &(api_nh->rmac),
 			   sizeof(struct ethaddr));
+
+	/* Color for Segment Routing TE. */
+	if (CHECK_FLAG(api_message, ZAPI_MESSAGE_SRTE))
+		stream_putl(s, api_nh->srte_color);
 
 	/* Index of backup nexthop */
 	if (CHECK_FLAG(nh_flags, ZAPI_NEXTHOP_FLAG_HAS_BACKUP)) {
@@ -1048,7 +1052,7 @@ int zapi_route_encode(uint8_t cmd, struct stream *s, struct zapi_route *api)
 				return -1;
 			}
 
-			if (zapi_nexthop_encode(s, api_nh, api->flags) != 0)
+			if (zapi_nexthop_encode(s, api_nh, api->flags, api->message) != 0)
 				return -1;
 		}
 	}
@@ -1092,11 +1096,8 @@ int zapi_route_encode(uint8_t cmd, struct stream *s, struct zapi_route *api)
 				return -1;
 			}
 
-			if (zapi_nexthop_encode(s, api_nh, api->flags) != 0)
+			if (zapi_nexthop_encode(s, api_nh, api->flags, api->message) != 0)
 				return -1;
-
-			if (CHECK_FLAG(api->message, ZAPI_MESSAGE_SRTE))
-				stream_putl(s, api_nh->srte_color);
 		}
 	}
 
@@ -1122,7 +1123,7 @@ int zapi_route_encode(uint8_t cmd, struct stream *s, struct zapi_route *api)
  * Decode a single zapi nexthop object
  */
 static int zapi_nexthop_decode(struct stream *s, struct zapi_nexthop *api_nh,
-			       uint32_t api_flags)
+			       uint32_t api_flags, uint32_t api_message)
 {
 	int i, ret = -1;
 
@@ -1174,6 +1175,10 @@ static int zapi_nexthop_decode(struct stream *s, struct zapi_nexthop *api_nh,
 	if (CHECK_FLAG(api_flags, ZEBRA_FLAG_EVPN_ROUTE))
 		STREAM_GET(&(api_nh->rmac), s,
 			   sizeof(struct ethaddr));
+
+	/* Color for Segment Routing TE. */
+	if (CHECK_FLAG(api_message, ZAPI_MESSAGE_SRTE))
+		STREAM_GETL(s, api_nh->srte_color);
 
 	/* Backup nexthop index */
 	if (CHECK_FLAG(api_nh->flags, ZAPI_NEXTHOP_FLAG_HAS_BACKUP)) {
@@ -1287,7 +1292,7 @@ int zapi_route_decode(struct stream *s, struct zapi_route *api)
 		for (i = 0; i < api->nexthop_num; i++) {
 			api_nh = &api->nexthops[i];
 
-			if (zapi_nexthop_decode(s, api_nh, api->flags) != 0)
+			if (zapi_nexthop_decode(s, api_nh, api->flags, api->message) != 0)
 				return -1;
 		}
 	}
@@ -1305,11 +1310,9 @@ int zapi_route_decode(struct stream *s, struct zapi_route *api)
 		for (i = 0; i < api->backup_nexthop_num; i++) {
 			api_nh = &api->backup_nexthops[i];
 
-			if (zapi_nexthop_decode(s, api_nh, api->flags) != 0)
+			if (zapi_nexthop_decode(s, api_nh, api->flags, api->message) != 0)
 				return -1;
 
-			if (CHECK_FLAG(api->message, ZAPI_MESSAGE_SRTE))
-				STREAM_GETL(s, api_nh->srte_color);
 		}
 	}
 
@@ -1636,7 +1639,7 @@ bool zapi_nexthop_update_decode(struct stream *s, struct zapi_route *nhr)
 	STREAM_GETC(s, nhr->nexthop_num);
 
 	for (i = 0; i < nhr->nexthop_num; i++) {
-		if (zapi_nexthop_decode(s, &(nhr->nexthops[i]), 0) != 0)
+		if (zapi_nexthop_decode(s, &(nhr->nexthops[i]), 0, 0) != 0)
 			return -1;
 	}
 
@@ -2957,7 +2960,7 @@ int zapi_labels_encode(struct stream *s, int cmd, struct zapi_labels *zl)
 	for (int i = 0; i < zl->nexthop_num; i++) {
 		znh = &zl->nexthops[i];
 
-		if (zapi_nexthop_encode(s, znh, 0) < 0)
+		if (zapi_nexthop_encode(s, znh, 0, 0) < 0)
 			return -1;
 	}
 
@@ -2976,7 +2979,7 @@ int zapi_labels_encode(struct stream *s, int cmd, struct zapi_labels *zl)
 		for (int i = 0; i < zl->backup_nexthop_num; i++) {
 			znh = &zl->backup_nexthops[i];
 
-			if (zapi_nexthop_encode(s, znh, 0) < 0)
+			if (zapi_nexthop_encode(s, znh, 0, 0) < 0)
 				return -1;
 		}
 
@@ -3052,7 +3055,7 @@ int zapi_labels_decode(struct stream *s, struct zapi_labels *zl)
 	for (int i = 0; i < zl->nexthop_num; i++) {
 		znh = &zl->nexthops[i];
 
-		if (zapi_nexthop_decode(s, znh, 0) < 0)
+		if (zapi_nexthop_decode(s, znh, 0, 0) < 0)
 			return -1;
 	}
 
@@ -3073,7 +3076,7 @@ int zapi_labels_decode(struct stream *s, struct zapi_labels *zl)
 		for (int i = 0; i < zl->backup_nexthop_num; i++) {
 			znh = &zl->backup_nexthops[i];
 
-			if (zapi_nexthop_decode(s, znh, 0) < 0)
+			if (zapi_nexthop_decode(s, znh, 0, 0) < 0)
 				return -1;
 		}
 	}
