@@ -284,7 +284,8 @@ int pcep_pcc_update(struct ctrl_state *ctrl_state, struct pcc_state *pcc_state,
 void pcep_pcc_reconnect(struct ctrl_state *ctrl_state,
 			struct pcc_state *pcc_state)
 {
-	pcep_pcc_enable(ctrl_state, pcc_state);
+	if (pcc_state->status == PCEP_PCC_DISCONNECTED)
+		pcep_pcc_enable(ctrl_state, pcc_state);
 }
 
 int pcep_pcc_enable(struct ctrl_state *ctrl_state, struct pcc_state *pcc_state)

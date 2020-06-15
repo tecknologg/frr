@@ -100,8 +100,11 @@ static int schedule_thread_timer(struct ctrl_state *ctrl_state, int pcc_id,
 				 enum pcep_ctrl_timer_type type, uint32_t delay,
 				 void *payload, struct thread **thread);
 static int schedule_thread_timer_with_cb(struct ctrl_state *ctrl_state,
-        int pcc_id, enum pcep_ctrl_timer_type type, uint32_t delay,
-        void *payload, struct thread **thread, pcep_ctrl_thread_callback timer_cb);
+					 int pcc_id,
+					 enum pcep_ctrl_timer_type type,
+					 uint32_t delay, void *payload,
+					 struct thread **thread,
+					 pcep_ctrl_thread_callback timer_cb);
 static int pcep_thread_timer_handler(struct thread *thread);
 
 /* Controller Thread Socket read/write Handler */
@@ -319,9 +322,8 @@ void pcep_thread_schedule_pceplib_timer(struct ctrl_state *ctrl_state,
 				    pcep_ctrl_thread_callback timer_cb)
 {
 	PCEP_DEBUG("Schedule pceplib timer for %us", delay);
-	schedule_thread_timer_with_cb(
-	        ctrl_state, 0, TM_PCEPLIB_TIMER, delay, payload, thread,
-	        timer_cb);
+	schedule_thread_timer_with_cb(ctrl_state, 0, TM_PCEPLIB_TIMER, delay,
+				      payload, thread, timer_cb);
 }
 
 void pcep_thread_cancel_pceplib_timer(struct thread **thread)
@@ -434,9 +436,9 @@ int schedule_thread_timer(struct ctrl_state *ctrl_state, int pcc_id,
 			  enum pcep_ctrl_timer_type type, uint32_t delay,
 			  void *payload, struct thread **thread)
 {
-    return schedule_thread_timer_with_cb(
-            ctrl_state, pcc_id, type, delay, payload, thread,
-            pcep_thread_timer_handler);
+	return schedule_thread_timer_with_cb(ctrl_state, pcc_id, type, delay,
+					     payload, thread,
+					     pcep_thread_timer_handler);
 }
 
 int pcep_thread_timer_handler(struct thread *thread)
@@ -456,17 +458,8 @@ int pcep_thread_timer_handler(struct thread *thread)
 	switch (type) {
 	case TM_RECONNECT_PCC:
 		pcc_state = get_pcc_state(ctrl_state, pcc_id);
-		if (!pcc_state) {
-			zlog_err("unable to recover pcc state");
-			return 1;
-		}
-		if (pcc_state->status == PCEP_PCC_DISCONNECTED)
+		if (pcc_state)
 			pcep_pcc_reconnect(ctrl_state, pcc_state);
-		else {
-			zlog_err("Skipping PCC reconnect. PCE in status %u",
-				 pcc_state->status);
-		}
-
 		break;
 	default:
 		flog_warn(EC_PATH_PCEP_RECOVERABLE_INTERNAL_ERROR,
@@ -529,7 +522,7 @@ int schedule_thread_socket(struct ctrl_state *ctrl_state, int pcc_id,
 }
 
 int pcep_thread_socket_write(void *fpt, void **thread, int fd, void *payload,
-        pcep_ctrl_thread_callback socket_cb)
+			     pcep_ctrl_thread_callback socket_cb)
 {
 	struct ctrl_state *ctrl_state = ((struct frr_pthread *)fpt)->data;
 
@@ -538,7 +531,7 @@ int pcep_thread_socket_write(void *fpt, void **thread, int fd, void *payload,
 }
 
 int pcep_thread_socket_read(void *fpt, void **thread, int fd, void *payload,
-        pcep_ctrl_thread_callback socket_cb)
+			    pcep_ctrl_thread_callback socket_cb)
 {
 	struct ctrl_state *ctrl_state = ((struct frr_pthread *)fpt)->data;
 
@@ -783,20 +776,16 @@ struct ctrl_state *get_ctrl_state(struct frr_pthread *fpt)
 
 struct pcc_state *get_pcc_state(struct ctrl_state *ctrl_state, int pcc_id)
 {
-	if (!ctrl_state || pcc_id < 0 || pcc_id > MAX_PCC
-	    || pcc_id > ctrl_state->pcc_count) {
-		zlog_err(
-			"Assertion failed: ctrl_state:%p pcc_id: %d (MAX_PCC=%d) pcc_count:%d ",
-			ctrl_state, pcc_id, MAX_PCC,
-			ctrl_state ? ctrl_state->pcc_count : 0);
-		return NULL;
-	}
-
+	assert(ctrl_state != NULL);
+	assert(pcc_id >= 0);
+	assert(pcc_id <= MAX_PCC);
 	struct pcc_state *pcc_state;
+
+	if (pcc_id > ctrl_state->pcc_count)
+		return NULL;
+
 	pcc_state = ctrl_state->pcc[pcc_id - 1];
-	if (!pcc_state) {
-		zlog_err("Failure retrieving state of PCC with Id %d", pcc_id);
-	}
+	assert(pcc_state != NULL);
 	return pcc_state;
 }
 
