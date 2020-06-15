@@ -88,7 +88,7 @@
 %{!?frr_gid:            %global  frr_gid            92 }
 %{!?vty_gid:            %global  vty_gid            85 }
 
-%define daemon_list zebra ripd ospfd bgpd isisd ripngd ospf6d pbrd staticd bfdd fabricd
+%define daemon_list zebra ripd ospfd bgpd isisd ripngd ospf6d pbrd staticd bfdd fabricd pathd
 
 %if %{with_ldpd}
     %define daemon_ldpd ldpd
@@ -483,6 +483,7 @@ zebra_spec_add_service ospfd    2604/tcp "OSPFd vty"
 zebra_spec_add_service bgpd     2605/tcp "BGPd vty"
 zebra_spec_add_service ospf6d   2606/tcp "OSPF6d vty"
 zebra_spec_add_service isisd    2608/tcp "ISISd vty"
+zebra_spec_add_service pathd    2620/tcp "Pathd vty"
 %if %{with_ospfapi}
     zebra_spec_add_service ospfapi  2607/tcp "OSPF-API"
 %endif
@@ -666,6 +667,7 @@ fi
 %if %{with_bfdd}
     %{_sbindir}/bfdd
 %endif
+%{_sbindir}/pathd
 %{_libdir}/lib*.so.0
 %{_libdir}/lib*.so.0.*
 %if %{with_fpm}
@@ -729,6 +731,9 @@ fi
 
 
 %changelog
+* Mon Jun 15 2020 Sascha Kattelmann <sascha@netdef.org>
+- Add Pathd support
+
 * Fri Dec 27 2019 Donatas Abraitis <donatas.abraitis@gmail.com>
 - Add CentOS 8 support
 
