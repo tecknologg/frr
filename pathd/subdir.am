@@ -42,7 +42,7 @@ noinst_HEADERS += \
 	pathd/path_pcep_debug.h \
 	pathd/path_pcep_lib.h \
 	pathd/path_pcep_memory.h \
-	pathd/path_pcep_nb.h \
+	pathd/path_pcep_config.h \
 	pathd/path_pcep_pcc.h \
 	pathd/path_zebra.h \
 	pathd/path_util.h \
@@ -64,7 +64,7 @@ pathd_pathd_pcep_la_SOURCES = \
 	pathd/path_pcep_debug.c \
 	pathd/path_pcep_lib.c \
 	pathd/path_pcep_memory.c \
-	pathd/path_pcep_nb.c \
+	pathd/path_pcep_config.c \
 	pathd/path_pcep_pcc.c \
 	# end
 pathd_pathd_pcep_la_CFLAGS = $(WERROR)

@@ -33,7 +33,7 @@
 #include "pathd/path_pcep.h"
 #include "pathd/path_pcep_controller.h"
 #include "pathd/path_pcep_pcc.h"
-#include "pathd/path_pcep_nb.h"
+#include "pathd/path_pcep_config.h"
 #include "pathd/path_pcep_debug.h"
 
 #define MAX_RECONNECT_DELAY 120

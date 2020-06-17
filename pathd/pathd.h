@@ -260,6 +260,8 @@ void srte_candidate_unset_metric(struct srte_candidate *candidate,
 				 bool is_config);
 struct srte_candidate *srte_candidate_find(struct srte_policy *policy,
 					   uint32_t preference);
+struct srte_segment_entry *
+srte_segment_entry_find(struct srte_segment_list *segment_list, uint32_t index);
 void srte_candidate_status_update(struct srte_policy *policy,
 				  struct srte_candidate *candidate, int status);
 const char *srte_origin2str(enum srte_protocol_origin origin);
