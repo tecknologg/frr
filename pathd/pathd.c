@@ -498,6 +498,16 @@ struct srte_candidate *srte_candidate_find(struct srte_policy *policy,
 	return RB_FIND(srte_candidate_head, &policy->candidate_paths, &search);
 }
 
+struct srte_segment_entry *
+srte_segment_entry_find(struct srte_segment_list *segment_list, uint32_t index)
+{
+	struct srte_segment_entry search;
+
+	search.index = index;
+	return RB_FIND(srte_segment_entry_head, &segment_list->segments,
+		       &search);
+}
+
 void srte_candidate_status_update(struct srte_policy *policy,
 				  struct srte_candidate *candidate, int status)
 {

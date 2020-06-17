@@ -37,7 +37,7 @@
 #include "pathd/path_pcep.h"
 #include "pathd/path_pcep_controller.h"
 #include "pathd/path_pcep_lib.h"
-#include "pathd/path_pcep_nb.h"
+#include "pathd/path_pcep_config.h"
 
 
 /*
@@ -201,7 +201,7 @@ int pcep_main_event_handler(enum pcep_main_event_type type, int pcc_id,
 
 int pcep_main_event_start_sync(int pcc_id)
 {
-	path_nb_list_path(pcep_main_event_start_sync_cb, &pcc_id);
+	path_pcep_config_list_path(pcep_main_event_start_sync_cb, &pcc_id);
 	pcep_ctrl_sync_done(pcep_g->fpt, pcc_id);
 	return 0;
 }
@@ -218,14 +218,14 @@ int pcep_main_event_update_candidate(struct path *path)
 	struct path *resp = NULL;
 	int ret = 0;
 
-	ret = path_nb_update_path(path);
+	ret = path_pcep_config_update_path(path);
 	if (ret != PATH_NB_ERR && path->srp_id != 0) {
 		/* ODL and Cisco requires the first reported
 		 * LSP to have a DOWN status, the later status changes
 		 * will be comunicated through hook calls.
 		 */
 		enum pcep_lsp_operational_status real_status;
-		if ((resp = path_nb_get_path(&path->nbkey))) {
+		if ((resp = path_pcep_config_get_path(&path->nbkey))) {
 			resp->srp_id = path->srp_id;
 			real_status = resp->status;
 			resp->status = PCEP_LSP_OPERATIONAL_DOWN;

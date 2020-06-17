@@ -44,7 +44,7 @@
 #include "pathd/path_pcep.h"
 #include "pathd/path_pcep_controller.h"
 #include "pathd/path_pcep_lib.h"
-#include "pathd/path_pcep_nb.h"
+#include "pathd/path_pcep_config.h"
 #include "pathd/path_pcep_debug.h"
 
 
@@ -617,7 +617,7 @@ void handle_pcep_lsp_update(struct ctrl_state *ctrl_state,
 	path = pcep_lib_parse_path(msg);
 	lookup_nbkey(pcc_state, path);
 	/* TODO: Investigate if this is safe to do in the controller thread */
-	path_nb_lookup(path);
+	path_pcep_config_lookup(path);
 	specialize_incoming_path(pcc_state, path);
 	PCEP_DEBUG("%s Received LSP update", pcc_state->tag);
 	PCEP_DEBUG_PATH("%s", format_path(path));
