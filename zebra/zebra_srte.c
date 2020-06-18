@@ -105,6 +105,8 @@ static int zebra_sr_policy_notify_update_client(struct zebra_sr_policy *policy,
 	uint32_t message = 0;
 	unsigned long nump = 0;
 	uint8_t num;
+	struct zapi_nexthop znh;
+	int ret;
 
 	/* Get output stream. */
 	s = stream_new(ZEBRA_MAX_PACKET_SIZ);
@@ -149,35 +151,11 @@ static int zebra_sr_policy_notify_update_client(struct zebra_sr_policy *policy,
 			stream_putc(s, 0);
 		}
 
-		stream_putl(s, nhlfe->nexthop->vrf_id);
-		stream_putc(s, nhlfe->nexthop->type);
-		switch (nhlfe->nexthop->type) {
-		case NEXTHOP_TYPE_IPV4:
-		case NEXTHOP_TYPE_IPV4_IFINDEX:
-			stream_put_in_addr(s, &nhlfe->nexthop->gate.ipv4);
-			stream_putl(s, nhlfe->nexthop->ifindex);
-			break;
-		case NEXTHOP_TYPE_IFINDEX:
-			stream_putl(s, nhlfe->nexthop->ifindex);
-			break;
-		case NEXTHOP_TYPE_IPV6:
-		case NEXTHOP_TYPE_IPV6_IFINDEX:
-			stream_put(s, &nhlfe->nexthop->gate.ipv6, 16);
-			stream_putl(s, nhlfe->nexthop->ifindex);
-			break;
-		default:
-			/* do nothing */
-			break;
-		}
-		if (nhlfe->nexthop->nh_label) {
-			stream_putc(s, nhlfe->nexthop->nh_label->num_labels);
-			if (nhlfe->nexthop->nh_label->num_labels)
-				stream_put(s,
-					   &nhlfe->nexthop->nh_label->label[0],
-					   nhlfe->nexthop->nh_label->num_labels
-						   * sizeof(mpls_label_t));
-		} else
-			stream_putc(s, 0);
+		zapi_nexthop_from_nexthop(&znh, nhlfe->nexthop);
+		ret = zapi_nexthop_encode(s, &znh, 0, message);
+		if (ret < 0)
+			goto failure;
+
 		num++;
 	}
 	stream_putc_at(s, nump, num);
@@ -186,6 +164,11 @@ static int zebra_sr_policy_notify_update_client(struct zebra_sr_policy *policy,
 	client->nh_last_upd_time = monotime(NULL);
 	client->last_write_cmd = ZEBRA_NEXTHOP_UPDATE;
 	return zserv_send_message(client, s);
+
+failure:
+
+	stream_free(s);
+	return -1;
 }
 
 static void zebra_sr_policy_notify_update(struct zebra_sr_policy *policy)
