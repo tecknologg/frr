@@ -63,6 +63,9 @@ static int pcep_cli_debug_config_write(struct vty *vty);
 static int pcep_cli_debug_set_all(uint32_t flags, bool set);
 static int pcep_cli_pcc_config_write(struct vty *vty);
 static void pcep_cli_init(void);
+/* Path manipulation functions */
+static struct path_metric *pcep_copy_metrics(struct path_metric *metric);
+static struct path_hop *pcep_copy_hops(struct path_hop *hop);
 
 /* Module Functions */
 static int pcep_module_finish(void);
@@ -99,6 +102,38 @@ struct path_metric *pcep_new_metric(void)
 	struct path_metric *metric;
 	metric = XCALLOC(MTYPE_PCEP, sizeof(*metric));
 	return metric;
+}
+
+struct path_metric *pcep_copy_metrics(struct path_metric *metric)
+{
+	if (metric == NULL) return NULL;
+	struct path_metric *new_metric = pcep_new_metric();
+	*new_metric = *metric;
+	new_metric->next = pcep_copy_metrics(metric->next);
+	return new_metric;
+}
+
+struct path_hop *pcep_copy_hops(struct path_hop *hop)
+{
+	if (hop == NULL) return NULL;
+	struct path_hop *new_hop = pcep_new_hop();
+	*new_hop = *hop;
+	new_hop->next = pcep_copy_hops(hop->next);
+	return new_hop;
+}
+
+struct path *pcep_copy_path(struct path *path)
+{
+	struct path *new_path = pcep_new_path();
+
+	*new_path = *path;
+	new_path->first_metric = pcep_copy_metrics(path->first_metric);
+	new_path->first_hop = pcep_copy_hops(path->first_hop);
+	if (path->name != NULL)
+		new_path->name = XSTRDUP(MTYPE_PCEP, path->name);
+	if (path->originator != NULL)
+		new_path->originator = XSTRDUP(MTYPE_PCEP, path->originator);
+	return new_path;
 }
 
 void pcep_free_path(struct path *path)
@@ -174,8 +209,6 @@ int pcep_main_event_start_sync(int pcc_id)
 int pcep_main_event_start_sync_cb(struct path *path, void *arg)
 {
 	int *pcc_id = (int *)arg;
-	path->is_synching = true;
-	path->go_active = true;
 	pcep_ctrl_sync_path(pcep_g->fpt, *pcc_id, path);
 	return 1;
 }
