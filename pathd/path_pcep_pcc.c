@@ -922,6 +922,18 @@ void send_pcep_error(struct pcc_state *pcc_state,
 	send_pcep_message(pcc_state, msg);
 }
 
+void send_pcep_error(struct pcc_state *pcc_state,
+		     enum pcep_error_type error_type,
+		     enum pcep_error_value error_value)
+{
+	struct pcep_message*  msg;
+	PCEP_DEBUG("%s Sending PCEP error type %s (%d) value %s (%d)",
+		   pcc_state->tag, pcep_error_type_name(error_type), error_type,
+		   pcep_error_value_name(error_type, error_value), error_value);
+	msg = pcep_lib_format_error(error_type, error_value);
+	send_pcep_message(pcc_state, msg);
+}
+
 void send_report(struct pcc_state *pcc_state, struct path *path)
 {
 	struct pcep_message *report;

@@ -124,6 +124,7 @@ static struct log_ref ferr_path_warn[] = {
 	{
 		.code = END_FERR,
 	}
+
 };
 /* clang-format on */
 

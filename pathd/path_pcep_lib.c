@@ -364,6 +364,8 @@ struct pcep_message *pcep_lib_format_request(uint32_t reqid, struct ipaddr *src,
 	rp = create_rp(reqid);
 	rp->header.flag_p = true;
 
+	rp = pcep_obj_create_rp(0, false, false, false, reqid, rp_tlvs);
+	rp->header.flag_p = true;
 	if (IS_IPADDR_V6(src)) {
 		endpoints_ipv6 = pcep_obj_create_endpoint_ipv6(&src->ipaddr_v6,
 							       &dst->ipaddr_v6);
