@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  NetDEF, Inc.
+ * Copyright (C) 2020  NetDEF, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -138,6 +138,9 @@ DEFPY(show_srte_policy_detail, show_srte_policy_detail_cmd,
 
 		RB_FOREACH (candidate, srte_candidate_head,
 			    &policy->candidate_paths) {
+			struct srte_segment_list *segment_list;
+
+			segment_list = candidate->lsp->segment_list;
 			vty_out(vty,
 				"  %s Preference: %d  Name: %s  Type: %s  Segment-List: %s  Protocol-Origin: %s\n",
 				CHECK_FLAG(candidate->flags, F_CANDIDATE_BEST)
@@ -147,10 +150,13 @@ DEFPY(show_srte_policy_detail, show_srte_policy_detail_cmd,
 				candidate->type == SRTE_CANDIDATE_TYPE_EXPLICIT
 					? "explicit"
 					: "dynamic",
-				candidate->segment_list == NULL
+				segment_list == NULL
+						|| segment_list->protocol_origin
+							   == SRTE_ORIGIN_PCEP
 					? "(undefined)"
-					: candidate->segment_list->name,
-				srte_origin2str(candidate->protocol_origin));
+					: candidate->lsp->segment_list->name,
+				srte_origin2str(
+					candidate->lsp->protocol_origin));
 		}
 
 		vty_out(vty, "\n");
@@ -211,11 +217,6 @@ DEFPY(no_te_path_segment_list, no_te_path_segment_list_cmd,
 void cli_show_te_path_segment_list(struct vty *vty, struct lyd_node *dnode,
 				   bool show_defaults)
 {
-	enum srte_protocol_origin origin;
-	origin = yang_dnode_get_enum(dnode, "./protocol-origin");
-	if (origin != SRTE_ORIGIN_LOCAL)
-		return;
-
 	vty_out(vty, "segment-list %s\n",
 		yang_dnode_get_string(dnode, "./name"));
 }
@@ -292,11 +293,6 @@ void cli_show_te_path_segment_list_segment(struct vty *vty,
 					   struct lyd_node *dnode,
 					   bool show_defaults)
 {
-	enum srte_protocol_origin origin;
-	origin = yang_dnode_get_enum(dnode, "../protocol-origin");
-	if (origin != SRTE_ORIGIN_LOCAL)
-		return;
-
 	vty_out(vty, " index %s mpls label %s",
 		yang_dnode_get_string(dnode, "./index"),
 		yang_dnode_get_string(dnode, "./sid-value"));
@@ -599,23 +595,21 @@ static void config_write_metric(struct vty *vty,
         config_write_float(vty, value);
 }
 
-/* FIXME: Enable this back when the candidate path are only containing
- * configuration data */
-// static int config_write_metric_cb(const struct lyd_node *dnode, void *arg)
-// {
-// 	struct vty *vty = arg;
-// 	enum srte_candidate_metric_type type;
-// 	bool is_bound = false;
-// 	float value;
+static int config_write_metric_cb(const struct lyd_node *dnode, void *arg)
+{
+	struct vty *vty = arg;
+	enum srte_candidate_metric_type type;
+	bool is_bound = false;
+	float value;
 
-// 	type = yang_dnode_get_enum(dnode, "./type");
-// 	value = (float)yang_dnode_get_dec64(dnode, "./value");
-// 	if (yang_dnode_exists(dnode, "./is-bound"))
-// 		is_bound = yang_dnode_get_bool(dnode, "./is-bound");
+	type = yang_dnode_get_enum(dnode, "./type");
+	value = (float)yang_dnode_get_dec64(dnode, "./value");
+	if (yang_dnode_exists(dnode, "./is-bound"))
+		is_bound = yang_dnode_get_bool(dnode, "./is-bound");
 
-// 	config_write_metric(vty, type, value, is_bound);
-// 	return YANG_ITER_CONTINUE;
-// }
+	config_write_metric(vty, type, value, is_bound);
+	return YANG_ITER_CONTINUE;
+}
 
 void cli_show_te_path_sr_policy_candidate_path(struct vty *vty,
 					       struct lyd_node *dnode,
@@ -632,29 +626,7 @@ void cli_show_te_path_sr_policy_candidate_path(struct vty *vty,
 	if (yang_dnode_exists(dnode, "./metrics"))
 		vty_out(vty, " metrics");
 
-	/* FIXME: Candidate path contains both configuration and transient
-	 * data. This is not what we want os until it is fixed we need to
-	 * hack around it */
-	// yang_dnode_iterate(config_write_metric_cb, vty, dnode, "./metrics");
-	struct srte_candidate *candidate;
-	bool is_bound;
-	candidate = nb_running_get_entry(dnode, NULL, true);
-	if (CHECK_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC)) {
-		is_bound = CHECK_FLAG(candidate->flags,
-				      F_CANDIDATE_METRIC_ABC_BOUND);
-		config_write_metric(vty, SRTE_CANDIDATE_METRIC_TYPE_ABC,
-				    candidate->metric_abc, is_bound);
-	}
-	if (CHECK_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE)) {
-		is_bound = CHECK_FLAG(candidate->flags,
-				      F_CANDIDATE_METRIC_TE_BOUND);
-		config_write_metric(vty, SRTE_CANDIDATE_METRIC_TYPE_TE,
-				    candidate->metric_te, is_bound);
-	}
-        if (CHECK_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH)) {
-                vty_out(vty, " bandwidth");
-                config_write_float(vty, candidate->bandwidth);
-        }
+	yang_dnode_iterate(config_write_metric_cb, vty, dnode, "./metrics");
 
 	vty_out(vty, "\n");
 }
