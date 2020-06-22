@@ -70,7 +70,7 @@ static void path_zebra_connected(struct zclient *zclient)
 		if (!candidate)
 			continue;
 
-		segment_list = candidate->segment_list;
+		segment_list = candidate->lsp->segment_list;
 		if (!segment_list)
 			continue;
 

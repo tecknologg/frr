@@ -35,13 +35,11 @@
 static struct path_hop *
 path_pcep_config_list_path_hops(struct srte_segment_list *segment_list);
 
-static void path_pcep_config_delete_candidate_segment_list(struct lsp_nb_key *key);
-static void
-path_pcep_config_add_segment_list_segment(struct srte_segment_list *segment_list,
-				 uint32_t index, uint32_t label);
-static void
-path_pcep_config_add_segment_list_segment_no_nai(struct srte_segment_list *segment_list,
-					uint32_t index);
+static void path_pcep_config_delete_lsp_segment_list(struct lsp_nb_key *key);
+static void path_pcep_config_add_segment_list_segment(
+	struct srte_segment_list *segment_list, uint32_t index, uint32_t label);
+static void path_pcep_config_add_segment_list_segment_no_nai(
+	struct srte_segment_list *segment_list, uint32_t index);
 static void path_pcep_config_add_segment_list_segment_nai_ipv4_node(
 	struct srte_segment_list *segment_list, uint32_t index,
 	struct ipaddr *ip);
@@ -60,23 +58,22 @@ static void path_pcep_config_add_segment_list_segment_nai_ipv4_unnumbered_adj(
 	uint32_t remote_iface);
 static struct srte_segment_list *
 path_pcep_config_create_segment_list(const char *segment_list_name,
-			    enum srte_protocol_origin protocol,
-			    const char *originator);
-static void
-path_pcep_config_update_candidate_path(struct lsp_nb_key *key,
-			      struct srte_segment_list *segment_list);
-static void path_pcep_config_add_candidate_path_metric(uint32_t color,
-					      struct ipaddr *endpoint,
-					      uint32_t preference,
-					      enum pcep_metric_types type,
-					      float value, bool is_bound,
-					      bool is_computed);
-static void path_pcep_config_set_candidate_path_bandwidth(uint32_t color,
-						 struct ipaddr *endpoint,
-						 uint32_t preference,
-						 float value);
+				     enum srte_protocol_origin protocol,
+				     const char *originator);
+static void path_pcep_config_update_lsp(struct lsp_nb_key *key,
+					struct srte_segment_list *segment_list);
+static void path_pcep_config_add_lsp_metric(uint32_t color,
+					    struct ipaddr *endpoint,
+					    uint32_t preference,
+					    enum pcep_metric_types type,
+					    float value, bool is_bound,
+					    bool is_computed);
+static void path_pcep_config_set_lsp_bandwidth(uint32_t color,
+					       struct ipaddr *endpoint,
+					       uint32_t preference,
+					       float value);
 
-static struct srte_candidate* lookup_candidate(struct lsp_nb_key *key);
+static struct srte_candidate *lookup_candidate(struct lsp_nb_key *key);
 static char *candidate_name(struct srte_candidate *candidate);
 static enum pcep_lsp_operational_status
 status_int_to_ext(enum srte_policy_status status);
@@ -85,6 +82,9 @@ static enum pcep_sr_subobj_nai pcep_nai_type(enum srte_segment_nai_type type);
 void path_pcep_config_lookup(struct path *path)
 {
 	struct srte_candidate *candidate = lookup_candidate(&path->nbkey);
+	struct srte_lsp *lsp = candidate->lsp;
+	;
+
 	if (candidate == NULL)
 		return;
 	if (path->name == NULL)
@@ -94,8 +94,8 @@ void path_pcep_config_lookup(struct path *path)
 	if (path->create_origin == SRTE_ORIGIN_UNDEFINED)
 		path->create_origin = candidate->protocol_origin;
 	if ((path->update_origin == SRTE_ORIGIN_UNDEFINED)
-	    && (candidate->segment_list != NULL))
-		path->update_origin = candidate->segment_list->protocol_origin;
+	    && (lsp->segment_list != NULL))
+		path->update_origin = lsp->segment_list->protocol_origin;
 }
 
 struct path *path_pcep_config_get_path(struct lsp_nb_key *key)
@@ -129,17 +129,18 @@ struct path *candidate_to_path(struct srte_candidate *candidate)
 	struct path_hop *hop = NULL;
 	struct path_metric *metric = NULL;
 	struct srte_policy *policy;
+	struct srte_lsp *lsp;
 	enum pcep_lsp_operational_status status;
 	enum srte_protocol_origin update_origin = 0;
 	char *originator = NULL;
 
 	policy = candidate->policy;
+	lsp = candidate->lsp;
 
-	if (candidate->segment_list != NULL) {
-		hop = path_pcep_config_list_path_hops(candidate->segment_list);
-		update_origin = candidate->segment_list->protocol_origin;
-		originator = XSTRDUP(MTYPE_PCEP,
-				     candidate->segment_list->originator);
+	if (lsp->segment_list != NULL) {
+		hop = path_pcep_config_list_path_hops(lsp->segment_list);
+		update_origin = lsp->segment_list->protocol_origin;
+		originator = XSTRDUP(MTYPE_PCEP, lsp->segment_list->originator);
 	}
 	path = pcep_new_path();
 	name = candidate_name(candidate);
@@ -148,34 +149,34 @@ struct path *candidate_to_path(struct srte_candidate *candidate)
 	} else {
 		status = PCEP_LSP_OPERATIONAL_DOWN;
 	}
-	if (CHECK_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC_RT)) {
+	if (CHECK_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_ABC)) {
 		struct path_metric *new_metric = pcep_new_metric();
 		new_metric->next = metric;
 		metric = new_metric;
 		metric->type = PCEP_METRIC_AGGREGATE_BW;
-		metric->value = candidate->metric_abc_rt;
-		metric->is_bound = CHECK_FLAG(candidate->flags,
-					      F_CANDIDATE_METRIC_ABC_BOUND_RT);
-		metric->is_computed = CHECK_FLAG(
-			candidate->flags, F_CANDIDATE_METRIC_ABC_COMPUTED_RT);
+		metric->value = lsp->metric_abc;
+		metric->is_bound =
+			CHECK_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_BOUND);
+		metric->is_computed =
+			CHECK_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_COMPUTED);
 	}
-	if (CHECK_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE_RT)) {
+	if (CHECK_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_TE)) {
 		struct path_metric *new_metric = pcep_new_metric();
 		new_metric->next = metric;
 		metric = new_metric;
 		metric->type = PCEP_METRIC_TE;
-		metric->value = candidate->metric_te_rt;
-		metric->is_bound = CHECK_FLAG(candidate->flags,
-					      F_CANDIDATE_METRIC_TE_BOUND_RT);
-		metric->is_computed = CHECK_FLAG(
-			candidate->flags, F_CANDIDATE_METRIC_TE_COMPUTED_RT);
+		metric->value = lsp->metric_te;
+		metric->is_bound =
+			CHECK_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_BOUND);
+		metric->is_computed =
+			CHECK_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_COMPUTED);
 	}
 	*path = (struct path){
 		.nbkey = (struct lsp_nb_key){.color = policy->color,
 					     .endpoint = policy->endpoint,
 					     .preference =
 						     candidate->preference},
-		.create_origin = candidate->protocol_origin,
+		.create_origin = lsp->protocol_origin,
 		.update_origin = update_origin,
 		.originator = originator,
 		.plsp_id = 0,
@@ -194,14 +195,14 @@ struct path *candidate_to_path(struct srte_candidate *candidate)
 		.first_hop = hop,
 		.first_metric = metric};
 
-	path->has_bandwidth = CHECK_FLAG(candidate->flags,
-					 F_CANDIDATE_HAS_BANDWIDTH_RT);
-	path->bandwidth = candidate->bandwidth_rt;
+	path->has_bandwidth = CHECK_FLAG(lsp->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	path->bandwidth = lsp->bandwidth;
 
 	return path;
 }
 
-struct path_hop *path_pcep_config_list_path_hops(struct srte_segment_list *segment_list)
+struct path_hop *
+path_pcep_config_list_path_hops(struct srte_segment_list *segment_list)
 {
 	struct srte_segment_entry *segment;
 	struct path_hop *hop = NULL, *last_hop = NULL;
@@ -261,22 +262,22 @@ int path_pcep_config_update_path(struct path *path)
 	char *segment_list_name = NULL;
 	struct srte_segment_list *segment_list;
 
-	path_pcep_config_delete_candidate_segment_list(&path->nbkey);
+	path_pcep_config_delete_lsp_segment_list(&path->nbkey);
 
 	if (path->first_hop != NULL) {
 
 		snprintf(segment_list_name_buff, sizeof(segment_list_name_buff),
 			 "%s-%u", path->name, path->plsp_id);
 		segment_list_name = segment_list_name_buff;
-		segment_list = path_pcep_config_create_segment_list(segment_list_name,
-							   path->update_origin,
-							   path->originator);
+		segment_list = path_pcep_config_create_segment_list(
+			segment_list_name, path->update_origin,
+			path->originator);
 		for (hop = path->first_hop, index = 10; hop != NULL;
 		     hop = hop->next, index += 10) {
 			assert(hop->has_sid);
 			assert(hop->is_mpls);
-			path_pcep_config_add_segment_list_segment(segment_list, index,
-							 hop->sid.mpls.label);
+			path_pcep_config_add_segment_list_segment(
+				segment_list, index, hop->sid.mpls.label);
 			if (hop->has_nai) {
 				switch (hop->nai.type) {
 				case PCEP_SR_SUBOBJ_NAI_IPV4_NODE:
@@ -318,18 +319,18 @@ int path_pcep_config_update_path(struct path *path)
 		}
 	}
 
-	path_pcep_config_update_candidate_path(&path->nbkey, segment_list);
+	path_pcep_config_update_lsp(&path->nbkey, segment_list);
 
 	for (metric = path->first_metric; metric != NULL;
 	     metric = metric->next) {
-		path_pcep_config_add_candidate_path_metric(
+		path_pcep_config_add_lsp_metric(
 			path->nbkey.color, &path->nbkey.endpoint,
 			path->nbkey.preference, metric->type, metric->value,
 			metric->is_bound, metric->is_computed);
 	}
 
 	if (path->has_bandwidth) {
-		path_pcep_config_set_candidate_path_bandwidth(
+		path_pcep_config_set_lsp_bandwidth(
 			path->nbkey.color, &path->nbkey.endpoint,
 			path->nbkey.preference, path->bandwidth);
 	}
@@ -341,21 +342,21 @@ int path_pcep_config_update_path(struct path *path)
 
 /* Delete the candidate path segment list if it was created through PCEP
    and by the given originator */
-void path_pcep_config_delete_candidate_segment_list(struct lsp_nb_key *key)
+void path_pcep_config_delete_lsp_segment_list(struct lsp_nb_key *key)
 {
 	struct srte_candidate *candidate = lookup_candidate(key);
 
-	if ((candidate == NULL) || (candidate->segment_list == NULL))
+	if ((candidate == NULL) || (candidate->lsp->segment_list == NULL))
 		return;
 
-	SET_FLAG(candidate->segment_list->flags, F_SEGMENT_LIST_DELETED);
+	SET_FLAG(candidate->lsp->segment_list->flags, F_SEGMENT_LIST_DELETED);
 
-	candidate->segment_list = NULL;
+	candidate->lsp->segment_list = NULL;
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 }
 
-void path_pcep_config_add_segment_list_segment(struct srte_segment_list *segment_list,
-				      uint32_t index, uint32_t label)
+void path_pcep_config_add_segment_list_segment(
+	struct srte_segment_list *segment_list, uint32_t index, uint32_t label)
 {
 	struct srte_segment_entry *segment;
 
@@ -440,8 +441,8 @@ void path_pcep_config_add_segment_list_segment_nai_ipv4_unnumbered_adj(
 
 struct srte_segment_list *
 path_pcep_config_create_segment_list(const char *segment_list_name,
-			    enum srte_protocol_origin protocol,
-			    const char *originator)
+				     enum srte_protocol_origin protocol,
+				     const char *originator)
 {
 	struct srte_segment_list *segment_list;
 
@@ -456,8 +457,8 @@ path_pcep_config_create_segment_list(const char *segment_list_name,
 	return segment_list;
 }
 
-void path_pcep_config_update_candidate_path(struct lsp_nb_key *key,
-				   struct srte_segment_list *segment_list)
+void path_pcep_config_update_lsp(struct lsp_nb_key *key,
+				 struct srte_segment_list *segment_list)
 {
 	struct srte_policy *policy;
 	struct srte_candidate *candidate;
@@ -465,16 +466,16 @@ void path_pcep_config_update_candidate_path(struct lsp_nb_key *key,
 	policy = srte_policy_find(key->color, &key->endpoint);
 	candidate = srte_candidate_find(policy, key->preference);
 
-	candidate->segment_list = segment_list;
-	assert(candidate->segment_list);
+	candidate->lsp->segment_list = segment_list;
+	assert(candidate->lsp->segment_list);
 
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 }
 
-void path_pcep_config_add_candidate_path_metric(uint32_t color, struct ipaddr *endpoint,
-				       uint32_t preference,
-				       enum pcep_metric_types type, float value,
-				       bool is_bound, bool is_computed)
+void path_pcep_config_add_lsp_metric(uint32_t color, struct ipaddr *endpoint,
+				     uint32_t preference,
+				     enum pcep_metric_types type, float value,
+				     bool is_bound, bool is_computed)
 {
 	struct srte_policy *policy;
 	struct srte_candidate *candidate;
@@ -482,13 +483,11 @@ void path_pcep_config_add_candidate_path_metric(uint32_t color, struct ipaddr *e
 	policy = srte_policy_find(color, endpoint);
 	candidate = srte_candidate_find(policy, preference);
 
-	srte_candidate_set_metric(candidate, type, value, is_bound, is_computed,
-				  false);
+	srte_lsp_set_metric(candidate->lsp, type, value, is_bound, is_computed);
 }
 
-void path_pcep_config_set_candidate_path_bandwidth(uint32_t color,
-					  struct ipaddr *endpoint,
-					  uint32_t preference, float value)
+void path_pcep_config_set_lsp_bandwidth(uint32_t color, struct ipaddr *endpoint,
+					uint32_t preference, float value)
 {
 	struct srte_policy *policy;
 	struct srte_candidate *candidate;
@@ -496,10 +495,10 @@ void path_pcep_config_set_candidate_path_bandwidth(uint32_t color,
 	policy = srte_policy_find(color, endpoint);
 	candidate = srte_candidate_find(policy, preference);
 
-	srte_candidate_set_bandwidth(candidate, value, false);
+	srte_lsp_set_bandwidth(candidate->lsp, value);
 }
 
-struct srte_candidate* lookup_candidate(struct lsp_nb_key *key)
+struct srte_candidate *lookup_candidate(struct lsp_nb_key *key)
 {
 	struct srte_policy *policy = NULL;
 	policy = srte_policy_find(key->color, &key->endpoint);

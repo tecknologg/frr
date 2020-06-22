@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019  NetDEF, Inc.
+ * Copyright (C) 2020  NetDEF, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -189,8 +189,8 @@ void srte_policy_update_binding_sid(struct srte_policy *policy,
 
 	/* Reinstall the Binding-SID if necessary. */
 	if (policy->best_candidate)
-		path_zebra_add_sr_policy(policy,
-					 policy->best_candidate->segment_list);
+		path_zebra_add_sr_policy(
+			policy, policy->best_candidate->lsp->segment_list);
 }
 
 static struct srte_candidate *
@@ -202,7 +202,7 @@ srte_policy_best_candidate(const struct srte_policy *policy)
 			    &policy->candidate_paths) {
 		/* search for highest preference with existing segment list */
 		if (!CHECK_FLAG(candidate->flags, F_CANDIDATE_DELETED)
-		    && candidate->segment_list)
+		    && candidate->lsp->segment_list)
 			return candidate;
 	}
 
@@ -276,7 +276,7 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 				 F_CANDIDATE_MODIFIED);
 
 			path_zebra_add_sr_policy(
-				policy, new_best_candidate->segment_list);
+				policy, new_best_candidate->lsp->segment_list);
 		}
 	} else if (new_best_candidate) {
 		/* The best candidate path did not change, but some of its
@@ -286,9 +286,10 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 		bool candidate_changed = CHECK_FLAG(new_best_candidate->flags,
 						    F_CANDIDATE_MODIFIED);
 		bool segment_list_changed =
-			new_best_candidate->segment_list
-			&& CHECK_FLAG(new_best_candidate->segment_list->flags,
-				      F_SEGMENT_LIST_MODIFIED);
+			new_best_candidate->lsp->segment_list
+			&& CHECK_FLAG(
+				   new_best_candidate->lsp->segment_list->flags,
+				   F_SEGMENT_LIST_MODIFIED);
 
 		if (candidate_changed || segment_list_changed) {
 			/* TODO: add debug guard. */
@@ -297,7 +298,7 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 				   new_best_candidate->name);
 
 			path_zebra_add_sr_policy(
-				policy, new_best_candidate->segment_list);
+				policy, new_best_candidate->lsp->segment_list);
 		}
 	}
 
@@ -311,8 +312,8 @@ void srte_policy_apply_changes(struct srte_policy *policy)
 			trigger_pathd_candidate_created(candidate);
 		} else if (CHECK_FLAG(candidate->flags, F_CANDIDATE_MODIFIED)) {
 			trigger_pathd_candidate_updated(candidate);
-		} else if (candidate->segment_list
-			   && CHECK_FLAG(candidate->segment_list->flags,
+		} else if (candidate->lsp->segment_list
+			   && CHECK_FLAG(candidate->lsp->segment_list->flags,
 					 F_SEGMENT_LIST_MODIFIED)) {
 			trigger_pathd_candidate_updated(candidate);
 		}
@@ -326,11 +327,15 @@ struct srte_candidate *srte_candidate_add(struct srte_policy *policy,
 					  uint32_t preference)
 {
 	struct srte_candidate *candidate;
+	struct srte_lsp *lsp;
 
 	candidate = XCALLOC(MTYPE_PATH_SR_CANDIDATE, sizeof(*candidate));
+	lsp = XCALLOC(MTYPE_PATH_SR_CANDIDATE, sizeof(*lsp));
+
 	candidate->preference = preference;
 	candidate->policy = policy;
 	candidate->type = SRTE_CANDIDATE_TYPE_UNDEFINED;
+	candidate->lsp = lsp;
 	RB_INSERT(srte_candidate_head, &policy->candidate_paths, candidate);
 
 	return candidate;
@@ -342,96 +347,127 @@ void srte_candidate_del(struct srte_candidate *candidate)
 
 	RB_REMOVE(srte_candidate_head, &srte_policy->candidate_paths,
 		  candidate);
+
+	XFREE(MTYPE_PATH_SR_CANDIDATE, candidate->lsp);
 	XFREE(MTYPE_PATH_SR_CANDIDATE, candidate);
 }
 
 void srte_candidate_set_bandwidth(struct srte_candidate *candidate,
-				  float bandwidth, bool is_config)
+				  float bandwidth)
 {
 	struct srte_policy *policy = candidate->policy;
 	char endpoint[46];
 	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
-	zlog_debug(
-		"SR-TE(%s, %u): candidate %s bandwidth set to %f B/s"
-		"(is_config: %s)",
-		endpoint, policy->color, candidate->name, bandwidth,
-		is_config ? "true" : "false");
-	SET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH_RT);
-	candidate->bandwidth_rt = bandwidth;
-	if (is_config) {
-		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH);
-		candidate->bandwidth = bandwidth;
-	}
+	zlog_debug("SR-TE(%s, %u): candidate %s bandwidth set to %f B/s",
+		   endpoint, policy->color, candidate->name, bandwidth);
+	SET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	candidate->bandwidth = bandwidth;
+
+	srte_lsp_set_bandwidth(candidate->lsp, bandwidth);
 }
 
-void srte_candidate_unset_bandwidth(struct srte_candidate *candidate,
-				    bool is_config)
+void srte_lsp_set_bandwidth(struct srte_lsp *lsp, float bandwidth)
+{
+	struct srte_candidate *candidate = lsp->candidate;
+	struct srte_policy *policy = candidate->policy;
+	char endpoint[46];
+	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
+	zlog_debug("SR-TE(%s, %u): candidate %s lsp bandwidth set to %f B/s",
+		   endpoint, policy->color, candidate->name, bandwidth);
+	SET_FLAG(lsp->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	lsp->bandwidth = bandwidth;
+}
+
+void srte_candidate_unset_bandwidth(struct srte_candidate *candidate)
 {
 	struct srte_policy *policy = candidate->policy;
 	char endpoint[46];
 	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
-	zlog_debug(
-		"SR-TE(%s, %u): candidate %s bandwidth unset "
-		"(is_config: %s)",
-		endpoint, policy->color, candidate->name,
-		is_config ? "true" : "false");
-	UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH_RT);
-	candidate->bandwidth_rt = 0;
-	if (is_config) {
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH);
-		candidate->bandwidth = 0;
-	}
+	zlog_debug("SR-TE(%s, %u): candidate %s bandwidth unset", endpoint,
+		   policy->color, candidate->name);
+	UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	candidate->bandwidth = 0;
+
+	srte_lsp_unset_bandwidth(candidate->lsp);
+}
+
+void srte_lsp_unset_bandwidth(struct srte_lsp *lsp)
+{
+	struct srte_candidate *candidate = lsp->candidate;
+	struct srte_policy *policy = candidate->policy;
+	char endpoint[46];
+	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
+	zlog_debug("SR-TE(%s, %u): candidate %s lsp bandwidth unset", endpoint,
+		   policy->color, candidate->name);
+	UNSET_FLAG(lsp->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	lsp->bandwidth = 0;
 }
 
 void srte_candidate_set_metric(struct srte_candidate *candidate,
 			       enum srte_candidate_metric_type type,
-			       float value, bool is_bound, bool is_computed,
-			       bool is_config)
+			       float value, bool is_bound, bool is_computed)
 {
 	struct srte_policy *policy = candidate->policy;
 	char endpoint[46];
 	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
 	zlog_debug(
 		"SR-TE(%s, %u): candidate %s metric %s (%u) set to %f "
-		"(is-bound: %s; is_computed: %s; is_config: %s)",
+		"(is-bound: %s; is_computed: %s)",
 		endpoint, policy->color, candidate->name,
 		srte_candidate_metric_name(type), type, value,
-		is_bound ? "true" : "false", is_computed ? "true" : "false",
-		is_config ? "true" : "false");
+		is_bound ? "true" : "false", is_computed ? "true" : "false");
 	switch (type) {
 	case SRTE_CANDIDATE_METRIC_TYPE_ABC:
-		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC_RT);
-		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_BOUND_RT,
+		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC);
+		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_BOUND,
 			  is_bound);
-		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_COMPUTED_RT,
+		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_COMPUTED,
 			  is_computed);
-		candidate->metric_abc_rt = value;
-		/* FIXME: Should be fixed by refactoring the data model */
-		if (is_config) {
-			SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC);
-			COND_FLAG(candidate->flags,
-				  F_CANDIDATE_METRIC_ABC_BOUND, is_bound);
-			COND_FLAG(candidate->flags,
-				  F_CANDIDATE_METRIC_ABC_COMPUTED, is_computed);
-			candidate->metric_abc = value;
-		}
+		candidate->metric_abc = value;
 		break;
 	case SRTE_CANDIDATE_METRIC_TYPE_TE:
-		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE_RT);
-		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND_RT,
+		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE);
+		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND,
 			  is_bound);
-		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_COMPUTED_RT,
+		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_COMPUTED,
 			  is_computed);
-		candidate->metric_te_rt = value;
-		/* FIXME: Should be fixed by refactoring the data model */
-		if (is_config) {
-			SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE);
-			COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND,
-				  is_bound);
-			COND_FLAG(candidate->flags,
-				  F_CANDIDATE_METRIC_TE_COMPUTED, is_computed);
-			candidate->metric_te = value;
-		}
+		candidate->metric_te = value;
+		break;
+	default:
+		break;
+	}
+
+	srte_lsp_set_metric(candidate->lsp, type, value, is_bound, is_computed);
+}
+
+void srte_lsp_set_metric(struct srte_lsp *lsp,
+			 enum srte_candidate_metric_type type, float value,
+			 bool is_bound, bool is_computed)
+{
+	struct srte_candidate *candidate = lsp->candidate;
+	struct srte_policy *policy = candidate->policy;
+	char endpoint[46];
+	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
+	zlog_debug(
+		"SR-TE(%s, %u): candidate %s lsp metric %s (%u) set to %f "
+		"(is-bound: %s; is_computed: %s)",
+		endpoint, policy->color, candidate->name,
+		srte_candidate_metric_name(type), type, value,
+		is_bound ? "true" : "false", is_computed ? "true" : "false");
+	switch (type) {
+	case SRTE_CANDIDATE_METRIC_TYPE_ABC:
+		SET_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_ABC);
+		COND_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_BOUND, is_bound);
+		COND_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_COMPUTED,
+			  is_computed);
+		lsp->metric_abc = value;
+		break;
+	case SRTE_CANDIDATE_METRIC_TYPE_TE:
+		SET_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_TE);
+		COND_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_BOUND, is_bound);
+		COND_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_COMPUTED,
+			  is_computed);
+		lsp->metric_te = value;
 		break;
 	default:
 		break;
@@ -439,50 +475,56 @@ void srte_candidate_set_metric(struct srte_candidate *candidate,
 }
 
 void srte_candidate_unset_metric(struct srte_candidate *candidate,
-				 enum srte_candidate_metric_type type,
-				 bool is_config)
+				 enum srte_candidate_metric_type type)
 {
 	struct srte_policy *policy = candidate->policy;
 	char endpoint[46];
 	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
-	zlog_debug(
-		"SR-TE(%s, %u): candidate %s metric %s (%u) unset "
-		"(is_config: %s)",
-		endpoint, policy->color, candidate->name,
-		srte_candidate_metric_name(type), type,
-		is_config ? "true" : "false");
+	zlog_debug("SR-TE(%s, %u): candidate %s metric %s (%u) unset", endpoint,
+		   policy->color, candidate->name,
+		   srte_candidate_metric_name(type), type);
 	switch (type) {
 	case SRTE_CANDIDATE_METRIC_TYPE_ABC:
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC_RT);
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_BOUND_RT);
-		UNSET_FLAG(candidate->flags,
-			   F_CANDIDATE_METRIC_ABC_COMPUTED_RT);
-		candidate->metric_abc_rt = 0;
-		/* FIXME: Should be fixed by refactoring the data model */
-		if (is_config) {
-			UNSET_FLAG(candidate->flags,
-				   F_CANDIDATE_HAS_METRIC_ABC);
-			UNSET_FLAG(candidate->flags,
-				   F_CANDIDATE_METRIC_ABC_BOUND);
-			UNSET_FLAG(candidate->flags,
-				   F_CANDIDATE_METRIC_ABC_COMPUTED);
-			candidate->metric_abc = 0;
-		}
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC);
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_BOUND);
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_COMPUTED);
+		candidate->metric_abc = 0;
 		break;
 	case SRTE_CANDIDATE_METRIC_TYPE_TE:
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE_RT);
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND_RT);
-		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_COMPUTED_RT);
-		candidate->metric_te_rt = 0;
-		/* FIXME: Should be fixed by refactoring the data model */
-		if (is_config) {
-			UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE);
-			UNSET_FLAG(candidate->flags,
-				   F_CANDIDATE_METRIC_TE_BOUND);
-			UNSET_FLAG(candidate->flags,
-				   F_CANDIDATE_METRIC_TE_COMPUTED);
-			candidate->metric_te = 0;
-		}
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE);
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND);
+		UNSET_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_COMPUTED);
+		candidate->metric_te = 0;
+		break;
+	default:
+		break;
+	}
+
+	srte_lsp_unset_metric(candidate->lsp, type);
+}
+
+void srte_lsp_unset_metric(struct srte_lsp *lsp,
+			   enum srte_candidate_metric_type type)
+{
+	struct srte_candidate *candidate = lsp->candidate;
+	struct srte_policy *policy = candidate->policy;
+	char endpoint[46];
+	ipaddr2str(&policy->endpoint, endpoint, sizeof(endpoint));
+	zlog_debug("SR-TE(%s, %u): candidate %s lsp metric %s (%u) unset",
+		   endpoint, policy->color, candidate->name,
+		   srte_candidate_metric_name(type), type);
+	switch (type) {
+	case SRTE_CANDIDATE_METRIC_TYPE_ABC:
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_ABC);
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_BOUND);
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_METRIC_ABC_COMPUTED);
+		lsp->metric_abc = 0;
+		break;
+	case SRTE_CANDIDATE_METRIC_TYPE_TE:
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_HAS_METRIC_TE);
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_BOUND);
+		UNSET_FLAG(lsp->flags, F_CANDIDATE_METRIC_TE_COMPUTED);
+		lsp->metric_te = 0;
 		break;
 	default:
 		break;

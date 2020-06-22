@@ -420,17 +420,15 @@ int pathd_te_sr_policy_candidate_path_metrics_destroy(
 {
 	struct srte_candidate *candidate;
 	enum srte_candidate_metric_type type;
-	bool is_config;
 
 	if (args->event != NB_EV_APPLY)
 		return NB_OK;
 
 	assert(args->context != NULL);
-	is_config = args->context->client == NB_CLIENT_CLI;
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 
 	type = yang_dnode_get_enum(args->dnode, "./type");
-	srte_candidate_unset_metric(candidate, type, is_config);
+	srte_candidate_unset_metric(candidate, type);
 
 	return NB_OK;
 }
@@ -441,10 +439,9 @@ void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
 	struct srte_candidate *candidate;
 	enum srte_candidate_metric_type type;
 	float value;
-	bool is_bound = false, is_computed = false, is_config;
+	bool is_bound = false, is_computed = false;
 
 	assert(args->context != NULL);
-	is_config = args->context->client == NB_CLIENT_CLI;
 
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 
@@ -455,8 +452,8 @@ void pathd_te_sr_policy_candidate_path_metrics_apply_finish(
 	if (yang_dnode_exists(args->dnode, "./is-computed"))
 		is_computed = yang_dnode_get_bool(args->dnode, "./is-computed");
 
-	srte_candidate_set_metric(candidate, type, value, is_bound, is_computed,
-				  is_config);
+	srte_candidate_set_metric(candidate, type, value, is_bound,
+				  is_computed);
 }
 
 /*
@@ -474,6 +471,7 @@ int pathd_te_sr_policy_candidate_path_protocol_origin_modify(
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 	protocol_origin = yang_dnode_get_enum(args->dnode, NULL);
 	candidate->protocol_origin = protocol_origin;
+	candidate->lsp->protocol_origin = protocol_origin;
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
 	return NB_OK;
@@ -495,6 +493,8 @@ int pathd_te_sr_policy_candidate_path_originator_modify(
 	originator = yang_dnode_get_string(args->dnode, NULL);
 	strlcpy(candidate->originator, originator,
 		sizeof(candidate->originator));
+	strlcpy(candidate->lsp->originator, originator,
+		sizeof(candidate->lsp->originator));
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
 	return NB_OK;
@@ -515,6 +515,7 @@ int pathd_te_sr_policy_candidate_path_discriminator_modify(
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 	discriminator = yang_dnode_get_uint32(args->dnode, NULL);
 	candidate->discriminator = discriminator;
+	candidate->lsp->discriminator = discriminator;
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
 	return NB_OK;
@@ -578,6 +579,7 @@ int pathd_te_sr_policy_candidate_path_segment_list_name_modify(
 		return NB_OK;
 
 	candidate->segment_list = srte_segment_list_find(segment_list_name);
+	candidate->lsp->segment_list = candidate->segment_list;
 	assert(candidate->segment_list);
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
@@ -594,6 +596,7 @@ int pathd_te_sr_policy_candidate_path_segment_list_name_destroy(
 
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 	candidate->segment_list = NULL;
+	candidate->lsp->segment_list = NULL;
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
 	return NB_OK;
@@ -607,16 +610,14 @@ int pathd_te_sr_policy_candidate_path_bandwidth_modify(
 {
 	struct srte_candidate *candidate;
 	float value;
-	bool is_config;
 
 	if (args->event != NB_EV_APPLY)
 		return NB_OK;
 
 	assert(args->context != NULL);
-	is_config = args->context->client == NB_CLIENT_CLI;
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
 	value = (float)yang_dnode_get_dec64(args->dnode, NULL);
-	srte_candidate_set_bandwidth(candidate, value, is_config);
+	srte_candidate_set_bandwidth(candidate, value);
 	return NB_OK;
 }
 
@@ -624,14 +625,12 @@ int pathd_te_sr_policy_candidate_path_bandwidth_destroy(
 	struct nb_cb_destroy_args *args)
 {
 	struct srte_candidate *candidate;
-	bool is_config;
 
 	if (args->event != NB_EV_APPLY)
 		return NB_OK;
 
 	assert(args->context != NULL);
-	is_config = args->context->client == NB_CLIENT_CLI;
 	candidate = nb_running_get_entry(args->dnode, NULL, true);
-	srte_candidate_unset_bandwidth(candidate, is_config);
+	srte_candidate_unset_bandwidth(candidate);
 	return NB_OK;
 }

@@ -114,11 +114,41 @@ RB_HEAD(srte_segment_list_head, srte_segment_list);
 RB_PROTOTYPE(srte_segment_list_head, srte_segment_list, entry,
 	     srte_segment_list_compare)
 
+struct srte_lsp {
+	/* Backpointer to the Candidate Path. */
+	struct srte_candidate *candidate;
+
+	/* The associated Segment List. */
+	struct srte_segment_list *segment_list;
+
+	/* The Protocol-Origin. */
+	enum srte_protocol_origin protocol_origin;
+
+	/* The Originator */
+	char originator[64];
+
+	/* The Discriminator */
+	uint32_t discriminator;
+
+	/* Flags. */
+	uint32_t flags;
+
+	/* Metrics Configured Value */
+	float metric_abc; /* Agreggate Bandwidth Consumption */
+	float metric_te;
+
+	/* Bandwidth Configured Value */
+	float bandwidth;
+};
+
 struct srte_candidate {
 	RB_ENTRY(srte_candidate) entry;
 
 	/* Backpointer to SR Policy */
 	struct srte_policy *policy;
+
+	/* The LSP associated with this candidate path. */
+	struct srte_lsp *lsp;
 
 	/* Administrative preference. */
 	uint32_t preference;
@@ -161,24 +191,6 @@ struct srte_candidate {
 
 	/* Bandwidth Configured Value */
 	float bandwidth;
-
-	/* FIXME: This should be removed when the configuration/yang model is
-	 * refactored, runtime data should be somewhere else */
-
-#define F_CANDIDATE_HAS_METRIC_ABC_RT 0x010000
-#define F_CANDIDATE_METRIC_ABC_BOUND_RT 0x20000
-#define F_CANDIDATE_METRIC_ABC_COMPUTED_RT 0x40000
-#define F_CANDIDATE_HAS_METRIC_TE_RT 0x080000
-#define F_CANDIDATE_METRIC_TE_BOUND_RT 0x100000
-#define F_CANDIDATE_METRIC_TE_COMPUTED_RT 0x200000
-#define F_CANDIDATE_HAS_BANDWIDTH_RT 0x400000
-
-	/* Metrics Runtime Value */
-	float metric_abc_rt; /* Agreggate Bandwidth Consumption */
-	float metric_te_rt;
-
-	/* Bandwidth Runtime Value */
-	float bandwidth_rt;
 };
 
 RB_HEAD(srte_candidate_head, srte_candidate);
@@ -248,16 +260,20 @@ struct srte_candidate *srte_candidate_add(struct srte_policy *policy,
 					  uint32_t preference);
 void srte_candidate_del(struct srte_candidate *candidate);
 void srte_candidate_set_bandwidth(struct srte_candidate *candidate,
-				  float bandwidth, bool is_config);
-void srte_candidate_unset_bandwidth(struct srte_candidate *candidate,
-				    bool is_config);
+				  float bandwidth);
+void srte_candidate_unset_bandwidth(struct srte_candidate *candidate);
 void srte_candidate_set_metric(struct srte_candidate *candidate,
 			       enum srte_candidate_metric_type type,
-			       float value, bool is_cound, bool is_computed,
-			       bool is_config);
+			       float value, bool is_cound, bool is_computed);
 void srte_candidate_unset_metric(struct srte_candidate *candidate,
-				 enum srte_candidate_metric_type type,
-				 bool is_config);
+				 enum srte_candidate_metric_type type);
+void srte_lsp_set_bandwidth(struct srte_lsp *lsp, float bandwidth);
+void srte_lsp_unset_bandwidth(struct srte_lsp *lsp);
+void srte_lsp_set_metric(struct srte_lsp *lsp,
+			 enum srte_candidate_metric_type type, float value,
+			 bool is_cound, bool is_computed);
+void srte_lsp_unset_metric(struct srte_lsp *lsp,
+			   enum srte_candidate_metric_type type);
 struct srte_candidate *srte_candidate_find(struct srte_policy *policy,
 					   uint32_t preference);
 struct srte_segment_entry *
