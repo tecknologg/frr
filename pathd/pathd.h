@@ -249,6 +249,11 @@ struct srte_segment_list *srte_segment_list_find(const char *name);
 struct srte_segment_entry *
 srte_segment_entry_add(struct srte_segment_list *segment_list, uint32_t index);
 void srte_segment_entry_del(struct srte_segment_entry *segment);
+void srte_segment_entry_set_nai(struct srte_segment_entry *segment,
+				enum srte_segment_nai_type type,
+				struct ipaddr *local_ip, uint32_t local_iface,
+				struct ipaddr *remote_ip,
+				uint32_t remote_iface);
 struct srte_policy *srte_policy_add(uint32_t color, struct ipaddr *endpoint);
 void srte_policy_del(struct srte_policy *policy);
 struct srte_policy *srte_policy_find(uint32_t color, struct ipaddr *endpoint);

@@ -137,6 +137,37 @@ void srte_segment_entry_del(struct srte_segment_entry *segment)
 	XFREE(MTYPE_PATH_SEGMENT_LIST, segment);
 }
 
+void srte_segment_entry_set_nai(struct srte_segment_entry *segment,
+				enum srte_segment_nai_type type,
+				struct ipaddr *local_ip, uint32_t local_iface,
+				struct ipaddr *remote_ip, uint32_t remote_iface)
+{
+	segment->nai_type = type;
+	memcpy(&segment->nai_local_addr, local_ip, sizeof(struct ipaddr));
+
+	switch (type) {
+	case SRTE_SEGMENT_NAI_TYPE_IPV4_NODE:
+	case SRTE_SEGMENT_NAI_TYPE_IPV6_NODE:
+		break;
+	case SRTE_SEGMENT_NAI_TYPE_IPV4_ADJACENCY:
+	case SRTE_SEGMENT_NAI_TYPE_IPV6_ADJACENCY:
+		memcpy(&segment->nai_remote_addr, remote_ip,
+		       sizeof(struct ipaddr));
+		break;
+	case SRTE_SEGMENT_NAI_TYPE_IPV4_UNNUMBERED_ADJACENCY:
+		memcpy(&segment->nai_remote_addr, remote_ip,
+		       sizeof(struct ipaddr));
+		segment->nai_local_iface = local_iface;
+		segment->nai_remote_iface = remote_iface;
+		break;
+	default:
+		segment->nai_local_addr.ipa_type = IPADDR_NONE;
+		segment->nai_local_iface = 0;
+		segment->nai_remote_addr.ipa_type = IPADDR_NONE;
+		segment->nai_remote_iface = 0;
+	}
+}
+
 struct srte_policy *srte_policy_add(uint32_t color, struct ipaddr *endpoint)
 {
 	struct srte_policy *policy;
