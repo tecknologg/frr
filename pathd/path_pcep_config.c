@@ -38,24 +38,6 @@ path_pcep_config_list_path_hops(struct srte_segment_list *segment_list);
 static void path_pcep_config_delete_lsp_segment_list(struct lsp_nb_key *key);
 static void path_pcep_config_add_segment_list_segment(
 	struct srte_segment_list *segment_list, uint32_t index, uint32_t label);
-static void path_pcep_config_add_segment_list_segment_no_nai(
-	struct srte_segment_list *segment_list, uint32_t index);
-static void path_pcep_config_add_segment_list_segment_nai_ipv4_node(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *ip);
-static void path_pcep_config_add_segment_list_segment_nai_ipv6_node(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *ip);
-static void path_pcep_config_add_segment_list_segment_nai_ipv4_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, struct ipaddr *remote_ip);
-static void path_pcep_config_add_segment_list_segment_nai_ipv6_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, struct ipaddr *remote_ip);
-static void path_pcep_config_add_segment_list_segment_nai_ipv4_unnumbered_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, uint32_t local_iface, struct ipaddr *remote_ip,
-	uint32_t remote_iface);
 static struct srte_segment_list *
 path_pcep_config_create_segment_list(const char *segment_list_name,
 				     enum srte_protocol_origin protocol,
@@ -78,6 +60,7 @@ static char *candidate_name(struct srte_candidate *candidate);
 static enum pcep_lsp_operational_status
 status_int_to_ext(enum srte_policy_status status);
 static enum pcep_sr_subobj_nai pcep_nai_type(enum srte_segment_nai_type type);
+static enum srte_segment_nai_type srte_nai_type(enum pcep_sr_subobj_nai type);
 
 void path_pcep_config_lookup(struct path *path)
 {
@@ -261,11 +244,11 @@ int path_pcep_config_update_path(struct path *path)
 	char segment_list_name_buff[64 + 1 + 64 + 1 + 11 + 1];
 	char *segment_list_name = NULL;
 	struct srte_segment_list *segment_list;
+	struct srte_segment_entry *segment;
 
 	path_pcep_config_delete_lsp_segment_list(&path->nbkey);
 
 	if (path->first_hop != NULL) {
-
 		snprintf(segment_list_name_buff, sizeof(segment_list_name_buff),
 			 "%s-%u", path->name, path->plsp_id);
 		segment_list_name = segment_list_name_buff;
@@ -279,42 +262,14 @@ int path_pcep_config_update_path(struct path *path)
 			path_pcep_config_add_segment_list_segment(
 				segment_list, index, hop->sid.mpls.label);
 			if (hop->has_nai) {
-				switch (hop->nai.type) {
-				case PCEP_SR_SUBOBJ_NAI_IPV4_NODE:
-					path_pcep_config_add_segment_list_segment_nai_ipv4_node(
-						segment_list, index,
-						&hop->nai.local_addr);
-					break;
-				case PCEP_SR_SUBOBJ_NAI_IPV6_NODE:
-					path_pcep_config_add_segment_list_segment_nai_ipv6_node(
-						segment_list, index,
-						&hop->nai.local_addr);
-					break;
-				case PCEP_SR_SUBOBJ_NAI_IPV4_ADJACENCY:
-					path_pcep_config_add_segment_list_segment_nai_ipv4_adj(
-						segment_list, index,
-						&hop->nai.local_addr,
-						&hop->nai.remote_addr);
-					break;
-				case PCEP_SR_SUBOBJ_NAI_IPV6_ADJACENCY:
-					path_pcep_config_add_segment_list_segment_nai_ipv6_adj(
-						segment_list, index,
-						&hop->nai.local_addr,
-						&hop->nai.remote_addr);
-					break;
-				case PCEP_SR_SUBOBJ_NAI_UNNUMBERED_IPV4_ADJACENCY:
-					path_pcep_config_add_segment_list_segment_nai_ipv4_unnumbered_adj(
-						segment_list, index,
-						&hop->nai.local_addr,
-						hop->nai.local_iface,
-						&hop->nai.remote_addr,
-						hop->nai.remote_iface);
-					break;
-				default:
-					path_pcep_config_add_segment_list_segment_no_nai(
-						segment_list, index);
-					break;
-				}
+				segment = srte_segment_entry_find(segment_list,
+								  index);
+				srte_segment_entry_set_nai(
+					segment, srte_nai_type(hop->nai.type),
+					&hop->nai.local_addr,
+					hop->nai.local_iface,
+					&hop->nai.remote_addr,
+					hop->nai.remote_iface);
 			}
 		}
 	}
@@ -363,80 +318,6 @@ void path_pcep_config_add_segment_list_segment(
 	segment = srte_segment_entry_add(segment_list, index);
 	segment->sid_value = (mpls_label_t)label;
 	SET_FLAG(segment->segment_list->flags, F_SEGMENT_LIST_MODIFIED);
-}
-
-void path_pcep_config_add_segment_list_segment_no_nai(
-	struct srte_segment_list *segment_list, uint32_t index)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_NONE;
-	segment->nai_local_addr.ipa_type = IPADDR_NONE;
-	segment->nai_local_iface = 0;
-	segment->nai_remote_addr.ipa_type = IPADDR_NONE;
-	segment->nai_remote_iface = 0;
-}
-
-void path_pcep_config_add_segment_list_segment_nai_ipv4_node(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *ip)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_IPV4_NODE;
-	memcpy(&segment->nai_local_addr, ip, sizeof(struct ipaddr));
-}
-
-void path_pcep_config_add_segment_list_segment_nai_ipv6_node(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *ip)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_IPV6_NODE;
-	memcpy(&segment->nai_local_addr, ip, sizeof(struct ipaddr));
-}
-
-void path_pcep_config_add_segment_list_segment_nai_ipv4_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, struct ipaddr *remote_ip)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_IPV4_ADJACENCY;
-	memcpy(&segment->nai_local_addr, local_ip, sizeof(struct ipaddr));
-	memcpy(&segment->nai_remote_addr, remote_ip, sizeof(struct ipaddr));
-}
-
-void path_pcep_config_add_segment_list_segment_nai_ipv6_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, struct ipaddr *remote_ip)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_IPV6_ADJACENCY;
-	memcpy(&segment->nai_local_addr, local_ip, sizeof(struct ipaddr));
-	memcpy(&segment->nai_remote_addr, remote_ip, sizeof(struct ipaddr));
-}
-
-void path_pcep_config_add_segment_list_segment_nai_ipv4_unnumbered_adj(
-	struct srte_segment_list *segment_list, uint32_t index,
-	struct ipaddr *local_ip, uint32_t local_iface, struct ipaddr *remote_ip,
-	uint32_t remote_iface)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_find(segment_list, index);
-	segment->nai_type = SRTE_SEGMENT_NAI_TYPE_IPV4_UNNUMBERED_ADJACENCY;
-	memcpy(&segment->nai_local_addr, local_ip, sizeof(struct ipaddr));
-	memcpy(&segment->nai_remote_addr, remote_ip, sizeof(struct ipaddr));
-	segment->nai_local_iface = local_iface;
-	segment->nai_remote_iface = remote_iface;
 }
 
 struct srte_segment_list *
@@ -545,5 +426,25 @@ enum pcep_sr_subobj_nai pcep_nai_type(enum srte_segment_nai_type type)
 		return PCEP_SR_SUBOBJ_NAI_UNNUMBERED_IPV4_ADJACENCY;
 	default:
 		return PCEP_SR_SUBOBJ_NAI_UNKNOWN;
+	}
+}
+
+enum srte_segment_nai_type srte_nai_type(enum pcep_sr_subobj_nai type)
+{
+	switch (type) {
+	case PCEP_SR_SUBOBJ_NAI_ABSENT:
+		return SRTE_SEGMENT_NAI_TYPE_NONE;
+	case PCEP_SR_SUBOBJ_NAI_IPV4_NODE:
+		return SRTE_SEGMENT_NAI_TYPE_IPV4_NODE;
+	case PCEP_SR_SUBOBJ_NAI_IPV6_NODE:
+		return SRTE_SEGMENT_NAI_TYPE_IPV6_NODE;
+	case PCEP_SR_SUBOBJ_NAI_IPV4_ADJACENCY:
+		return SRTE_SEGMENT_NAI_TYPE_IPV4_ADJACENCY;
+	case PCEP_SR_SUBOBJ_NAI_IPV6_ADJACENCY:
+		return SRTE_SEGMENT_NAI_TYPE_IPV6_ADJACENCY;
+	case PCEP_SR_SUBOBJ_NAI_UNNUMBERED_IPV4_ADJACENCY:
+		return SRTE_SEGMENT_NAI_TYPE_IPV4_UNNUMBERED_ADJACENCY;
+	default:
+		return SRTE_SEGMENT_NAI_TYPE_NONE;
 	}
 }
