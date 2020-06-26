@@ -44,16 +44,6 @@ path_pcep_config_create_segment_list(const char *segment_list_name,
 				     const char *originator);
 static void path_pcep_config_update_lsp(struct lsp_nb_key *key,
 					struct srte_segment_list *segment_list);
-static void path_pcep_config_add_lsp_metric(uint32_t color,
-					    struct ipaddr *endpoint,
-					    uint32_t preference,
-					    enum pcep_metric_types type,
-					    float value, bool is_bound,
-					    bool is_computed);
-static void path_pcep_config_set_lsp_bandwidth(uint32_t color,
-					       struct ipaddr *endpoint,
-					       uint32_t preference,
-					       float value);
 
 static struct srte_candidate *lookup_candidate(struct lsp_nb_key *key);
 static char *candidate_name(struct srte_candidate *candidate);
@@ -243,6 +233,7 @@ int path_pcep_config_update_path(struct path *path)
 	int index;
 	char segment_list_name_buff[64 + 1 + 64 + 1 + 11 + 1];
 	char *segment_list_name = NULL;
+	struct srte_candidate *candidate;
 	struct srte_segment_list *segment_list;
 	struct srte_segment_entry *segment;
 
@@ -276,19 +267,14 @@ int path_pcep_config_update_path(struct path *path)
 
 	path_pcep_config_update_lsp(&path->nbkey, segment_list);
 
-	for (metric = path->first_metric; metric != NULL;
-	     metric = metric->next) {
-		path_pcep_config_add_lsp_metric(
-			path->nbkey.color, &path->nbkey.endpoint,
-			path->nbkey.preference, metric->type, metric->value,
-			metric->is_bound, metric->is_computed);
-	}
+	candidate = lookup_candidate(&path->nbkey);
 
-	if (path->has_bandwidth) {
-		path_pcep_config_set_lsp_bandwidth(
-			path->nbkey.color, &path->nbkey.endpoint,
-			path->nbkey.preference, path->bandwidth);
-	}
+	for (metric = path->first_metric; metric != NULL; metric = metric->next)
+		srte_lsp_set_metric(candidate->lsp, metric->type, metric->value,
+				    metric->is_bound, metric->is_computed);
+
+	if (path->has_bandwidth)
+		srte_lsp_set_bandwidth(candidate->lsp, path->bandwidth);
 
 	srte_apply_changes();
 
@@ -351,32 +337,6 @@ void path_pcep_config_update_lsp(struct lsp_nb_key *key,
 	assert(candidate->lsp->segment_list);
 
 	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
-}
-
-void path_pcep_config_add_lsp_metric(uint32_t color, struct ipaddr *endpoint,
-				     uint32_t preference,
-				     enum pcep_metric_types type, float value,
-				     bool is_bound, bool is_computed)
-{
-	struct srte_policy *policy;
-	struct srte_candidate *candidate;
-
-	policy = srte_policy_find(color, endpoint);
-	candidate = srte_candidate_find(policy, preference);
-
-	srte_lsp_set_metric(candidate->lsp, type, value, is_bound, is_computed);
-}
-
-void path_pcep_config_set_lsp_bandwidth(uint32_t color, struct ipaddr *endpoint,
-					uint32_t preference, float value)
-{
-	struct srte_policy *policy;
-	struct srte_candidate *candidate;
-
-	policy = srte_policy_find(color, endpoint);
-	candidate = srte_candidate_find(policy, preference);
-
-	srte_lsp_set_bandwidth(candidate->lsp, value);
 }
 
 struct srte_candidate *lookup_candidate(struct lsp_nb_key *key)
