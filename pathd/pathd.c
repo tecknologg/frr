@@ -366,7 +366,10 @@ struct srte_candidate *srte_candidate_add(struct srte_policy *policy,
 	candidate->preference = preference;
 	candidate->policy = policy;
 	candidate->type = SRTE_CANDIDATE_TYPE_UNDEFINED;
+
+	lsp->candidate = candidate;
 	candidate->lsp = lsp;
+
 	RB_INSERT(srte_candidate_head, &policy->candidate_paths, candidate);
 
 	return candidate;

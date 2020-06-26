@@ -34,17 +34,6 @@
 
 static struct path_hop *
 path_pcep_config_list_path_hops(struct srte_segment_list *segment_list);
-
-static void path_pcep_config_delete_lsp_segment_list(struct lsp_nb_key *key);
-static void path_pcep_config_add_segment_list_segment(
-	struct srte_segment_list *segment_list, uint32_t index, uint32_t label);
-static struct srte_segment_list *
-path_pcep_config_create_segment_list(const char *segment_list_name,
-				     enum srte_protocol_origin protocol,
-				     const char *originator);
-static void path_pcep_config_update_lsp(struct lsp_nb_key *key,
-					struct srte_segment_list *segment_list);
-
 static struct srte_candidate *lookup_candidate(struct lsp_nb_key *key);
 static char *candidate_name(struct srte_candidate *candidate);
 static enum pcep_lsp_operational_status
@@ -56,7 +45,6 @@ void path_pcep_config_lookup(struct path *path)
 {
 	struct srte_candidate *candidate = lookup_candidate(&path->nbkey);
 	struct srte_lsp *lsp = candidate->lsp;
-	;
 
 	if (candidate == NULL)
 		return;
@@ -234,40 +222,57 @@ int path_pcep_config_update_path(struct path *path)
 	char segment_list_name_buff[64 + 1 + 64 + 1 + 11 + 1];
 	char *segment_list_name = NULL;
 	struct srte_candidate *candidate;
-	struct srte_segment_list *segment_list;
+	struct srte_segment_list *segment_list = NULL;
 	struct srte_segment_entry *segment;
 
-	path_pcep_config_delete_lsp_segment_list(&path->nbkey);
+	candidate = lookup_candidate(&path->nbkey);
+
+	// if there is no candidate to update we are done
+	if (!candidate)
+		return 0;
+
+	// first clean up old segment list if present
+	if (candidate->lsp->segment_list) {
+		SET_FLAG(candidate->lsp->segment_list->flags,
+			 F_SEGMENT_LIST_DELETED);
+		candidate->lsp->segment_list = NULL;
+	}
 
 	if (path->first_hop != NULL) {
 		snprintf(segment_list_name_buff, sizeof(segment_list_name_buff),
 			 "%s-%u", path->name, path->plsp_id);
 		segment_list_name = segment_list_name_buff;
-		segment_list = path_pcep_config_create_segment_list(
-			segment_list_name, path->update_origin,
-			path->originator);
+
+		segment_list = srte_segment_list_add(segment_list_name);
+		segment_list->protocol_origin = path->update_origin;
+		strlcpy(segment_list->originator, path->originator,
+			sizeof(segment_list->originator));
+		SET_FLAG(segment_list->flags, F_SEGMENT_LIST_NEW);
+		SET_FLAG(segment_list->flags, F_SEGMENT_LIST_MODIFIED);
+
 		for (hop = path->first_hop, index = 10; hop != NULL;
 		     hop = hop->next, index += 10) {
 			assert(hop->has_sid);
 			assert(hop->is_mpls);
-			path_pcep_config_add_segment_list_segment(
-				segment_list, index, hop->sid.mpls.label);
-			if (hop->has_nai) {
-				segment = srte_segment_entry_find(segment_list,
-								  index);
+
+			segment = srte_segment_entry_add(segment_list, index);
+
+			segment->sid_value = (mpls_label_t)hop->sid.mpls.label;
+			SET_FLAG(segment->segment_list->flags,
+				 F_SEGMENT_LIST_MODIFIED);
+
+			if (hop->has_nai)
 				srte_segment_entry_set_nai(
 					segment, srte_nai_type(hop->nai.type),
 					&hop->nai.local_addr,
 					hop->nai.local_iface,
 					&hop->nai.remote_addr,
 					hop->nai.remote_iface);
-			}
 		}
 	}
 
-	path_pcep_config_update_lsp(&path->nbkey, segment_list);
-
-	candidate = lookup_candidate(&path->nbkey);
+	candidate->lsp->segment_list = segment_list;
+	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 
 	for (metric = path->first_metric; metric != NULL; metric = metric->next)
 		srte_lsp_set_metric(candidate->lsp, metric->type, metric->value,
@@ -279,64 +284,6 @@ int path_pcep_config_update_path(struct path *path)
 	srte_apply_changes();
 
 	return 0;
-}
-
-/* Delete the candidate path segment list if it was created through PCEP
-   and by the given originator */
-void path_pcep_config_delete_lsp_segment_list(struct lsp_nb_key *key)
-{
-	struct srte_candidate *candidate = lookup_candidate(key);
-
-	if ((candidate == NULL) || (candidate->lsp->segment_list == NULL))
-		return;
-
-	SET_FLAG(candidate->lsp->segment_list->flags, F_SEGMENT_LIST_DELETED);
-
-	candidate->lsp->segment_list = NULL;
-	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
-}
-
-void path_pcep_config_add_segment_list_segment(
-	struct srte_segment_list *segment_list, uint32_t index, uint32_t label)
-{
-	struct srte_segment_entry *segment;
-
-	segment = srte_segment_entry_add(segment_list, index);
-	segment->sid_value = (mpls_label_t)label;
-	SET_FLAG(segment->segment_list->flags, F_SEGMENT_LIST_MODIFIED);
-}
-
-struct srte_segment_list *
-path_pcep_config_create_segment_list(const char *segment_list_name,
-				     enum srte_protocol_origin protocol,
-				     const char *originator)
-{
-	struct srte_segment_list *segment_list;
-
-	segment_list = srte_segment_list_add(segment_list_name);
-	SET_FLAG(segment_list->flags, F_SEGMENT_LIST_NEW);
-
-	segment_list->protocol_origin = protocol;
-	strlcpy(segment_list->originator, originator,
-		sizeof(segment_list->originator));
-	SET_FLAG(segment_list->flags, F_SEGMENT_LIST_MODIFIED);
-
-	return segment_list;
-}
-
-void path_pcep_config_update_lsp(struct lsp_nb_key *key,
-				 struct srte_segment_list *segment_list)
-{
-	struct srte_policy *policy;
-	struct srte_candidate *candidate;
-
-	policy = srte_policy_find(key->color, &key->endpoint);
-	candidate = srte_candidate_find(policy, key->preference);
-
-	candidate->lsp->segment_list = segment_list;
-	assert(candidate->lsp->segment_list);
-
-	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 }
 
 struct srte_candidate *lookup_candidate(struct lsp_nb_key *key)
