@@ -25,6 +25,7 @@
 #include "pathd/path_pcep.h"
 #include "pathd/path_pcep_config.h"
 #include "pathd/path_pcep_debug.h"
+#include "thread.h"
 
 #define MAX_XPATH 256
 #define MAX_FLOAT_LEN 22
@@ -41,13 +42,14 @@ status_int_to_ext(enum srte_policy_status status);
 static enum pcep_sr_subobj_nai pcep_nai_type(enum srte_segment_nai_type type);
 static enum srte_segment_nai_type srte_nai_type(enum pcep_sr_subobj_nai type);
 
-void path_pcep_config_lookup(struct path *path)
+static int path_pcep_config_lookup_cb(struct thread *t)
 {
+	struct path *path = THREAD_ARG(t);
 	struct srte_candidate *candidate = lookup_candidate(&path->nbkey);
 	struct srte_lsp *lsp = candidate->lsp;
 
 	if (candidate == NULL)
-		return;
+		return 0;
 	if (path->name == NULL)
 		path->name = candidate_name(candidate);
 	if (path->type == SRTE_CANDIDATE_TYPE_UNDEFINED)
@@ -57,6 +59,16 @@ void path_pcep_config_lookup(struct path *path)
 	if ((path->update_origin == SRTE_ORIGIN_UNDEFINED)
 	    && (lsp->segment_list != NULL))
 		path->update_origin = lsp->segment_list->protocol_origin;
+
+	return 0;
+}
+
+void path_pcep_config_lookup(struct path *path)
+{
+	/*
+	 * Configuration access is strictly done via the main thread
+	 */
+	thread_execute(master, path_pcep_config_lookup_cb, path, 0);
 }
 
 struct path *path_pcep_config_get_path(struct lsp_nb_key *key)
