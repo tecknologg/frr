@@ -107,6 +107,7 @@ extern int bgp_nexthop_self(struct bgp *, struct in_addr);
 extern struct bgp_nexthop_cache *bnc_new(struct bgp_nexthop_cache_head *tree,
 					 struct prefix *prefix,
 					 uint32_t srte_color);
+extern bool bnc_existing_for_prefix(struct bgp_nexthop_cache *bnc);
 extern void bnc_free(struct bgp_nexthop_cache *bnc);
 extern struct bgp_nexthop_cache *bnc_find(struct bgp_nexthop_cache_head *tree,
 					  struct prefix *prefix,
