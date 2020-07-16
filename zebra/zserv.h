@@ -90,8 +90,10 @@ struct client_gr_info {
 
 /* Client structure. */
 struct zserv {
+#ifdef ZSERV_MULTITHREAD
 	/* Client pthread */
 	struct frr_pthread *pthread;
+#endif
 
 	/* Client file descriptor. */
 	int sock;
@@ -232,6 +234,17 @@ struct zserv {
 	 */
 	TAILQ_HEAD(info_list, client_gr_info) gr_info_queue;
 };
+
+#include "zebra/zebra_router.h"
+
+static inline struct thread_master *zserv_master(struct zserv *client)
+{
+#ifdef ZSERV_MULTITHREAD
+	return client->pthread->master;
+#else
+	return zrouter.master;
+#endif
+}
 
 #define ZAPI_HANDLER_ARGS                                                      \
 	struct zserv *client, struct zmsghdr *hdr, struct stream *msg,         \

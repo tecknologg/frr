@@ -188,8 +188,10 @@ static void zserv_client_fail(struct zserv *client)
 		  "Client '%s' encountered an error and is shutting down.",
 		  zebra_route_string(client->proto));
 
+#ifdef ZSERV_MULTITHREAD
 	atomic_store_explicit(&client->pthread->running, false,
 			      memory_order_relaxed);
+#endif
 
 	THREAD_OFF(client->t_read);
 	THREAD_OFF(client->t_write);
@@ -466,11 +468,11 @@ static void zserv_client_event(struct zserv *client,
 {
 	switch (event) {
 	case ZSERV_CLIENT_READ:
-		thread_add_read(client->pthread->master, zserv_read, client,
+		thread_add_read(zserv_master(client), zserv_read, client,
 				client->sock, &client->t_read);
 		break;
 	case ZSERV_CLIENT_WRITE:
-		thread_add_write(client->pthread->master, zserv_write, client,
+		thread_add_write(zserv_master(client), zserv_write, client,
 				 client->sock, &client->t_write);
 		break;
 	}
@@ -656,6 +658,7 @@ void zserv_close_client(struct zserv *client)
 {
 	bool free_p = true;
 
+#ifdef ZSERV_MULTITHREAD
 	if (client->pthread) {
 		/* synchronously stop and join pthread */
 		frr_pthread_stop(client->pthread, NULL);
@@ -672,6 +675,11 @@ void zserv_close_client(struct zserv *client)
 		frr_pthread_destroy(client->pthread);
 		client->pthread = NULL;
 	}
+#else
+	thread_cancel_event(zrouter.master, client);
+	THREAD_OFF(client->t_cleanup);
+	THREAD_OFF(client->t_process);
+#endif
 
 	/*
 	 * Final check in case the client struct is in use in another
@@ -758,6 +766,7 @@ static struct zserv *zserv_client_create(int sock)
 		listnode_add(zrouter.client_list, client);
 	}
 
+#ifdef ZSERV_MULTITHREAD
 	struct frr_pthread_attr zclient_pthr_attrs = {
 		.start = frr_pthread_attr_default.start,
 		.stop = frr_pthread_attr_default.stop
@@ -765,6 +774,7 @@ static struct zserv *zserv_client_create(int sock)
 	client->pthread =
 		frr_pthread_new(&zclient_pthr_attrs, "Zebra API client thread",
 				"zebra_apic");
+#endif
 
 	/* start read loop */
 	zserv_client_event(client, ZSERV_CLIENT_READ);
@@ -772,8 +782,10 @@ static struct zserv *zserv_client_create(int sock)
 	/* call callbacks */
 	hook_call(zserv_client_connect, client);
 
+#ifdef ZSERV_MULTITHREAD
 	/* start pthread */
 	frr_pthread_run(client->pthread, NULL);
+#endif
 
 	return client;
 }
