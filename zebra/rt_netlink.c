@@ -2218,6 +2218,8 @@ enum zebra_dplane_result kernel_nexthop_update(struct zebra_dplane_ctx *ctx)
 	int ret = 0;
 	char buf[NL_PKT_BUF_SIZE];
 
+	memset(buf, 0, sizeof(buf));
+
 	op = dplane_ctx_get_op(ctx);
 	if (op == DPLANE_OP_NH_INSTALL || op == DPLANE_OP_NH_UPDATE)
 		cmd = RTM_NEWNEXTHOP;

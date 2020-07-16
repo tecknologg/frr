@@ -37,6 +37,8 @@ enum zebra_dplane_result kernel_lsp_update(struct zebra_dplane_ctx *ctx)
 	ssize_t ret = -1;
 	int cmd;
 
+	memset(nl_pkt, 0, sizeof(nl_pkt));
+
 	/* Call to netlink layer based on type of update */
 	if (dplane_ctx_get_op(ctx) == DPLANE_OP_LSP_DELETE) {
 		cmd = RTM_DELROUTE;
