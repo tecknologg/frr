@@ -32,6 +32,7 @@ fields as needed.
 
 import struct
 from collections import OrderedDict
+from weakref import WeakValueDictionary
 
 from _clippy import ELFFile, ELFAccessError
 
@@ -45,9 +46,13 @@ class ELFNull(object):
     '''
     def __init__(self):
         self.symname = None
+        self._dstsect = None
 
     def __repr__(self):
         return '<ptr: NULL>'
+
+    def __hash__(self):
+        return hash(None)
 
     def get_string(self):
         return None
@@ -62,9 +67,13 @@ class ELFUnresolved(object):
     def __init__(self, symname, addend):
         self.addend = addend
         self.symname = symname
+        self._dstsect = None
 
     def __repr__(self):
         return '<unresolved: %s+%d>' % (self.symname, self.addend)
+
+    def __hash__(self):
+        return hash((self.symname, self.addend))
 
 class ELFData(object):
     '''
@@ -83,6 +92,9 @@ class ELFData(object):
 
     def __repr__(self):
         return '<ptr: %s+0x%05x/%d>' % (self._dstsect.name, self._dstoffs, self._dstlen or -1)
+
+    def __hash__(self):
+        return hash((self._dstsect, self._dstoffs))
 
     def get_string(self):
         '''
@@ -189,7 +201,7 @@ class ELFDissectStruct(ELFDissectData):
        Dictionary to rename fields, useful if fields comes from tiabwarfo.py.
     '''
 
-    class LazyInstance(object):
+    class Pointer(object):
         '''
         Quick wrapper for pointers to further structs
 
@@ -197,17 +209,27 @@ class ELFDissectStruct(ELFDissectData):
         structs that have pointers to each other (e.g. struct xref <-->
         struct xrefdata.)  The pointer destination is only instantiated when
         actually accessed.
-
-        TBD: a file-wide weak dict of pointer->struct would also solve this,
-        but better.
         '''
-        def __init__(self, func, *args, **kwargs):
-            self.func = func
-            self.args = args
-            self.kwargs = kwargs
+        def __init__(self, cls, ptr):
+            self.cls = cls
+            self.ptr = ptr
+
+        def __repr__(self):
+            return '<Pointer:%s %r>' % (self.cls.__name__, self.ptr)
 
         def __call__(self):
-            return self.func(*self.args, **self.kwargs)
+            return self.cls(self.ptr)
+
+    def __new__(cls, dataptr, parent = None, replace = None):
+        if dataptr._dstsect is None:
+            return super().__new__(cls)
+
+        obj = dataptr._dstsect._pointers.get((cls, dataptr))
+        if obj is not None:
+            return obj
+        obj = super().__new__(cls)
+        dataptr._dstsect._pointers[(cls, dataptr)] = obj
+        return obj
 
     def __init__(self, dataptr, parent = None, replace = None):
         self._fdata = None
@@ -275,7 +297,7 @@ class ELFDissectStruct(ELFDissectData):
                     pass
                 elif issubclass(self.fields[i][2], ELFDissectData):
                     cls = self.fields[i][2]
-                    dataobj = self.LazyInstance(cls, item)
+                    dataobj = self.Pointer(cls, item)
                     self._fdata[name] = dataobj
                     continue
 
@@ -284,7 +306,7 @@ class ELFDissectStruct(ELFDissectData):
     def __getattr__(self, attrname):
         if attrname not in self._fdata:
             raise AttributeError(attrname)
-        if isinstance(self._fdata[attrname], self.LazyInstance):
+        if isinstance(self._fdata[attrname], self.Pointer):
             self._fdata[attrname] = self._fdata[attrname]()
         return self._fdata[attrname]
 
@@ -356,6 +378,14 @@ class ELFSubset(object):
     '''
     Common abstract base for section-level and file-level access.
     '''
+
+    def __init__(self):
+        super().__init__()
+
+        self._pointers = WeakValueDictionary()
+
+    def __hash__(self):
+        return hash(self.name)
 
     def __getitem__(self, k):
         '''
@@ -450,6 +480,8 @@ class ELFDissectSection(ELFSubset):
     '''
 
     def __init__(self, elfwrap, idx, section):
+        super().__init__()
+
         self._elfwrap = elfwrap
         self._elffile = elfwrap._elffile
         self._idx = idx
@@ -481,6 +513,8 @@ class ELFDissectFile(ELFSubset):
     '''
 
     def __init__(self, filename):
+        super().__init__()
+
         self.name = filename
         self._elffile = self._obj = ELFFile(filename)
         self._sections = {}
