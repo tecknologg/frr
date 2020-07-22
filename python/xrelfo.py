@@ -171,17 +171,23 @@ class CmdElement(ELFDissectStruct, XrelfoJson):
 
     cmd_attrs = { 0: None, 1: 'deprecated', 2: 'hidden'}
 
-    def dict_node(self, node):
-        jsobj = {
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dict_nodes = []
+
+    def to_dict(self, xrelfo):
+        cli = xrelfo.setdefault('cli', {})
+        jsobj = cli.setdefault(self.name, {})
+        jsobj.update({
             'string': self.string,
             'doc': self.doc,
             'attr': self.cmd_attrs.get(self.attr, self.attr),
-        }
+            'nodes': self.dict_nodes,
+        })
         if jsobj['attr'] is None:
             del jsobj['attr']
 
         jsobj['defun'] = dict([(i, getattr(self.xref, i)) for i in ['file', 'line', 'func']])
-        return (self.name, jsobj)
 
 Xref.containers[XREFT_DEFUN] = CmdElement
 
@@ -190,10 +196,17 @@ class XrefInstallElement(ELFDissectStruct, XrelfoJson):
 
     def to_dict(self, xrelfo):
         cli = xrelfo.setdefault('cli', {})
-        node = cli.setdefault(self.node_type, {})
-        k, jsobj = self.cmd_element.dict_node(node)
-        jsobj['install'] = dict([(i, getattr(self.xref, i)) for i in ['file', 'line', 'func']])
-        node[k] = jsobj
+        jsobj = cli.setdefault(self.cmd_element.name, {})
+        nodes = jsobj.setdefault('nodes', [])
+
+        nodes.append({
+            'node': self.node_type,
+            'install': dict([(i, getattr(self.xref, i)) for i in ['file', 'line', 'func']]),
+        })
+    #    node = cli.setdefault(self.node_type, {})
+    #    k, jsobj = self.cmd_element.dict_node(node)
+    #    jsobj['install'] = dict([(i, getattr(self.xref, i)) for i in ['file', 'line', 'func']])
+    #    node[k] = jsobj
 
 Xref.containers[XREFT_INSTALL_ELEMENT] = XrefInstallElement
 
