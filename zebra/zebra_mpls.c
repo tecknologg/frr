@@ -1931,16 +1931,19 @@ static int mpls_processq_init(void)
 
 /* Public functions */
 
-void zebra_mpls_label_created(mpls_label_t label){
-    hook_call(zebra_mpls_label_created, label);
+void zebra_mpls_label_created(mpls_label_t label)
+{
+	hook_call(zebra_mpls_label_created, label);
 }
 
-void zebra_mpls_label_updated(mpls_label_t label){
-    hook_call(zebra_mpls_label_updated, label);
+void zebra_mpls_label_updated(mpls_label_t label)
+{
+	hook_call(zebra_mpls_label_updated, label);
 }
 
-void zebra_mpls_label_removed(mpls_label_t label){
-    hook_call(zebra_mpls_label_removed, label);
+void zebra_mpls_label_removed(mpls_label_t label)
+{
+	hook_call(zebra_mpls_label_removed, label);
 }
 
 /*

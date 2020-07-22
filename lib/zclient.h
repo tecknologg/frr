@@ -90,7 +90,7 @@ enum zserv_client_capabilities {
 /* Macro to check if there GR enabled. */
 #define ZEBRA_CLIENT_GR_ENABLED(X) (X == ZEBRA_CLIENT_GR_CAPABILITIES)
 
-#define ZEBRA_SR_POLICY_NAME_MAX_LENGTH   100
+#define ZEBRA_SR_POLICY_NAME_MAX_LENGTH 100
 
 extern struct sockaddr_storage zclient_addr;
 extern socklen_t zclient_addr_len;
@@ -369,8 +369,8 @@ struct zclient {
  * the table being used is not in the VRF.  You must pass the
  * default vrf, else this will be ignored.
  */
-#define ZAPI_MESSAGE_TABLEID  0x0080
-#define ZAPI_MESSAGE_SRTE     0x0100
+#define ZAPI_MESSAGE_TABLEID 0x0080
+#define ZAPI_MESSAGE_SRTE 0x0100
 
 #define ZSERV_VERSION 6
 /* Zserv protocol message header */

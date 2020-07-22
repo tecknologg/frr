@@ -441,8 +441,8 @@ int main(int argc, char **argv)
 	zebra_opaque_init();
 	zebra_srte_init();
 
-/* For debug purpose. */
-/* SET_FLAG (zebra_debug_event, ZEBRA_DEBUG_EVENT); */
+	/* For debug purpose. */
+	/* SET_FLAG (zebra_debug_event, ZEBRA_DEBUG_EVENT); */
 
 	/* Process the configuration file. Among other configuration
 	*  directives we can meet those installing static routes. Such

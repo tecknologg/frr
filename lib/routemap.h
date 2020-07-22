@@ -616,11 +616,11 @@ struct route_map_match_set_hooks {
 
 	/* set sr-te color */
 	int (*set_srte_color)(struct vty *vty, struct route_map_index *index,
-			       const char *command, const char *arg);
+			      const char *command, const char *arg);
 
 	/* no set sr-te color */
 	int (*no_set_srte_color)(struct vty *vty, struct route_map_index *index,
-				  const char *command, const char *arg);
+				 const char *command, const char *arg);
 
 	/* set ip nexthop */
 	int (*set_ip_nexthop)(struct vty *vty, struct route_map_index *index,

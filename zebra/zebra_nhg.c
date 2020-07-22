@@ -1699,8 +1699,7 @@ static void nexthop_set_resolved(afi_t afi, const struct nexthop *newhop,
 			i = 1;
 
 		for (; i < policy->segment_list.label_num; i++)
-			labels[num_labels++] =
-				policy->segment_list.labels[i];
+			labels[num_labels++] = policy->segment_list.labels[i];
 		label_type = policy->segment_list.type;
 	} else if (newhop->nh_label) {
 		for (i = 0; i < newhop->nh_label->num_labels; i++) {
@@ -1877,8 +1876,8 @@ static int nexthop_active(afi_t afi, struct route_entry *re,
 		policy = zebra_sr_policy_find(nexthop->srte_color, &endpoint);
 		if (policy && policy->status == ZEBRA_SR_POLICY_UP) {
 			resolved = 0;
-			frr_each_safe(nhlfe_list, &policy->lsp->nhlfe_list,
-				      nhlfe) {
+			frr_each_safe (nhlfe_list, &policy->lsp->nhlfe_list,
+				       nhlfe) {
 				if (!CHECK_FLAG(nhlfe->flags,
 						NHLFE_FLAG_SELECTED)
 				    || CHECK_FLAG(nhlfe->flags,

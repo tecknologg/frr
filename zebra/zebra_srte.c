@@ -137,7 +137,7 @@ static int zebra_sr_policy_notify_update_client(struct zebra_sr_policy *policy,
 	stream_putl(s, policy->color);
 
 	num = 0;
-	frr_each(nhlfe_list_const, &policy->lsp->nhlfe_list, nhlfe) {
+	frr_each (nhlfe_list_const, &policy->lsp->nhlfe_list, nhlfe) {
 		if (!CHECK_FLAG(nhlfe->flags, NHLFE_FLAG_SELECTED)
 		    || CHECK_FLAG(nhlfe->flags, NHLFE_FLAG_DELETED))
 			continue;
@@ -300,7 +300,7 @@ int zebra_sr_policy_bsid_install(struct zebra_sr_policy *policy)
 	if (zt->local_label == MPLS_LABEL_NONE)
 		return 0;
 
-	frr_each_safe(nhlfe_list, &policy->lsp->nhlfe_list, nhlfe) {
+	frr_each_safe (nhlfe_list, &policy->lsp->nhlfe_list, nhlfe) {
 		uint8_t num_out_labels;
 		mpls_label_t *out_labels;
 		mpls_label_t null_label = MPLS_LABEL_IMPLICIT_NULL;
@@ -313,8 +313,10 @@ int zebra_sr_policy_bsid_install(struct zebra_sr_policy *policy)
 		 * Don't push the first SID if the corresponding action in the
 		 * LFIB is POP.
 		 */
-		if (!nhlfe->nexthop->nh_label || !nhlfe->nexthop->nh_label->num_labels
-		    || nhlfe->nexthop->nh_label->label[0] == MPLS_LABEL_IMPLICIT_NULL) {
+		if (!nhlfe->nexthop->nh_label
+		    || !nhlfe->nexthop->nh_label->num_labels
+		    || nhlfe->nexthop->nh_label->label[0]
+			       == MPLS_LABEL_IMPLICIT_NULL) {
 			if (zt->label_num > 1) {
 				num_out_labels = zt->label_num - 1;
 				out_labels = &zt->labels[1];

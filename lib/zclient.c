@@ -1052,7 +1052,9 @@ int zapi_route_encode(uint8_t cmd, struct stream *s, struct zapi_route *api)
 				return -1;
 			}
 
-			if (zapi_nexthop_encode(s, api_nh, api->flags, api->message) != 0)
+			if (zapi_nexthop_encode(s, api_nh, api->flags,
+						api->message)
+			    != 0)
 				return -1;
 		}
 	}
@@ -1096,7 +1098,9 @@ int zapi_route_encode(uint8_t cmd, struct stream *s, struct zapi_route *api)
 				return -1;
 			}
 
-			if (zapi_nexthop_encode(s, api_nh, api->flags, api->message) != 0)
+			if (zapi_nexthop_encode(s, api_nh, api->flags,
+						api->message)
+			    != 0)
 				return -1;
 		}
 	}
@@ -1292,7 +1296,9 @@ int zapi_route_decode(struct stream *s, struct zapi_route *api)
 		for (i = 0; i < api->nexthop_num; i++) {
 			api_nh = &api->nexthops[i];
 
-			if (zapi_nexthop_decode(s, api_nh, api->flags, api->message) != 0)
+			if (zapi_nexthop_decode(s, api_nh, api->flags,
+						api->message)
+			    != 0)
 				return -1;
 		}
 	}
@@ -1310,9 +1316,10 @@ int zapi_route_decode(struct stream *s, struct zapi_route *api)
 		for (i = 0; i < api->backup_nexthop_num; i++) {
 			api_nh = &api->backup_nexthops[i];
 
-			if (zapi_nexthop_decode(s, api_nh, api->flags, api->message) != 0)
+			if (zapi_nexthop_decode(s, api_nh, api->flags,
+						api->message)
+			    != 0)
 				return -1;
-
 		}
 	}
 

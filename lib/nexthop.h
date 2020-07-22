@@ -143,7 +143,7 @@ struct nexthop {
 		vni_t vni;
 	} nh_encap;
 
-	/* SR-TE color used for BGP traffic */
+	/* SR-TE color used for matching SR-TE policies */
 	uint32_t srte_color;
 };
 
