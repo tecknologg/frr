@@ -65,7 +65,7 @@ void zlog_fd(struct zlog_target *zt, struct zlog_msg *msgs[], size_t nmsgs)
 	struct zlt_fd *zte = container_of(zt, struct zlt_fd, zt);
 	int fd;
 	size_t i, textlen, iovpos = 0;
-	size_t niov = MIN(4 * nmsgs + 1, IOV_MAX);
+	size_t niov = MIN(7 * nmsgs + 1, IOV_MAX);
 	struct iovec iov[niov];
 	/* "\nYYYY-MM-DD HH:MM:SS.NNNNNNNNN+ZZ:ZZ " = 37 chars */
 #define TS_LEN 40
@@ -101,6 +101,19 @@ void zlog_fd(struct zlog_target *zt, struct zlog_msg *msgs[], size_t nmsgs)
 		iov[iovpos].iov_base = zlog_prefix;
 		iov[iovpos].iov_len = zlog_prefixsz;
 
+		const struct xref_logmsg *xref = zlog_msg_xref(msg);
+		if (xref) {
+			iovpos++;
+			iov[iovpos].iov_base = (char *) "[";
+			iov[iovpos].iov_len = 1;
+			iovpos++;
+			iov[iovpos].iov_base = xref->xref.xrefdata->uid;
+			iov[iovpos].iov_len = strlen(xref->xref.xrefdata->uid);
+			iovpos++;
+			iov[iovpos].iov_base = (char *) "] ";
+			iov[iovpos].iov_len = 2;
+		}
+
 		iovpos++;
 
 		iov[iovpos].iov_base = (char *)zlog_msg_text(msg, &textlen);
@@ -110,7 +123,7 @@ void zlog_fd(struct zlog_target *zt, struct zlog_msg *msgs[], size_t nmsgs)
 
 		if (ts_buf + sizeof(ts_buf) - ts_pos < TS_LEN
 		    || i + 1 == nmsgs
-		    || array_size(iov) - iovpos < 5) {
+		    || array_size(iov) - iovpos < 8) {
 			iov[iovpos].iov_base = (char *)"\n";
 			iov[iovpos].iov_len = 1;
 
