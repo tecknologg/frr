@@ -52,10 +52,10 @@ static void zlog_5424(struct zlog_target *zt, struct zlog_msg *msgs[],
 	struct zlt_5424 *zte = container_of(zt, struct zlt_5424, zt);
 	int fd;
 	size_t i, textlen, iovpos = 0;
-	size_t niov = MIN(4 * nmsgs + 1, IOV_MAX);
+	size_t niov = MIN(5 * nmsgs + 1, IOV_MAX);
 	struct iovec iov[niov];
 	/* "\n<n>1 YYYY-MM-DD HH:MM:SS.NNNNNNNNN+ZZ:ZZ " = 42 chars */
-#define HDR_LEN 512
+#define HDR_LEN 1024
 	char hdr_buf[HDR_LEN * nmsgs];
 	struct fbuf hdr_pos = {
 		.buf = hdr_buf,
@@ -96,6 +96,27 @@ static void zlog_5424(struct zlog_target *zt, struct zlog_msg *msgs[],
 			bprintfrr(&hdr_pos, "[location@50145 id=\"%s\" file=\"%s\" line=\"%d\" func=\"%s\"]",
 				  xrefdata->uid, xref->xref.file, xref->xref.line, xref->xref.func);
 
+		const struct zlog_kw_frame *frame = zlog_msg_frame(msg);
+
+		if (frame) {
+			const struct zlog_kw_val *val;
+			bool printed = false;
+
+			frr_each (zlog_kw_frame_vals, frame, val) {
+				if (!printed) {
+					bprintfrr(&hdr_pos, "[keywords@50145");
+					printed = true;
+				}
+
+				bprintfrr(&hdr_pos, " %s=\"%s\"",
+					  val->key->name,
+					  zlog_kw_frame_val_str(val));
+			}
+
+			if (printed)
+				bprintfrr(&hdr_pos, "]");
+		}
+
 		bprintfrr(&hdr_pos, " ");
 
 		iov[iovpos].iov_len = hdr_pos.pos
@@ -110,7 +131,7 @@ static void zlog_5424(struct zlog_target *zt, struct zlog_msg *msgs[],
 
 		if (hdr_pos.buf + hdr_pos.len - hdr_pos.pos < HDR_LEN
 		    || i + 1 == nmsgs
-		    || array_size(iov) - iovpos < 3) {
+		    || array_size(iov) - iovpos < 4) {
 			iov[iovpos].iov_base = (char *)"\n";
 			iov[iovpos].iov_len = 1;
 
