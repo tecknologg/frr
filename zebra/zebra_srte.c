@@ -207,8 +207,8 @@ static void zebra_sr_policy_notify_update(struct zebra_sr_policy *policy)
 			zebra_sr_policy_notify_update_client(policy, client);
 		else
 			/* Fallback to the IGP shortest path. */
-			send_client(rnh, client, RNH_NEXTHOP_TYPE,
-				    zvrf_id(zvrf), policy->color);
+			zebra_send_rnh_update(rnh, client, RNH_NEXTHOP_TYPE,
+					      zvrf_id(zvrf), policy->color);
 	}
 }
 
@@ -348,8 +348,8 @@ void zebra_sr_policy_bsid_uninstall(struct zebra_sr_policy *policy,
 	mpls_lsp_uninstall_all_vrf(policy->zvrf, zt->type, old_bsid);
 }
 
-static int zebra_sr_policy_process_label_update(
-	mpls_label_t label, enum zebra_sr_policy_update_label_mode mode)
+int zebra_sr_policy_label_update(mpls_label_t label,
+				 enum zebra_sr_policy_update_label_mode mode)
 {
 	struct zebra_sr_policy *policy;
 
@@ -373,30 +373,6 @@ static int zebra_sr_policy_process_label_update(
 	return 0;
 }
 
-static int zebra_sr_policy_nexthop_label_created(mpls_label_t label)
-{
-	return zebra_sr_policy_process_label_update(
-		label, ZEBRA_SR_POLICY_LABEL_CREATED);
-}
-
-static int zebra_sr_policy_nexthop_label_updated(mpls_label_t label)
-{
-	return zebra_sr_policy_process_label_update(
-		label, ZEBRA_SR_POLICY_LABEL_UPDATED);
-}
-
-static int zebra_sr_policy_nexthop_label_removed(mpls_label_t label)
-{
-	return zebra_sr_policy_process_label_update(
-		label, ZEBRA_SR_POLICY_LABEL_REMOVED);
-}
-
 void zebra_srte_init(void)
 {
-	hook_register(zebra_mpls_label_created,
-		      zebra_sr_policy_nexthop_label_created);
-	hook_register(zebra_mpls_label_updated,
-		      zebra_sr_policy_nexthop_label_updated);
-	hook_register(zebra_mpls_label_removed,
-		      zebra_sr_policy_nexthop_label_removed);
 }

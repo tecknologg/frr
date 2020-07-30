@@ -60,11 +60,6 @@ typedef struct zebra_fec_t_ zebra_fec_t;
 PREDECL_DLIST(snhlfe_list);
 PREDECL_DLIST(nhlfe_list);
 
-/* Hooks */
-DECLARE_HOOK(zebra_mpls_label_created, (mpls_label_t label), (label))
-DECLARE_HOOK(zebra_mpls_label_updated, (mpls_label_t label), (label))
-DECLARE_HOOK(zebra_mpls_label_removed, (mpls_label_t label), (label))
-
 /*
  * (Outgoing) nexthop label forwarding entry configuration
  */
@@ -186,11 +181,6 @@ struct zebra_fec_t_ {
 DECLARE_DLIST(nhlfe_list, struct zebra_nhlfe_t_, list);
 
 /* Function declarations. */
-
-/* Trigger hooks for label updates */
-void zebra_mpls_label_created(mpls_label_t label);
-void zebra_mpls_label_updated(mpls_label_t label);
-void zebra_mpls_label_removed(mpls_label_t label);
 
 /*
  * Add/update global label block.

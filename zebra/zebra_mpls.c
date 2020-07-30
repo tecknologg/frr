@@ -47,6 +47,7 @@
 #include "zebra/zebra_memory.h"
 #include "zebra/zebra_vrf.h"
 #include "zebra/zebra_mpls.h"
+#include "zebra/zebra_srte.h"
 #include "zebra/zebra_errors.h"
 
 DEFINE_MTYPE_STATIC(ZEBRA, LSP, "MPLS LSP object")
@@ -55,10 +56,6 @@ DEFINE_MTYPE_STATIC(ZEBRA, SLSP, "MPLS static LSP config")
 DEFINE_MTYPE_STATIC(ZEBRA, NHLFE, "MPLS nexthop object")
 DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE, "MPLS static nexthop object")
 DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE_IFNAME, "MPLS static nexthop ifname")
-
-DEFINE_HOOK(zebra_mpls_label_created, (mpls_label_t label), (label))
-DEFINE_HOOK(zebra_mpls_label_updated, (mpls_label_t label), (label))
-DEFINE_HOOK(zebra_mpls_label_removed, (mpls_label_t label), (label))
 
 int mpls_enabled;
 
@@ -1929,29 +1926,13 @@ static int mpls_processq_init(void)
 }
 
 
-/* Public functions */
-
-void zebra_mpls_label_created(mpls_label_t label)
-{
-	hook_call(zebra_mpls_label_created, label);
-}
-
-void zebra_mpls_label_updated(mpls_label_t label)
-{
-	hook_call(zebra_mpls_label_updated, label);
-}
-
-void zebra_mpls_label_removed(mpls_label_t label)
-{
-	hook_call(zebra_mpls_label_removed, label);
-}
-
 /*
  * Process LSP update results from zebra dataplane.
  */
 void zebra_mpls_lsp_dplane_result(struct zebra_dplane_ctx *ctx)
 {
 	struct zebra_vrf *zvrf;
+	mpls_label_t label;
 	zebra_ile_t tmp_ile;
 	struct hash *lsp_table;
 	zebra_lsp_t *lsp;
@@ -1959,6 +1940,7 @@ void zebra_mpls_lsp_dplane_result(struct zebra_dplane_ctx *ctx)
 	struct nexthop *nexthop;
 	enum dplane_op_e op;
 	enum zebra_dplane_result status;
+	enum zebra_sr_policy_update_label_mode update_mode;
 
 	op = dplane_ctx_get_op(ctx);
 	status = dplane_ctx_get_status(ctx);
@@ -1968,6 +1950,8 @@ void zebra_mpls_lsp_dplane_result(struct zebra_dplane_ctx *ctx)
 			   ctx, dplane_op2str(op),
 			   dplane_ctx_get_in_label(ctx),
 			   dplane_res2str(status));
+
+	label = dplane_ctx_get_in_label(ctx);
 
 	switch (op) {
 	case DPLANE_OP_LSP_INSTALL:
@@ -1979,7 +1963,7 @@ void zebra_mpls_lsp_dplane_result(struct zebra_dplane_ctx *ctx)
 
 		lsp_table = zvrf->lsp_table;
 
-		tmp_ile.in_label = dplane_ctx_get_in_label(ctx);
+		tmp_ile.in_label = label;
 		lsp = hash_lookup(lsp_table, &tmp_ile);
 		if (lsp == NULL) {
 			if (IS_ZEBRA_DEBUG_DPLANE)
@@ -2013,13 +1997,21 @@ void zebra_mpls_lsp_dplane_result(struct zebra_dplane_ctx *ctx)
 			}
 		}
 
+		update_mode = (op == DPLANE_OP_LSP_INSTALL)
+				      ? ZEBRA_SR_POLICY_LABEL_CREATED
+				      : ZEBRA_SR_POLICY_LABEL_UPDATED;
+		zebra_sr_policy_label_update(label, update_mode);
 		break;
 
 	case DPLANE_OP_LSP_DELETE:
-		if (status != ZEBRA_DPLANE_REQUEST_SUCCESS)
+		if (status != ZEBRA_DPLANE_REQUEST_SUCCESS) {
 			flog_warn(EC_ZEBRA_LSP_DELETE_FAILURE,
 				  "LSP Deletion Failure: in-label %u",
 				  dplane_ctx_get_in_label(ctx));
+			break;
+		}
+		zebra_sr_policy_label_update(label,
+					     ZEBRA_SR_POLICY_LABEL_REMOVED);
 		break;
 
 	default:
