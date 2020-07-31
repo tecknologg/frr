@@ -6091,6 +6091,43 @@ DEFUN (no_neighbor_timers_connect,
 }
 
 
+DEFPY (neighbor_timers_delayopen,
+       neighbor_timers_delayopen_cmd,
+       "[no] neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers delayopen [(1-240)$interval]",
+       "BGP per neighbor timers\n"
+       "BGP delayopen timer\n"
+       "DelayOpen timer\n")
+{
+	struct peer *peer;
+
+	peer = peer_and_group_lookup_vty(vty, neighbor);
+	if (!peer)
+		return CMD_WARNING_CONFIG_FAILED;
+
+	/* TODO: not entirely sure how to deal with the no stirng. */
+	/* if ( (no) || (!interval) ) { */
+	if ( (strncmp(no, (const char*)("no"), 2)) || (!interval) ) {
+		/* TODO:
+		 * unset flag, reset timer value and unset timer config for the
+		 * peer or peer group according to overwrite settings.
+		 */
+		if (peer_timers_delayopen_unset(peer))
+			return CMD_WARNING_CONFIG_FAILED;
+	} else {
+		/* TODO:
+		 * set flag, set timer value and set timer config for the
+		 * peer or peer group according to overwrite settings.
+		 */
+		if (peer_timers_delayopen_set(peer, interval))
+			return CMD_WARNING_CONFIG_FAILED;
+	}
+
+	/* TODO: spit out something useful to logs if necessary. */
+
+	return CMD_SUCCESS;
+}
+
+
 static int peer_advertise_interval_vty(struct vty *vty, const char *ip_str,
 				       const char *time_str, int set)
 {
@@ -10978,6 +11015,10 @@ static void bgp_show_peer(struct vty *vty, struct peer *p, bool use_json,
 		json_object_int_add(json_neigh,
 				    "bgpTimerKeepAliveIntervalMsecs",
 				    p->v_keepalive * 1000);
+		json_object_int_add(json_neigh,
+				    "bgpTimerDelayOpenMsecs",
+				    p->v_delayopen * 1000);
+
 		if (CHECK_FLAG(p->flags, PEER_FLAG_TIMER)) {
 			json_object_int_add(json_neigh,
 					    "bgpTimerConfiguredHoldTimeMsecs",
@@ -10995,6 +11036,11 @@ static void bgp_show_peer(struct vty *vty, struct peer *p, bool use_json,
 				json_neigh,
 				"bgpTimerConfiguredKeepAliveIntervalMsecs",
 				bgp->default_keepalive);
+		}
+		if (CHECK_FLAG(p->flags, PEER_FLAG_TIMER_DELAYOPEN)) {
+			json_object_int_add(json_neigh,
+					    "bgpTimerConfigureDelayOpenMsecs",
+					    p->delayopen * 1000);
 		}
 	} else {
 		/* Administrative shutdown. */
@@ -14800,6 +14846,11 @@ static void bgp_config_write_peer_global(struct vty *vty, struct bgp *bgp,
 		vty_out(vty, " neighbor %s timers connect %u\n", addr,
 			peer->bgp->default_connect_retry);
 
+	/* timers delayopen */
+	if (peergroup_flag_check(peer, PEER_FLAG_TIMER_DELAYOPEN))
+		vty_out(vty, " neighbor %s timers delayopen %u\n", addr,
+			peer->delayopen);
+
 	/* capability dynamic */
 	if (peergroup_flag_check(peer, PEER_FLAG_DYNAMIC_CAPABILITY))
 		vty_out(vty, " neighbor %s capability dynamic\n", addr);
@@ -16611,6 +16662,9 @@ void bgp_vty_init(void)
 	/* "neighbor advertisement-interval" commands. */
 	install_element(BGP_NODE, &neighbor_advertise_interval_cmd);
 	install_element(BGP_NODE, &no_neighbor_advertise_interval_cmd);
+
+	/* "neighbor timers delayopen" commands. */
+	install_element(BGP_NODE, &neighbor_timers_delayopen_cmd);
 
 	/* "neighbor interface" commands. */
 	install_element(BGP_NODE, &neighbor_interface_cmd);
