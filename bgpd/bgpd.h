@@ -548,6 +548,7 @@ struct bgp {
 	uint32_t default_holdtime;
 	uint32_t default_keepalive;
 	uint32_t default_connect_retry;
+	uint32_t default_delayopen;
 
 	/* BGP graceful restart */
 	uint32_t restart_time;
@@ -1105,7 +1106,7 @@ struct peer {
 #define PEER_FLAG_ENFORCE_FIRST_AS          (1 << 16) /* enforce-first-as */
 #define PEER_FLAG_ROUTEADV                  (1 << 17) /* route advertise */
 #define PEER_FLAG_TIMER                     (1 << 18) /* keepalive & holdtime */
-#define PEER_FLAG_TIMER_CONNECT             (1 << 19) /* connect timer */
+#define PEER_FLAG_TIMER_CONNECT             (1 << 19) /* retry connect timer */
 #define PEER_FLAG_PASSWORD                  (1 << 20) /* password */
 #define PEER_FLAG_LOCAL_AS                  (1 << 21) /* local-as */
 #define PEER_FLAG_UPDATE_SOURCE             (1 << 22) /* update-source */
@@ -1114,6 +1115,9 @@ struct peer {
 #define PEER_FLAG_GRACEFUL_RESTART_HELPER   (1 << 23) /* Helper */
 #define PEER_FLAG_GRACEFUL_RESTART          (1 << 24) /* Graceful Restart */
 #define PEER_FLAG_GRACEFUL_RESTART_GLOBAL_INHERIT (1 << 25) /* Global-Inherit */
+
+	/* RFC 4271 Optional Session Attributes */
+#define PEER_FLAG_TIMER_DELAYOPEN           (1 << 26) /* delay open message  timer */
 
 	/*
 	 *GR-Disabled mode means unset PEER_FLAG_GRACEFUL_RESTART
@@ -1211,17 +1215,19 @@ struct peer {
 	/* Configured timer values. */
 	_Atomic uint32_t holdtime;
 	_Atomic uint32_t keepalive;
-	_Atomic uint32_t connect;
+	_Atomic uint32_t connect;	/* retry connect timer */
 	_Atomic uint32_t routeadv;
+	_Atomic uint32_t delayopen;	/* delay open message timer */
 
 	/* Timer values. */
 	_Atomic uint32_t v_start;
-	_Atomic uint32_t v_connect;
+	_Atomic uint32_t v_connect;	/* retry connect timer */
 	_Atomic uint32_t v_holdtime;
 	_Atomic uint32_t v_keepalive;
 	_Atomic uint32_t v_routeadv;
 	_Atomic uint32_t v_pmax_restart;
 	_Atomic uint32_t v_gr_restart;
+	_Atomic uint32_t v_delayopen;	/* delay open message timer */
 
 	/* Threads. */
 	struct thread *t_read;
@@ -1614,6 +1620,9 @@ struct bgp_nlri {
 #define BGP_DEFAULT_EBGP_ROUTEADV                0
 #define BGP_DEFAULT_IBGP_ROUTEADV                0
 
+/* BGP RFC 4271 optional session attribute timer default values */
+#define BGP_DEFAULT_DELAYOPEN                    0
+
 /* BGP default local preference.  */
 #define BGP_DEFAULT_LOCAL_PREF                 100
 
@@ -1885,6 +1894,9 @@ extern int peer_timers_connect_unset(struct peer *);
 
 extern int peer_advertise_interval_set(struct peer *, uint32_t);
 extern int peer_advertise_interval_unset(struct peer *);
+
+extern int peer_timers_delayopen_set(struct peer *, uint32_t);
+extern int peer_timers_delayopen_unset(struct peer *);
 
 extern void peer_interface_set(struct peer *, const char *);
 extern void peer_interface_unset(struct peer *);
