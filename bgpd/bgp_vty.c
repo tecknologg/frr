@@ -6095,6 +6095,8 @@ DEFPY (neighbor_timers_delayopen,
        neighbor_timers_delayopen_cmd,
        /* TODO: string concatenation with BGP_TIMERS_DELAYOPEN_MAX_INTERVAL */
        "neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers delayopen (1-240)$interval",
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n"
        "BGP delayopen timer\n"
        "DelayOpen timer\n")
@@ -6120,9 +6122,11 @@ DEFPY (neighbor_timers_delayopen,
 DEFPY (no_neighbor_timers_delayopen,
        no_neighbor_timers_delayopen_cmd,
        "no neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers delayopen",
+       NO_STR
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n"
-       "BGP delayopen timer\n"
-       "DelayOpen timer\n")
+       "BGP delayopen timer\n")
 {
 	struct peer *peer;
 
