@@ -1218,6 +1218,7 @@ struct peer {
 	_Atomic uint32_t connect;	/* retry connect timer */
 	_Atomic uint32_t routeadv;
 	_Atomic uint32_t delayopen;	/* delay open message timer */
+#define BGP_TIMERS_DELAYOPEN_MAX_INTERVAL 240 /* TODO: probably does not belong here. */
 
 	/* Timer values. */
 	_Atomic uint32_t v_start;
@@ -1895,8 +1896,8 @@ extern int peer_timers_connect_unset(struct peer *);
 extern int peer_advertise_interval_set(struct peer *, uint32_t);
 extern int peer_advertise_interval_unset(struct peer *);
 
-extern int peer_timers_delayopen_set(struct peer *, uint32_t);
-extern int peer_timers_delayopen_unset(struct peer *);
+extern int peer_timers_delayopen_set(struct peer *peer, uint32_t delayopen);
+extern int peer_timers_delayopen_unset(struct peer *peer);
 
 extern void peer_interface_set(struct peer *, const char *);
 extern void peer_interface_unset(struct peer *);

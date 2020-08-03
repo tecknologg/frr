@@ -5214,10 +5214,9 @@ int peer_advertise_interval_unset(struct peer *peer)
 int peer_timers_delayopen_set(struct peer *peer, uint32_t delayopen)
 {
 	struct peer *member;
-	struct listnode *node, *nnode;
+	struct listnode *node;
 
-	/* TODO: define a max value somewhere */
-	if (delayopen > 240)
+	if (delayopen > BGP_TIMERS_DELAYOPEN_MAX_INTERVAL)
 		return BGP_ERR_INVALID_VALUE;
 
 	/* Set flag and configuration on peer. */
@@ -5233,7 +5232,7 @@ int peer_timers_delayopen_set(struct peer *peer, uint32_t delayopen)
 	 * Set flag and configuration on all peer-group members, unless they are
 	 * explicitely overriding peer-group configuration.
 	 */
-	for (ALL_LIST_ELEMENTS(peer->group->peer, node, nnode, member)) {
+	for (ALL_LIST_ELEMENTS_RO(peer->group->peer, node, member)) {
 		/* Skip peers with overridden configuration. */
 		if (CHECK_FLAG(member->flags_override, PEER_FLAG_TIMER_DELAYOPEN))
 			continue;
@@ -5254,7 +5253,7 @@ int peer_timers_delayopen_set(struct peer *peer, uint32_t delayopen)
 int peer_timers_delayopen_unset(struct peer *peer)
 {
 	struct peer *member;
-	struct listnode *node, *nnode;
+	struct listnode *node;
 
 	/* Inherit configuration from peer-group if peer is member. */
 	if (peer_group_active(peer)) {
@@ -5280,7 +5279,7 @@ int peer_timers_delayopen_unset(struct peer *peer)
 	 * Remove flag and configuration from all peer-group members, unless
 	 * they are explicitely overriding peer-group configuration.
 	 */
-	for (ALL_LIST_ELEMENTS(peer->group->peer, node, nnode, member)) {
+	for (ALL_LIST_ELEMENTS_RO(peer->group->peer, node, member)) {
 		/* Skip peers with overridden configuration. */
 		if (CHECK_FLAG(member->flags_override, PEER_FLAG_TIMER_DELAYOPEN))
 			continue;
