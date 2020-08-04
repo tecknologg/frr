@@ -2481,6 +2481,7 @@ static void peer_group2peer_config_copy(struct peer_group *group,
 						   : BGP_DEFAULT_EBGP_ROUTEADV;
 	}
 
+	/* delay open message timer apply */
 	if (!CHECK_FLAG(peer->flags_override, PEER_FLAG_TIMER_DELAYOPEN)) {
 		PEER_ATTR_INHERIT(peer, group, delayopen);
 		if (CHECK_FLAG(conf->flags, PEER_FLAG_TIMER_DELAYOPEN))
@@ -3882,6 +3883,7 @@ static const struct peer_flag_action peer_flag_action_list[] = {
 	{PEER_FLAG_ROUTEADV, 0, peer_change_none},
 	{PEER_FLAG_TIMER, 0, peer_change_none},
 	{PEER_FLAG_TIMER_CONNECT, 0, peer_change_none},
+	{PEER_FLAG_TIMER_DELAYOPEN, 0, peer_change_none},
 	{PEER_FLAG_PASSWORD, 0, peer_change_none},
 	{PEER_FLAG_LOCAL_AS, 0, peer_change_none},
 	{PEER_FLAG_LOCAL_AS_NO_PREPEND, 0, peer_change_none},

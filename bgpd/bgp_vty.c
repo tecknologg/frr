@@ -108,6 +108,9 @@ FRR_CFG_DEFAULT_ULONG(BGP_KEEPALIVE,
 	{ .val_ulong = 3, .match_profile = "datacenter", },
 	{ .val_ulong = 60 },
 )
+FRR_CFG_DEFAULT_ULONG(BGP_DELAYOPEN,
+	{ .val_ulong = 0 },
+)
 FRR_CFG_DEFAULT_BOOL(BGP_EBGP_REQUIRES_POLICY,
 	{ .val_bool = false, .match_profile = "datacenter", },
 	{ .val_bool = false, .match_version = "< 7.4", },
@@ -6121,12 +6124,13 @@ DEFPY (neighbor_timers_delayopen,
 
 DEFPY (no_neighbor_timers_delayopen,
        no_neighbor_timers_delayopen_cmd,
-       "no neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers delayopen",
+       "no neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers delayopen [(0-65535)]",
        NO_STR
        NEIGHBOR_STR
        NEIGHBOR_ADDR_STR2
        "BGP per neighbor timers\n"
-       "BGP delayopen timer\n")
+       "BGP delayopen timer\n"
+       "DelayOpen timer\n")
 {
 	struct peer *peer;
 
