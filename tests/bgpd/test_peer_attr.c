@@ -399,6 +399,13 @@ static struct test_peer_attr test_peer_attrs[] = {
 		.type = PEER_AT_GLOBAL_FLAG,
 	},
 	{
+		.cmd = "timers delayopen",
+		.peer_cmd = "timers delayopen 100",
+		.group_cmd = "timers delayopen 200",
+		.u.flag = PEER_FLAG_TIMER_DELAYOPEN,
+		.type = PEER_AT_GLOBAL_FLAG,
+	},
+	{
 		.cmd = "update-source",
 		.peer_cmd = "update-source 255.255.255.1",
 		.group_cmd = "update-source 255.255.255.2",
