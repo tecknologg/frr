@@ -870,6 +870,7 @@ enum bgp_fsm_events {
 	ConnectRetry_timer_expired,
 	Hold_Timer_expired,
 	KeepAlive_timer_expired,
+	DelayOpen_timer_expired,
 	Receive_OPEN_message,
 	Receive_KEEPALIVE_message,
 	Receive_UPDATE_message,
@@ -1239,6 +1240,7 @@ struct peer {
 	struct thread *t_connect;
 	struct thread *t_holdtime;
 	struct thread *t_routeadv;
+	struct thread *t_delayopen;
 	struct thread *t_pmax_restart;
 	struct thread *t_gr_restart;
 	struct thread *t_gr_stale;
