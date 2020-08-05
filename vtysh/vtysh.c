@@ -1227,6 +1227,13 @@ static struct cmd_node sr_policy_node = {
         .prompt = "%s(config-sr-policy)# ",
 };
 
+static struct cmd_node sr_candidate_dyn_node = {
+	.name = "sr-candidate-dyn",
+	.node = SR_CANDIDATE_DYN_NODE,
+	.parent_node = SR_POLICY_NODE,
+	.prompt = "%s(config-sr-candidate-dyn)# ",
+};
+
 static struct cmd_node pcc_node = {
         .name = "pcc",
         .node = PCC_NODE,
@@ -1948,6 +1955,20 @@ DEFUNSH(VTYSH_PATHD, te_path_sr_policy, te_path_sr_policy_cmd,
 	"SR Policy endpoint IPv6 address\n")
 {
 	vty->node = SR_POLICY_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_PATHD, te_path_sr_policy_dynamic_candidate_path,
+	te_path_sr_policy_dynamic_candidate_path_cmd,
+	"candidate-path preference (0-4294967295) name WORD dynamic",
+	"Segment Routing Policy Candidate Path\n"
+	"Segment Routing Policy Candidate Path Preference\n"
+	"Administrative Preference\n"
+	"Segment Routing Policy Candidate Path Name\n"
+	"Symbolic Name\n"
+	"Dynamic Path\n")
+{
+	vty->node = SR_CANDIDATE_DYN_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -3848,6 +3869,7 @@ void vtysh_init_vty(void)
 	install_node(&pw_node);
 	install_node(&segment_list_node);
 	install_node(&sr_policy_node);
+	install_node(&sr_candidate_dyn_node);
 	install_node(&pcc_node);
 	install_node(&link_params_node);
 	install_node(&vrf_node);
@@ -3991,6 +4013,8 @@ void vtysh_init_vty(void)
 	install_element(SEGMENT_LIST_NODE, &vtysh_quit_pathd_cmd);
 	install_element(SR_POLICY_NODE, &vtysh_exit_pathd_cmd);
 	install_element(SR_POLICY_NODE, &vtysh_quit_pathd_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE, &vtysh_exit_pathd_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE, &vtysh_quit_pathd_cmd);
 	install_element(PCC_NODE, &vtysh_exit_pathd_cmd);
 	install_element(PCC_NODE, &vtysh_quit_pathd_cmd);
 	install_element(RMAP_NODE, &vtysh_exit_rmap_cmd);
@@ -4058,6 +4082,7 @@ void vtysh_init_vty(void)
 	install_element(KEYCHAIN_KEY_NODE, &vtysh_end_all_cmd);
 	install_element(SEGMENT_LIST_NODE, &vtysh_end_all_cmd);
 	install_element(SR_POLICY_NODE, &vtysh_end_all_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE, &vtysh_end_all_cmd);
 	install_element(PCC_NODE, &vtysh_end_all_cmd);
 	install_element(RMAP_NODE, &vtysh_end_all_cmd);
 	install_element(PBRMAP_NODE, &vtysh_end_all_cmd);
@@ -4159,6 +4184,8 @@ void vtysh_init_vty(void)
 	install_element(CONFIG_NODE, &key_chain_cmd);
 	install_element(CONFIG_NODE, &te_path_segment_list_cmd);
 	install_element(CONFIG_NODE, &te_path_sr_policy_cmd);
+	install_element(SR_POLICY_NODE,
+			&te_path_sr_policy_dynamic_candidate_path_cmd);
 	install_element(CONFIG_NODE, &pcep_cli_pcc_cmd);
 	install_element(CONFIG_NODE, &vtysh_route_map_cmd);
 	install_element(CONFIG_NODE, &vtysh_pbr_map_cmd);

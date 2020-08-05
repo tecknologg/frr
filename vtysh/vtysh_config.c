@@ -320,6 +320,10 @@ void vtysh_config_parse_line(void *arg, const char *line)
 			config = config_get(SEGMENT_LIST_NODE, line);
 		else if (strncmp(line, "sr-policy", strlen("sr-policy")) == 0)
 			config = config_get(SR_POLICY_NODE, line);
+		else if (strncmp(line, "sr-candidate-dyn",
+				 strlen("sr-candidate-dyn"))
+			 == 0)
+			config = config_get(SR_CANDIDATE_DYN_NODE, line);
 		else if (strncmp(line, "route-map", strlen("route-map")) == 0)
 			config = config_get(RMAP_NODE, line);
 		else if (strncmp(line, "pbr-map", strlen("pbr-map")) == 0)

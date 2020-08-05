@@ -207,7 +207,7 @@ module frr-pathd {
         }
         leaf discriminator {
           type uint32;
-          mandatory true;
+          config false;
           description "Candidate path distinguisher";
         }
         leaf type {

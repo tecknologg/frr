@@ -177,3 +177,15 @@ pathd_te_sr_policy_candidate_path_is_best_candidate_path_get_elem(
 	return yang_data_new_bool(
 		args->xpath, CHECK_FLAG(candidate->flags, F_CANDIDATE_BEST));
 }
+
+/*
+ * XPath: /frr-pathd:pathd/sr-policy/candidate-path/discriminator
+ */
+struct yang_data *pathd_te_sr_policy_candidate_path_discriminator_get_elem(
+	struct nb_cb_get_elem_args *args)
+{
+	struct srte_candidate *candidate =
+		(struct srte_candidate *)args->list_entry;
+
+	return yang_data_new_uint32(args->xpath, candidate->discriminator);
+}

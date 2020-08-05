@@ -191,6 +191,9 @@ struct srte_candidate {
 
 	/* Bandwidth Configured Value */
 	float bandwidth;
+
+	/* Hooks delaying timer */
+	struct thread *hook_timer;
 };
 
 RB_HEAD(srte_candidate_head, srte_candidate);

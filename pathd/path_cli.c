@@ -28,29 +28,48 @@
 
 #include "pathd/pathd.h"
 #include "pathd/path_nb.h"
+#include "pathd/path_memory.h"
 #ifndef VTYSH_EXTRACT_PL
 #include "pathd/path_cli_clippy.c"
 #endif
 
+#define XPATH_MAXATTRSIZE 64
+#define XPATH_MAXKEYSIZE 42
+#define XPATH_POLICY_BASELEN 100
+#define XPATH_POLICY_MAXLEN (XPATH_POLICY_BASELEN + XPATH_MAXATTRSIZE)
+#define XPATH_CANDIDATE_BASELEN (XPATH_POLICY_BASELEN + XPATH_MAXKEYSIZE)
+#define XPATH_CANDIDATE_MAXLEN (XPATH_CANDIDATE_BASELEN + XPATH_MAXATTRSIZE)
+
+
 static int config_write_segment_lists(struct vty *vty);
 static int config_write_sr_policies(struct vty *vty);
 
+DEFINE_MTYPE_STATIC(PATHD, PATH_CLI, "Client")
+
 /* Vty node structures. */
 static struct cmd_node segment_list_node = {
-        .name = "segment-list",
-        .node = SEGMENT_LIST_NODE,
-        .parent_node = CONFIG_NODE,
-        .prompt = "%s(config-segment-list)# ",
-        .config_write = config_write_segment_lists,
+	.name = "segment-list",
+	.node = SEGMENT_LIST_NODE,
+	.parent_node = CONFIG_NODE,
+	.prompt = "%s(config-segment-list)# ",
+	.config_write = config_write_segment_lists,
 };
 
 static struct cmd_node sr_policy_node = {
-        .name = "sr-policy",
-        .node = SR_POLICY_NODE,
-        .parent_node = CONFIG_NODE,
-        .prompt = "%s(config-sr-policy)# ",
-        .config_write = config_write_sr_policies,
+	.name = "sr-policy",
+	.node = SR_POLICY_NODE,
+	.parent_node = CONFIG_NODE,
+	.prompt = "%s(config-sr-policy)# ",
+	.config_write = config_write_sr_policies,
 };
+
+static struct cmd_node sr_candidate_dyn_node = {
+	.name = "sr-candidate-dyn",
+	.node = SR_CANDIDATE_DYN_NODE,
+	.parent_node = SR_POLICY_NODE,
+	.prompt = "%s(config-sr-candidate)# ",
+};
+
 
 /*
  * Show SR-TE info
@@ -327,7 +346,7 @@ DEFPY_NOSH(
 	"SR Policy endpoint IPv4 address\n"
 	"SR Policy endpoint IPv6 address\n")
 {
-	char xpath[XPATH_MAXLEN];
+	char xpath[XPATH_POLICY_BASELEN];
 	int ret;
 
 	snprintf(xpath, sizeof(xpath),
@@ -352,7 +371,7 @@ DEFPY(no_te_path_sr_policy, no_te_path_sr_policy_cmd,
       "SR Policy endpoint IPv4 address\n"
       "SR Policy endpoint IPv6 address\n")
 {
-	char xpath[XPATH_MAXLEN];
+	char xpath[XPATH_POLICY_BASELEN];
 
 	snprintf(xpath, sizeof(xpath),
 		 "/frr-pathd:pathd/sr-policy[color='%s'][endpoint='%s']",
@@ -434,23 +453,10 @@ void cli_show_te_path_sr_policy_binding_sid(struct vty *vty,
 /*
  * XPath: /frr-pathd:pathd/sr-policy/candidate-path
  */
-DEFPY(te_path_sr_policy_candidate_path, te_path_sr_policy_candidate_path_cmd,
-      "candidate-path\
-	preference (0-4294967295)$preference\
-	name WORD$name\
-	<\
-	  explicit$type segment-list WORD$list_name\
-	  |dynamic$type\
-	>\
-	[{\
-	  [no$no_metrics] metrics\
-	  {\
-	    [bound$bound_abc] abc$metric_abc [METRIC$metric_abc_value]\
-	    |[bound$bound_te] te$metric_te [METRIC$metric_te_value]\
-	  }\
-	|\
-	  [no$no_bandwidth] bandwidth$bandwidth_tag [BANDWIDTH$bandwidth_value]\
-	}]",
+DEFPY(te_path_sr_policy_explicit_candidate_path,
+      te_path_sr_policy_explicit_candidate_path_cmd,
+      "candidate-path preference (0-4294967295)$preference name WORD$name \
+	 explicit segment-list WORD$list_name",
       "Segment Routing Policy Candidate Path\n"
       "Segment Routing Policy Candidate Path Preference\n"
       "Administrative Preference\n"
@@ -458,84 +464,101 @@ DEFPY(te_path_sr_policy_candidate_path, te_path_sr_policy_candidate_path_cmd,
       "Symbolic Name\n"
       "Explicit Path\n"
       "List of SIDs\n"
-      "Name of the Segment List\n"
-      "Dynamic Path\n"
-      "No metrics\n"
-      "Metrics\n"
-      "Bound Agreggate Bandwidth Consumption metric\n"
-      "Agreggate Bandwidth Consumption metric\n"
-      "Agreggate Bandwidth Consumption metric value\n"
-      "Bound Traffic engineering metric\n"
-      "Traffic engineering metric\n"
-      "Traffic engineering metric value\n"
-      "No bandwidth requirements\n"
-      "Candidate path bandwidth requirements\n"
-      "Bandwidth value in bytes per second\n")
+      "Name of the Segment List\n")
 {
 	nb_cli_enqueue_change(vty, ".", NB_OP_CREATE, preference_str);
 	nb_cli_enqueue_change(vty, "./name", NB_OP_MODIFY, name);
 	nb_cli_enqueue_change(vty, "./protocol-origin", NB_OP_MODIFY, "local");
 	nb_cli_enqueue_change(vty, "./originator", NB_OP_MODIFY, "config");
-	nb_cli_enqueue_change(vty, "./type", NB_OP_MODIFY, type);
-
-	if (no_bandwidth != NULL) {
-		nb_cli_enqueue_change(vty, "./bandwidth", NB_OP_DESTROY, NULL);
-	} else if (bandwidth_tag != NULL) {
-		nb_cli_enqueue_change(vty, "./bandwidth", NB_OP_MODIFY,
-		      (bandwidth_value != NULL) ? bandwidth_value : "0");
-	}
-
-	if (no_metrics != NULL) {
-		if (metric_abc != NULL) {
-			nb_cli_enqueue_change(vty, "./metrics[type='abc']",
-					      NB_OP_DESTROY, NULL);
-		}
-		if (metric_te != NULL) {
-			nb_cli_enqueue_change(vty, "./metrics[type='te']",
-					      NB_OP_DESTROY, NULL);
-		}
-	} else {
-		if (metric_abc != NULL) {
-			nb_cli_enqueue_change(
-				vty, "./metrics[type='abc']/value",
-				NB_OP_MODIFY,
-				metric_abc_value ? metric_abc_value : "0");
-			if (bound_abc != NULL)
-				nb_cli_enqueue_change(
-					vty, "./metrics[type='abc']/is-bound",
-					NB_OP_MODIFY, "true");
-			else
-				nb_cli_enqueue_change(
-					vty, "./metrics[type='abc']/is-bound",
-					NB_OP_MODIFY, "false");
-		}
-
-		if (metric_te != NULL) {
-			nb_cli_enqueue_change(
-				vty, "./metrics[type='te']/value", NB_OP_MODIFY,
-				metric_te_value ? metric_te_value : "0");
-			if (bound_te != NULL)
-				nb_cli_enqueue_change(
-					vty, "./metrics[type='te']/is-bound",
-					NB_OP_MODIFY, "true");
-			else
-				nb_cli_enqueue_change(
-					vty, "./metrics[type='te']/is-bound",
-					NB_OP_MODIFY, "false");
-		}
-	}
-
-	if (strmatch(type, "explicit"))
-		nb_cli_enqueue_change(vty, "./segment-list-name", NB_OP_MODIFY,
-				      list_name);
-
-	char discriminator[(sizeof(uint32_t) * 8) + 1];
-	snprintf(discriminator, sizeof(discriminator), "%u", rand());
-	nb_cli_enqueue_change(vty, "./discriminator", NB_OP_MODIFY,
-			      discriminator);
-
+	nb_cli_enqueue_change(vty, "./type", NB_OP_MODIFY, "explicit");
+	nb_cli_enqueue_change(vty, "./segment-list-name", NB_OP_MODIFY,
+			      list_name);
 	return nb_cli_apply_changes(vty, "./candidate-path[preference='%s']",
 				    preference_str);
+}
+
+DEFPY_NOSH(
+	te_path_sr_policy_dynamic_candidate_path,
+	te_path_sr_policy_dynamic_candidate_path_cmd,
+	"candidate-path preference (0-4294967295)$preference name WORD$name dynamic",
+	"Segment Routing Policy Candidate Path\n"
+	"Segment Routing Policy Candidate Path Preference\n"
+	"Administrative Preference\n"
+	"Segment Routing Policy Candidate Path Name\n"
+	"Symbolic Name\n"
+	"Dynamic Path\n")
+{
+	char xpath[XPATH_CANDIDATE_BASELEN];
+	int ret;
+
+	snprintf(xpath, sizeof(xpath), "%s/candidate-path[preference='%s']",
+		 VTY_CURR_XPATH, preference_str);
+
+	nb_cli_enqueue_change(vty, ".", NB_OP_CREATE, preference_str);
+	nb_cli_enqueue_change(vty, "./name", NB_OP_MODIFY, name);
+	nb_cli_enqueue_change(vty, "./protocol-origin", NB_OP_MODIFY, "local");
+	nb_cli_enqueue_change(vty, "./originator", NB_OP_MODIFY, "config");
+	nb_cli_enqueue_change(vty, "./type", NB_OP_MODIFY, "dynamic");
+	ret = nb_cli_apply_changes(vty, "./candidate-path[preference='%s']",
+				   preference_str);
+
+	if (ret == CMD_SUCCESS)
+		VTY_PUSH_XPATH(SR_CANDIDATE_DYN_NODE, xpath);
+
+	return ret;
+}
+
+DEFPY(te_path_sr_candidate_metric,
+      te_path_sr_candidate_metric_cmd,
+      "metric [bound$bound] <te|abc>$type METRIC$value",
+      "Define a path metric\n"
+      "Metric type\n"
+      "If the metric is bounded\n"
+      "Metric value\n")
+{
+	char xpath[XPATH_CANDIDATE_MAXLEN];
+	snprintf(xpath, sizeof(xpath), "./metrics[type='%s']/value", type);
+	nb_cli_enqueue_change(vty, xpath, NB_OP_MODIFY, value);
+	snprintf(xpath, sizeof(xpath), "./metrics[type='%s']/is-bound", type);
+	nb_cli_enqueue_change(vty, xpath, NB_OP_MODIFY,
+			      (bound != NULL) ? "true" : "false");
+	return nb_cli_apply_changes(vty, NULL);
+}
+
+DEFPY(te_path_sr_candidate_no_metric,
+      te_path_sr_candidate_no_metric_cmd,
+      "no metric [bound] <te|abc>$type [METRIC$value]",
+      NO_STR
+      "Remove a path metric\n"
+      "Metric type\n"
+      "If the metric is bounded\n"
+      "Metric value\n")
+{
+	char xpath[XPATH_CANDIDATE_MAXLEN];
+	snprintf(xpath, sizeof(xpath), "./metrics[type='%s']", type);
+	nb_cli_enqueue_change(vty, xpath, NB_OP_DESTROY, NULL);
+	return nb_cli_apply_changes(vty, NULL);
+}
+
+DEFPY(te_path_sr_candidate_bandwidth,
+      te_path_sr_candidate_bandwidth_cmd,
+      "bandwidth BANDWIDTH$value",
+      "Define a bandwidth constraint\n"
+      "Bandwidth value\n")
+{
+	nb_cli_enqueue_change(vty, "./bandwidth", NB_OP_MODIFY, value);
+	return nb_cli_apply_changes(vty, NULL);
+}
+
+DEFPY(te_path_sr_candidate_no_bandwidth,
+      te_path_sr_candidate_no_bandwidth_cmd,
+      "no bandwidth [BANDWIDTH$value]",
+      NO_STR
+      "Remove a path bandwidth constraint\n"
+      "Bandwidth value\n")
+{
+	nb_cli_enqueue_change(vty, "./bandwidth", NB_OP_DESTROY, NULL);
+	return nb_cli_apply_changes(vty, NULL);
 }
 
 DEFPY(no_te_path_sr_policy_candidate_path,
@@ -578,12 +601,12 @@ static const char *metric_type_name(enum srte_candidate_metric_type type)
 
 static void config_write_float(struct vty *vty, float value)
 {
-        if (fabs(truncf(value) - value) < FLT_EPSILON) {
-                vty_out(vty, " %d", (int)value);
-                return;
-        } else {
-                vty_out(vty, " %f", value);
-        }
+	if (fabs(truncf(value) - value) < FLT_EPSILON) {
+		vty_out(vty, " %d", (int)value);
+		return;
+	} else {
+		vty_out(vty, " %f", value);
+	}
 }
 
 
@@ -591,8 +614,10 @@ static void config_write_metric(struct vty *vty,
 				enum srte_candidate_metric_type type,
 				float value, bool is_bound)
 {
-        vty_out(vty, " %s%s", is_bound ? "bound " : "", metric_type_name(type));
-        config_write_float(vty, value);
+	vty_out(vty, "  metric %s%s", is_bound ? "bound " : "",
+		metric_type_name(type));
+	config_write_float(vty, value);
+	vty_out(vty, "\n");
 }
 
 static int config_write_metric_cb(const struct lyd_node *dnode, void *arg)
@@ -615,6 +640,7 @@ void cli_show_te_path_sr_policy_candidate_path(struct vty *vty,
 					       struct lyd_node *dnode,
 					       bool show_defaults)
 {
+	float value;
 	const char *type = yang_dnode_get_string(dnode, "./type");
 
 	vty_out(vty, " candidate-path preference %s name %s %s",
@@ -623,12 +649,19 @@ void cli_show_te_path_sr_policy_candidate_path(struct vty *vty,
 	if (strmatch(type, "explicit"))
 		vty_out(vty, " segment-list %s",
 			yang_dnode_get_string(dnode, "./segment-list-name"));
-	if (yang_dnode_exists(dnode, "./metrics"))
-		vty_out(vty, " metrics");
-
-	yang_dnode_iterate(config_write_metric_cb, vty, dnode, "./metrics");
-
 	vty_out(vty, "\n");
+
+	if (strmatch(type, "dynamic")) {
+		if (yang_dnode_exists(dnode, "./bandwidth")) {
+			vty_out(vty, "  bandwidth");
+			value = (float)yang_dnode_get_dec64(dnode,
+							    "./bandwidth");
+			config_write_float(vty, value);
+			vty_out(vty, "\n");
+		}
+		yang_dnode_iterate(config_write_metric_cb, vty, dnode,
+				   "./metrics");
+	}
 }
 
 static int config_write_dnode(const struct lyd_node *dnode, void *arg)
@@ -660,8 +693,10 @@ void path_cli_init(void)
 {
 	install_node(&segment_list_node);
 	install_node(&sr_policy_node);
+	install_node(&sr_candidate_dyn_node);
 	install_default(SEGMENT_LIST_NODE);
 	install_default(SR_POLICY_NODE);
+	install_default(SR_CANDIDATE_DYN_NODE);
 
 	install_element(ENABLE_NODE, &show_srte_policy_cmd);
 	install_element(ENABLE_NODE, &show_srte_policy_detail_cmd);
@@ -677,7 +712,18 @@ void path_cli_init(void)
 	install_element(SR_POLICY_NODE, &no_te_path_sr_policy_name_cmd);
 	install_element(SR_POLICY_NODE, &te_path_sr_policy_binding_sid_cmd);
 	install_element(SR_POLICY_NODE, &no_te_path_sr_policy_binding_sid_cmd);
-	install_element(SR_POLICY_NODE, &te_path_sr_policy_candidate_path_cmd);
+	install_element(SR_POLICY_NODE,
+			&te_path_sr_policy_explicit_candidate_path_cmd);
+	install_element(SR_POLICY_NODE,
+			&te_path_sr_policy_dynamic_candidate_path_cmd);
 	install_element(SR_POLICY_NODE,
 			&no_te_path_sr_policy_candidate_path_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE,
+			&te_path_sr_candidate_metric_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE,
+			&te_path_sr_candidate_no_metric_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE,
+			&te_path_sr_candidate_bandwidth_cmd);
+	install_element(SR_CANDIDATE_DYN_NODE,
+			&te_path_sr_candidate_no_bandwidth_cmd);
 }

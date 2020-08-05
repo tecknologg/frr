@@ -25,6 +25,8 @@
 #include "pathd/pathd.h"
 #include "pathd/path_memory.h"
 
+#define HOOK_DELAY 3
+
 DEFINE_MTYPE_STATIC(PATHD, PATH_SEGMENT_LIST, "Segment List")
 DEFINE_MTYPE_STATIC(PATHD, PATH_SR_POLICY, "SR Policy")
 DEFINE_MTYPE_STATIC(PATHD, PATH_SR_CANDIDATE,
@@ -38,9 +40,9 @@ DEFINE_HOOK(pathd_candidate_removed, (struct srte_candidate * candidate),
 	    (candidate))
 
 static void trigger_pathd_candidate_created(struct srte_candidate *candidate);
-static int trigger_pathd_candidate_created_event(struct thread *thread);
+static int trigger_pathd_candidate_created_timer(struct thread *thread);
 static void trigger_pathd_candidate_updated(struct srte_candidate *candidate);
-static int trigger_pathd_candidate_updated_event(struct thread *thread);
+static int trigger_pathd_candidate_updated_timer(struct thread *thread);
 static void trigger_pathd_candidate_removed(struct srte_candidate *candidate);
 static const char *
 srte_candidate_metric_name(enum srte_candidate_metric_type type);
@@ -366,6 +368,7 @@ struct srte_candidate *srte_candidate_add(struct srte_policy *policy,
 	candidate->preference = preference;
 	candidate->policy = policy;
 	candidate->type = SRTE_CANDIDATE_TYPE_UNDEFINED;
+	candidate->discriminator = rand();
 
 	lsp->candidate = candidate;
 	candidate->lsp = lsp;
@@ -421,7 +424,7 @@ void srte_candidate_unset_bandwidth(struct srte_candidate *candidate)
 		   policy->color, candidate->name);
 	UNSET_FLAG(candidate->flags, F_CANDIDATE_HAS_BANDWIDTH);
 	candidate->bandwidth = 0;
-
+	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 	srte_lsp_unset_bandwidth(candidate->lsp);
 }
 
@@ -434,6 +437,7 @@ void srte_lsp_unset_bandwidth(struct srte_lsp *lsp)
 	zlog_debug("SR-TE(%s, %u): candidate %s lsp bandwidth unset", endpoint,
 		   policy->color, candidate->name);
 	UNSET_FLAG(lsp->flags, F_CANDIDATE_HAS_BANDWIDTH);
+	SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 	lsp->bandwidth = 0;
 }
 
@@ -452,6 +456,7 @@ void srte_candidate_set_metric(struct srte_candidate *candidate,
 		is_bound ? "true" : "false", is_computed ? "true" : "false");
 	switch (type) {
 	case SRTE_CANDIDATE_METRIC_TYPE_ABC:
+		SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_ABC);
 		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_ABC_BOUND,
 			  is_bound);
@@ -460,6 +465,7 @@ void srte_candidate_set_metric(struct srte_candidate *candidate,
 		candidate->metric_abc = value;
 		break;
 	case SRTE_CANDIDATE_METRIC_TYPE_TE:
+		SET_FLAG(candidate->flags, F_CANDIDATE_MODIFIED);
 		SET_FLAG(candidate->flags, F_CANDIDATE_HAS_METRIC_TE);
 		COND_FLAG(candidate->flags, F_CANDIDATE_METRIC_TE_BOUND,
 			  is_bound);
@@ -641,33 +647,41 @@ const char *srte_origin2str(enum srte_protocol_origin origin)
 
 void trigger_pathd_candidate_created(struct srte_candidate *candidate)
 {
-	/* The hook is called asynchronously for now to let the PCEP module
+	/* The hook is called asynchronously to let the PCEP module
 	time to send a response to the PCE before receiving any updates from
-	pathd. When using the new NB context to tie the configuration update
-	to a PCE message, this should go back to synchronous */
-	thread_add_event(master, trigger_pathd_candidate_created_event,
-			 (void *)candidate, 0, NULL);
+	pathd. In addition, a minimum amount of time need to pass before
+	the hook is called to prevent the hook to be called multiple times
+	from changing the candidate by hand with the console */
+	if (candidate->hook_timer != NULL)
+		return;
+	thread_add_timer(master, trigger_pathd_candidate_created_timer,
+			 (void *)candidate, HOOK_DELAY, &candidate->hook_timer);
 }
 
-int trigger_pathd_candidate_created_event(struct thread *thread)
+int trigger_pathd_candidate_created_timer(struct thread *thread)
 {
 	struct srte_candidate *candidate = THREAD_ARG(thread);
+	candidate->hook_timer = NULL;
 	return hook_call(pathd_candidate_created, candidate);
 }
 
 void trigger_pathd_candidate_updated(struct srte_candidate *candidate)
 {
-	/* The hook is called asynchronously for now to let the PCEP module
+	/* The hook is called asynchronously to let the PCEP module
 	time to send a response to the PCE before receiving any updates from
-	pathd. When using the new NB context to tie the configuration update
-	to a PCE message, this should go back to synchronous */
-	thread_add_event(master, trigger_pathd_candidate_updated_event,
-			 (void *)candidate, 0, NULL);
+	pathd. In addition, a minimum amount of time need to pass before
+	the hook is called to prevent the hook to be called multiple times
+	from changing the candidate by hand with the console */
+	if (candidate->hook_timer != NULL)
+		return;
+	thread_add_timer(master, trigger_pathd_candidate_updated_timer,
+			 (void *)candidate, HOOK_DELAY, &candidate->hook_timer);
 }
 
-int trigger_pathd_candidate_updated_event(struct thread *thread)
+int trigger_pathd_candidate_updated_timer(struct thread *thread)
 {
 	struct srte_candidate *candidate = THREAD_ARG(thread);
+	candidate->hook_timer = NULL;
 	return hook_call(pathd_candidate_updated, candidate);
 }
 
@@ -675,6 +689,10 @@ void trigger_pathd_candidate_removed(struct srte_candidate *candidate)
 {
 	/* The hook needs to be call synchronously, otherwise the candidate
 	path will be already deleted when the handler is called */
+	if (candidate->hook_timer != NULL) {
+		thread_cancel(candidate->hook_timer);
+		candidate->hook_timer = NULL;
+	}
 	hook_call(pathd_candidate_removed, candidate);
 }
 

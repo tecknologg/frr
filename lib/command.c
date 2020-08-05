@@ -839,6 +839,9 @@ enum node_type node_parent(enum node_type node)
 	case BFD_PROFILE_NODE:
 		ret = BFD_NODE;
 		break;
+	case SR_CANDIDATE_DYN_NODE:
+		ret = SR_POLICY_NODE;
+		break;
 	default:
 		ret = CONFIG_NODE;
 		break;
