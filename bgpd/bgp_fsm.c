@@ -1507,6 +1507,11 @@ static int bgp_connect_check(struct thread *thread)
 
 	/* When status is 0 then TCP connection is established. */
 	if (status == 0) {
+
+		/* TODO: Add differentiation between RFC 4271 Events:
+		 * - Tcp_CR_Acked (mandatory event 16)
+		 * - TcpConnectionConfirmed (mandatory event 17) */
+
 		BGP_EVENT_ADD(peer, TCP_connection_open);
 		return 1;
 	} else {
@@ -1561,12 +1566,17 @@ static int bgp_connect_success(struct peer *peer)
 		peer->v_connect = 0;
 	}
 
-	/* RFC 4271 DelayOpen session attribute handling */
+	/* RFC 4271 DelayOpen session attribute check */
 	if (CHECK_FLAG(peer->flags, PEER_FLAG_TIMER_DELAYOPEN)) {
 
 		/* If the DelayOpen attribute is set, set the DelayOpenTimer to
 		 * the initial value. */
-		peer->v_delayopen = peer->delayopen;
+		BGP_TIMER_ON(peer->t_delayopen, bgp_delayopen_timer,
+			     peer->delayopen);
+
+		/* TODO: stay in Connect state. But this does not seem very
+		 * safe to do: */
+		peer->status = Connect;
 	}
 	else {
 		/* If the DelayOpen attribute is not set: */
@@ -1583,48 +1593,47 @@ static int bgp_connect_success(struct peer *peer)
 }
 
 /* TCP connect fail
- * (RFC 4271 TcpConnectionFails event) */
+ * (RFC 4271 TcpConnectionFails event 18) */
 static int bgp_connect_fail(struct peer *peer)
 {
-	/* TODO: check how we got here (Event) and decide were to go next
-	 * (Status)*/
+	int ret = 0;
 
-	/* RFC 4271 DelayOpen session attribute handling */
-	if (CHECK_FLAG(peer->flags, PEER_FLAG_TIMER_DELAYOPEN)) {
-		/* TODO: If the DelayOpenTimer is running, the local
-      system:
+	if (peer->t_delayopen) {
+		/* If the DelayOpenTimer is running, the local system: */
 
-        - restarts the ConnectRetryTimer with the initial value,
+		/* restart the ConnectRetryTimer with the initial value */
+		BGP_TIMER_ON(peer->t_connect, bgp_connect_timer,
+			     peer->connect);
 
-        - stops the DelayOpenTimer and resets its value to zero,
+		/* stop the DelayOpenTimer and resets its value to zero */
+		BGP_TIMER_OFF(peer->t_delayopen);
+		peer->v_delayopen = 0;
 
-        - continues to listen for a connection that may be initiated by
-          the remote BGP peer, and
+		/* Continue to listen for a connection, do not release BGP
+		 * resoources with i.e. bgp_stop(peer); */
 
-        - changes its state to Active. */
+		/* change state to Active. */
+		/* TODO: check if this is safe to do: */
+		peer->status = Active;
 
 	} else {
-		/* TODO:
-      If the DelayOpenTimer is not running, the local system:
+		/* If the DelayOpenTimer is not running: */
 
-        - stops the ConnectRetryTimer [and sets its value] to zero,
+		/* stop the ConnectRetryTimer and sets its value to zero */
+		BGP_TIMER_OFF(peer->t_connect);
+		peer->v_connect = 0;
 
-        - drops the TCP connection,
-
-        - releases all BGP resources, and
-
-        - changes its state to Idle.
-*/
+		/* drop the TCP connection, release all BGP resources */
+		if (peer_dynamic_neighbor(peer)) {
+			if (bgp_debug_neighbor_events(peer))
+				zlog_debug("%s (dynamic neighbor) deleted", peer->host);
+			peer_delete(peer);
+			return -1;
+		}
+		ret = bgp_stop(peer);
 	}
 
-	if (peer_dynamic_neighbor(peer)) {
-		if (bgp_debug_neighbor_events(peer))
-			zlog_debug("%s (dynamic neighbor) deleted", peer->host);
-		peer_delete(peer);
-		return -1;
-	}
-
-	return (bgp_stop(peer));
+	return ret;
 }
 
 /* This function is the first starting point of all BGP connection. It
@@ -1767,6 +1776,13 @@ static int bgp_reconnect(struct peer *peer)
 	BGP_GR_ROUTER_DETECT_AND_SEND_CAPABILITY_TO_ZEBRA(peer->bgp,
 							  peer->bgp->peer);
 
+	/* restart the ConnectRetryTimer */
+	BGP_TIMER_ON(peer->t_connect, bgp_connect_timer, peer->connect);
+
+	/* stop the DelayOpenTimer and reset the timer to zero */
+	BGP_TIMER_OFF(peer->t_delayopen);
+	peer->v_delayopen = 0;
+
 	bgp_start(peer);
 	return 0;
 }
@@ -1779,11 +1795,21 @@ static int bgp_fsm_open(struct peer *peer)
 		/* TODO: not sure if correct way to redirect */
 		BGP_EVENT_ADD(peer, Receive_OPEN_w_DelayOpen);
 	} else {
+		/* reset the DelayOpenTimer to zero */
+		BGP_TIMER_OFF(peer->t_delayopen);
+		peer->v_delayopen = 0;
+
+		/* set the ConnectRetry Timer to zero */
+		if (peer->t_connect)
+			BGP_TIMER_OFF(peer->t_connect);
+		peer->v_connect = 0;
+
 		/* Send keepalive and make keepalive timer */
 		bgp_keepalive_send(peer);
 
 		/* Reset holdtimer value. */
-		BGP_TIMER_OFF(peer->t_holdtime);
+		if (peer->t_holdtime)
+			BGP_TIMER_OFF(peer->t_holdtime);
 	}
 
 	return 0;
@@ -1798,8 +1824,6 @@ static int bgp_fsm_open_w_delayopen(struct peer *peer)
 		BGP_TIMER_OFF(peer->t_connect);
 		peer->v_connect = 0;
 	}
-
-	/* TODO: completes the BGP initialization ??? */
 
 	/* stop and clear the DelayOpenTimer (set the value to zero) */
 	BGP_TIMER_OFF(peer->t_delayopen);
@@ -1819,6 +1843,8 @@ static int bgp_fsm_open_w_delayopen(struct peer *peer)
 		 * bgp_keepalives_on(peer); ??? */
 
 		/* reset the HoldTimer to the negotiated value */
+		if (peer->t_holdtime)
+			BGP_TIMER_OFF(peer->t_holdtime);
 		peer->v_holdtime = peer->holdtime;
 	} else {
 		/* if the HoldTimer initial value is zero: */
@@ -1827,11 +1853,11 @@ static int bgp_fsm_open_w_delayopen(struct peer *peer)
 		 * bgp_keepalives_on(peer); */
 
 		/* resets the HoldTimer value to zero */
+		if (peer->t_holdtime)
+			BGP_TIMER_OFF(peer->t_holdtime);
 		peer->v_holdtime = 0;
 	}
 
-	/* change peer state to OpenConfirm
-	 * (gets done by bgp_update_event(...) */
 	return 0;
 }
 
@@ -1863,18 +1889,19 @@ static int bgp_fsm_delayopen_expire(struct peer *peer)
 	if (bgp_debug_neighbor_events(peer))
 		zlog_debug("%s [FSM] DelayOpen timer expire", peer->host);
 
-	/* TODO: RFC 42671 p. 55:
-	 * If the DelayOpenTimer_Expires event (Event 12) occurs in the
-	 * Connect state, the local system:
-	 * - sends an OPEN message to its peer, */
+	if (peer->status == Active) {
+		/* reset the DelayOpenTimer to zero */
+		peer->v_delayopen = 0;
+
+		/* set the ConnectRetryTimer to zero */
+		peer->v_connect = 0;
+	}
+
+	/* sends an OPEN message to the peer */
 	bgp_open_send(peer);
 
-	/* - sets the HoldTimer to a large value, and
-	 * (assuming value of 4 minutes as hinted on page 56) */
+	/* set the HoldTimer to a large value */
 	BGP_TIMER_ON(peer->t_holdtime, bgp_holdtime_timer, 240);
-
-	/* - changes its state to OpenSent.
-	 * (gets done by bgp_event_update(...)) */
 
 	return 0;
 }
@@ -2254,7 +2281,7 @@ static const struct {
 		{bgp_stop, Idle},      /* BGP_Stop                     */
 		{bgp_connect_success, OpenSent}, /* TCP_connection_open */
 		{bgp_stop, Idle},	   /* TCP_connection_closed        */
-		{bgp_connect_fail, Active}, /* TCP_connection_open_failed   */
+		{bgp_connect_fail, Idle}, /* TCP_connection_open_failed   */
 		{bgp_connect_fail, Idle},   /* TCP_fatal_error              */
 		{bgp_reconnect, Connect},   /* ConnectRetry_timer_expired   */
 		{bgp_fsm_exeption, Idle},   /* Hold_Timer_expired           */
@@ -2264,7 +2291,7 @@ static const struct {
 		{bgp_fsm_open,
 		 OpenConfirm},		    /* Receive_OPEN_message         */
 		{bgp_fsm_open_w_delayopen,
-		 Connect},		    /* Receive_OPEN_message_w_DelayOpen */
+		 OpenConfirm},		    /* Receive_OPEN_message_w_DelayOpen */
 		{bgp_fsm_exeption, Idle},   /* Receive_KEEPALIVE_message    */
 		{bgp_fsm_exeption, Idle},   /* Receive_UPDATE_message       */
 		{bgp_stop, Idle},	    /* Receive_NOTIFICATION_message */
@@ -2281,7 +2308,8 @@ static const struct {
 		{bgp_start, Connect},     /* ConnectRetry_timer_expired   */
 		{bgp_fsm_exeption, Idle}, /* Hold_Timer_expired           */
 		{bgp_fsm_exeption, Idle}, /* KeepAlive_timer_expired      */
-		{bgp_fsm_exeption, Idle}, /* DelayOpen_timer_expired      */
+		{bgp_fsm_delayopen_expire,
+		 OpenSent},		  /* DelayOpen_timer_expired      */
 		{bgp_fsm_exeption, Idle}, /* Receive_OPEN_message         */
 		{bgp_fsm_open_w_delayopen,
 		 OpenConfirm},            /* Receive_OPEN_message_w_DelayOpen */
@@ -2964,4 +2992,6 @@ void bgp_peer_gr_flags_update(struct peer *peer)
 				peer->host);
 		}
 	}
+	/* TODO: completes the BGP initialization ??? */
+
 }
