@@ -115,7 +115,6 @@ extern int bgp_event_update(struct peer *, enum bgp_fsm_events event);
 extern int bgp_stop(struct peer *peer);
 extern void bgp_timer_set(struct peer *);
 extern int bgp_routeadv_timer(struct thread *);
-extern int bgp_delayopen_timer(struct thread *thread);
 extern void bgp_fsm_change_status(struct peer *peer, int status);
 extern const char *const peer_down_str[];
 extern void bgp_update_delay_end(struct bgp *);

@@ -870,8 +870,9 @@ enum bgp_fsm_events {
 	ConnectRetry_timer_expired,
 	Hold_Timer_expired,
 	KeepAlive_timer_expired,
-	DelayOpen_timer_expired,
+	DelayOpen_timer_expired,		/* optional RFC 4271 event 12 */
 	Receive_OPEN_message,
+	Receive_OPEN_w_DelayOpen,		/* optional FRC 4271 event 20 */
 	Receive_KEEPALIVE_message,
 	Receive_UPDATE_message,
 	Receive_NOTIFICATION_message,
