@@ -1574,18 +1574,24 @@ static int bgp_connect_success(struct peer *peer)
 		BGP_TIMER_ON(peer->t_delayopen, bgp_delayopen_timer,
 			     peer->delayopen);
 
-		/* TODO: stay in Connect state. But this does not seem very
-		 * safe to do: */
-		peer->status = Connect;
+		/* stay in either Connect or Active state */
+		if (peer->ostatus == Active)
+			peer->status = Active;
+
+		if (peer->ostatus == Connect)
+			peer->status = Connect;
 	}
 	else {
 		/* If the DelayOpen attribute is not set: */
 
+		/* stop the ConnectRetryTimer and reset its value to zero. */
+		BGP_TIMER_OFF(peer->t_connect);
+		peer->v_connect = 0;
+
 		/* send an OPEN message to the peer */
 		bgp_open_send(peer);
 
-		/* set the HoldTimer to a large value
-		 * TODO: assuming value of 4 minutes as hinted on page 56) */
+		/* set the HoldTimer to a large value */
 		BGP_TIMER_ON(peer->t_holdtime, bgp_holdtime_timer, 240);
 	}
 
@@ -1598,24 +1604,42 @@ static int bgp_connect_fail(struct peer *peer)
 {
 	int ret = 0;
 
-	if (peer->t_delayopen) {
-		/* If the DelayOpenTimer is running, the local system: */
+	if ((peer->t_delayopen) || (peer->ostatus == Active)) {
+		/* If the DelayOpenTimer is running: */
 
-		/* restart the ConnectRetryTimer with the initial value */
+		/* restart the ConnectRetryTimer with the initial value. */
 		BGP_TIMER_ON(peer->t_connect, bgp_connect_timer,
 			     peer->connect);
 
-		/* stop the DelayOpenTimer and resets its value to zero */
+		/* stop the DelayOpenTimer and reset its value to zero. */
 		BGP_TIMER_OFF(peer->t_delayopen);
 		peer->v_delayopen = 0;
 
-		/* Continue to listen for a connection, do not release BGP
-		 * resoources with i.e. bgp_stop(peer); */
+		if (peer->ostatus == Active) {
+			/* if Active state: */
 
-		/* change state to Active. */
-		/* TODO: check if this is safe to do: */
-		peer->status = Active;
+			/* drop the TCP connection, release all BGP resources */
+			if (peer_dynamic_neighbor(peer)) {
+				if (bgp_debug_neighbor_events(peer))
+					zlog_debug("%s (dynamic neighbor) deleted", peer->host);
+				peer_delete(peer);
+				return -1;
+			}
+			ret = bgp_stop(peer);
 
+			/* TODO: optional peer dampening */
+
+			/* TODO: increment ConnectRetryCounter by 1 */
+
+			/* change status to Idle. */
+			peer->status = Idle;
+		} else {
+			/* If previous state was not Active, continue to
+			 * listen for a connection. */
+
+			/* change state to Active. */
+			peer->status = Active;
+		}
 	} else {
 		/* If the DelayOpenTimer is not running: */
 
@@ -1843,9 +1867,9 @@ static int bgp_fsm_open_w_delayopen(struct peer *peer)
 		 * bgp_keepalives_on(peer); ??? */
 
 		/* reset the HoldTimer to the negotiated value */
-		if (peer->t_holdtime)
-			BGP_TIMER_OFF(peer->t_holdtime);
 		peer->v_holdtime = peer->holdtime;
+		BGP_TIMER_ON(peer->t_holdtime, bgp_holdtime_timer,
+			     peer->v_holdtime);
 	} else {
 		/* if the HoldTimer initial value is zero: */
 
@@ -2303,7 +2327,8 @@ static const struct {
 		{bgp_stop, Idle},     /* BGP_Stop                     */
 		{bgp_connect_success, OpenSent}, /* TCP_connection_open */
 		{bgp_stop, Idle},	 /* TCP_connection_closed        */
-		{bgp_ignore, Active},     /* TCP_connection_open_failed   */
+		{bgp_connect_fail,
+		 Active},		  /* TCP_connection_open_failed   */
 		{bgp_fsm_exeption, Idle}, /* TCP_fatal_error              */
 		{bgp_start, Connect},     /* ConnectRetry_timer_expired   */
 		{bgp_fsm_exeption, Idle}, /* Hold_Timer_expired           */
