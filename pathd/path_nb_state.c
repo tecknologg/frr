@@ -87,8 +87,8 @@ int pathd_te_sr_policy_get_keys(struct nb_cb_get_keys_args *args)
 	args->keys->num = 2;
 	snprintf(args->keys->key[0], sizeof(args->keys->key[0]), "%u",
 		 policy->color);
-	(void)inet_ntop(AF_INET, &policy->endpoint, args->keys->key[1],
-			sizeof(args->keys->key[1]));
+	ipaddr2str(&policy->endpoint, args->keys->key[1],
+	           sizeof(args->keys->key[1]));
 
 	return NB_OK;
 }
