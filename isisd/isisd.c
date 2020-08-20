@@ -75,6 +75,7 @@ unsigned long debug_flooding;
 unsigned long debug_bfd;
 unsigned long debug_tx_queue;
 unsigned long debug_sr;
+unsigned long debug_tilfa;
 
 DEFINE_QOBJ_TYPE(isis_area)
 
@@ -1074,6 +1075,8 @@ void print_debug(struct vty *vty, int flags, int onoff)
 	if (flags & DEBUG_SR)
 		vty_out(vty, "IS-IS Segment Routing events debugging is %s\n",
 			onoffs);
+	if (flags & DEBUG_TILFA)
+		vty_out(vty, "IS-IS TI-LFA events debugging is %s\n", onoffs);
 	if (flags & DEBUG_UPDATE_PACKETS)
 		vty_out(vty, "IS-IS Update related packet debugging is %s\n",
 			onoffs);
@@ -1162,6 +1165,10 @@ static int config_write_debug(struct vty *vty)
 	}
 	if (IS_DEBUG_SR) {
 		vty_out(vty, "debug " PROTO_NAME " sr-events\n");
+		write++;
+	}
+	if (IS_DEBUG_TILFA) {
+		vty_out(vty, "debug " PROTO_NAME " ti-lfa\n");
 		write++;
 	}
 	if (IS_DEBUG_UPDATE_PACKETS) {
@@ -1386,6 +1393,33 @@ DEFUN (no_debug_isis_srevents,
 {
 	debug_sr &= ~DEBUG_SR;
 	print_debug(vty, DEBUG_SR, 0);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN (debug_isis_tilfa,
+       debug_isis_tilfa_cmd,
+       "debug " PROTO_NAME " ti-lfa",
+       DEBUG_STR
+       PROTO_HELP
+       "IS-IS TI-LFA Events\n")
+{
+	debug_tilfa |= DEBUG_TILFA;
+	print_debug(vty, DEBUG_TILFA, 1);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN (no_debug_isis_tilfa,
+       no_debug_isis_tilfa_cmd,
+       "no debug " PROTO_NAME " ti-lfa",
+       NO_STR
+       UNDEBUG_STR
+       PROTO_HELP
+       "IS-IS TI-LFA Events\n")
+{
+	debug_tilfa &= ~DEBUG_TILFA;
+	print_debug(vty, DEBUG_TILFA, 0);
 
 	return CMD_SUCCESS;
 }
@@ -2702,6 +2736,8 @@ void isis_init(void)
 	install_element(ENABLE_NODE, &no_debug_isis_spfevents_cmd);
 	install_element(ENABLE_NODE, &debug_isis_srevents_cmd);
 	install_element(ENABLE_NODE, &no_debug_isis_srevents_cmd);
+	install_element(ENABLE_NODE, &debug_isis_tilfa_cmd);
+	install_element(ENABLE_NODE, &no_debug_isis_tilfa_cmd);
 	install_element(ENABLE_NODE, &debug_isis_rtevents_cmd);
 	install_element(ENABLE_NODE, &no_debug_isis_rtevents_cmd);
 	install_element(ENABLE_NODE, &debug_isis_events_cmd);
@@ -2729,6 +2765,8 @@ void isis_init(void)
 	install_element(CONFIG_NODE, &no_debug_isis_spfevents_cmd);
 	install_element(CONFIG_NODE, &debug_isis_srevents_cmd);
 	install_element(CONFIG_NODE, &no_debug_isis_srevents_cmd);
+	install_element(CONFIG_NODE, &debug_isis_tilfa_cmd);
+	install_element(CONFIG_NODE, &no_debug_isis_tilfa_cmd);
 	install_element(CONFIG_NODE, &debug_isis_rtevents_cmd);
 	install_element(CONFIG_NODE, &no_debug_isis_rtevents_cmd);
 	install_element(CONFIG_NODE, &debug_isis_events_cmd);
