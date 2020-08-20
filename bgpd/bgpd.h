@@ -1131,6 +1131,8 @@ struct peer {
 
 #define PEER_FLAG_TIMER_IDLEHOLD	(1 << 26)
 
+#define PEER_FLAG_TIMER_IDLEHOLD	(1 << 26)
+
 	/*
 	 *GR-Disabled mode means unset PEER_FLAG_GRACEFUL_RESTART
 	 *& PEER_FLAG_GRACEFUL_RESTART_HELPER
