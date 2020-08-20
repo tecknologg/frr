@@ -559,6 +559,7 @@ struct bgp {
 	uint32_t default_holdtime;
 	uint32_t default_keepalive;
 	uint32_t default_connect_retry;
+	uint32_t default_idlehold;
 
 	/* BGP graceful restart */
 	uint32_t restart_time;
@@ -877,6 +878,7 @@ enum bgp_fsm_events {
 	ConnectRetry_timer_expired,
 	Hold_Timer_expired,
 	KeepAlive_timer_expired,
+	IdleHold_timer_expired,
 	Receive_OPEN_message,
 	Receive_KEEPALIVE_message,
 	Receive_UPDATE_message,
@@ -1127,6 +1129,8 @@ struct peer {
 #define PEER_FLAG_GRACEFUL_RESTART_GLOBAL_INHERIT (1U << 25) /* Global-Inherit */
 #define PEER_FLAG_RTT_SHUTDOWN (1U << 26) /* shutdown rtt */
 
+#define PEER_FLAG_TIMER_IDLEHOLD	(1 << 26)
+
 	/*
 	 *GR-Disabled mode means unset PEER_FLAG_GRACEFUL_RESTART
 	 *& PEER_FLAG_GRACEFUL_RESTART_HELPER
@@ -1226,6 +1230,7 @@ struct peer {
 	_Atomic uint32_t keepalive;
 	_Atomic uint32_t connect;
 	_Atomic uint32_t routeadv;
+	_Atomic uint32_t idlehold;
 
 	/* Timer values. */
 	_Atomic uint32_t v_start;
@@ -1235,6 +1240,7 @@ struct peer {
 	_Atomic uint32_t v_routeadv;
 	_Atomic uint32_t v_pmax_restart;
 	_Atomic uint32_t v_gr_restart;
+	_Atomic uint32_t v_idlehold;
 
 	/* Threads. */
 	struct thread *t_read;
@@ -1250,6 +1256,7 @@ struct peer {
 	struct thread *t_gr_stale;
 	struct thread *t_generate_updgrp_packets;
 	struct thread *t_process_packet;
+	struct thread *t_idlehold;
 
 	/* Thread flags. */
 	_Atomic uint32_t thread_flags;
@@ -1630,6 +1637,9 @@ struct bgp_nlri {
 #define BGP_DEFAULT_EBGP_ROUTEADV                0
 #define BGP_DEFAULT_IBGP_ROUTEADV                0
 
+/* BGP RFC 4271 IdleHoldTime default value */
+#define BGP_DEFAULT_IDLEHOLD                     0
+
 /* BGP default local preference.  */
 #define BGP_DEFAULT_LOCAL_PREF                 100
 
@@ -1826,7 +1836,7 @@ extern int bgp_confederation_peers_add(struct bgp *, as_t);
 extern int bgp_confederation_peers_remove(struct bgp *, as_t);
 
 extern void bgp_timers_set(struct bgp *, uint32_t keepalive, uint32_t holdtime,
-			   uint32_t connect_retry);
+			   uint32_t connect_retry, uint32_t idlehold);
 extern void bgp_timers_unset(struct bgp *);
 
 extern int bgp_default_local_preference_set(struct bgp *, uint32_t);
@@ -1901,6 +1911,9 @@ extern int peer_timers_connect_unset(struct peer *);
 
 extern int peer_advertise_interval_set(struct peer *, uint32_t);
 extern int peer_advertise_interval_unset(struct peer *);
+
+extern int peer_timers_idlehold_set(struct peer *peer, uint32_t idlehold);
+extern int peer_timers_idlehold_unset(struct peer *peer);
 
 extern void peer_interface_set(struct peer *, const char *);
 extern void peer_interface_unset(struct peer *);

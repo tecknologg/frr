@@ -73,6 +73,7 @@ static const char *const bgp_event_str[] = {
 	"ConnectRetry_timer_expired",
 	"Hold_Timer_expired",
 	"KeepAlive_timer_expired",
+	"IdleHold_timer_expired",
 	"Receive_OPEN_message",
 	"Receive_KEEPALIVE_message",
 	"Receive_UPDATE_message",
@@ -92,6 +93,7 @@ int bgp_event(struct thread *);
 static int bgp_start_timer(struct thread *);
 static int bgp_connect_timer(struct thread *);
 static int bgp_holdtime_timer(struct thread *);
+static int bgp_idlehold_timer(struct thread *);
 
 /* BGP FSM functions. */
 static int bgp_start(struct peer *);
@@ -174,10 +176,12 @@ static struct peer *peer_xfer_conn(struct peer *from_peer)
 
 	BGP_TIMER_OFF(peer->t_routeadv);
 	BGP_TIMER_OFF(peer->t_connect);
+	BGP_TIMER_OFF(peer->t_idlehold);
 	BGP_TIMER_OFF(peer->t_connect_check_r);
 	BGP_TIMER_OFF(peer->t_connect_check_w);
 	BGP_TIMER_OFF(from_peer->t_routeadv);
 	BGP_TIMER_OFF(from_peer->t_connect);
+	BGP_TIMER_OFF(from_peer->t_idlehold);
 	BGP_TIMER_OFF(from_peer->t_connect_check_r);
 	BGP_TIMER_OFF(from_peer->t_connect_check_w);
 	BGP_TIMER_OFF(from_peer->t_process_packet);
@@ -234,6 +238,7 @@ static struct peer *peer_xfer_conn(struct peer *from_peer)
 	peer->v_keepalive = from_peer->v_keepalive;
 	peer->v_routeadv = from_peer->v_routeadv;
 	peer->v_gr_restart = from_peer->v_gr_restart;
+	peer->v_idlehold = from_peer->v_idlehold;
 	peer->cap = from_peer->cap;
 	status = peer->status;
 	pstatus = peer->ostatus;
@@ -360,6 +365,15 @@ void bgp_timer_set(struct peer *peer)
 			BGP_TIMER_ON(peer->t_start, bgp_start_timer,
 				     peer->v_start);
 		}
+
+		/* Turn on the IdleHoldTimer if the start timer is not running
+		   and the IdleHold session attribute flag is set. */
+		if (!peer->t_start && CHECK_FLAG(peer->flags, PEER_FLAG_TIMER_IDLEHOLD))
+			BGP_TIMER_ON(peer->t_idlehold, bgp_idlehold_timer,
+				     peer->v_idlehold);
+		else
+			BGP_TIMER_OFF(peer->t_idlehold);
+
 		BGP_TIMER_OFF(peer->t_connect);
 		BGP_TIMER_OFF(peer->t_holdtime);
 		bgp_keepalives_off(peer);
@@ -376,6 +390,7 @@ void bgp_timer_set(struct peer *peer)
 		BGP_TIMER_OFF(peer->t_holdtime);
 		bgp_keepalives_off(peer);
 		BGP_TIMER_OFF(peer->t_routeadv);
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 
 	case Active:
@@ -393,6 +408,7 @@ void bgp_timer_set(struct peer *peer)
 		BGP_TIMER_OFF(peer->t_holdtime);
 		bgp_keepalives_off(peer);
 		BGP_TIMER_OFF(peer->t_routeadv);
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 
 	case OpenSent:
@@ -407,6 +423,7 @@ void bgp_timer_set(struct peer *peer)
 		}
 		bgp_keepalives_off(peer);
 		BGP_TIMER_OFF(peer->t_routeadv);
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 
 	case OpenConfirm:
@@ -425,6 +442,7 @@ void bgp_timer_set(struct peer *peer)
 			bgp_keepalives_on(peer);
 		}
 		BGP_TIMER_OFF(peer->t_routeadv);
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 
 	case Established:
@@ -443,6 +461,7 @@ void bgp_timer_set(struct peer *peer)
 				     peer->v_holdtime);
 			bgp_keepalives_on(peer);
 		}
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 	case Deleted:
 		BGP_TIMER_OFF(peer->t_gr_restart);
@@ -455,6 +474,7 @@ void bgp_timer_set(struct peer *peer)
 		BGP_TIMER_OFF(peer->t_holdtime);
 		bgp_keepalives_off(peer);
 		BGP_TIMER_OFF(peer->t_routeadv);
+		BGP_TIMER_OFF(peer->t_idlehold);
 		break;
 	case BGP_STATUS_MAX:
 		flog_err(EC_LIB_DEVELOPMENT,
@@ -561,6 +581,23 @@ int bgp_routeadv_timer(struct thread *thread)
 	/* MRAI timer will be started again when FIFO is built, no need to
 	 * do it here.
 	 */
+	return 0;
+}
+
+/* RFC 4271 IdleHoldTimer event */
+int bgp_idlehold_timer(struct thread *thread)
+{
+	struct peer *peer;
+
+	peer = THREAD_ARG(thread);
+
+	if (bgp_debug_neighbor_events(peer))
+		zlog_debug("%s [FSM] Timer (IdleHold timer expire)",
+			   peer->host);
+
+	THREAD_VAL(thread) = IdleHold_timer_expired;
+	bgp_event(thread); /* bgp_event unlocks peer */
+
 	return 0;
 }
 
@@ -1294,6 +1331,7 @@ int bgp_stop(struct peer *peer)
 	BGP_TIMER_OFF(peer->t_connect);
 	BGP_TIMER_OFF(peer->t_holdtime);
 	BGP_TIMER_OFF(peer->t_routeadv);
+	BGP_TIMER_OFF(peer->t_idlehold);
 
 	/* Clear input and output buffer.  */
 	frr_with_mutex(&peer->io_mtx) {
@@ -1350,6 +1388,13 @@ int bgp_stop(struct peer *peer)
 	} else {
 		peer->v_keepalive = peer->bgp->default_keepalive;
 		peer->v_holdtime = peer->bgp->default_holdtime;
+	}
+
+	/* Reset IdleHoldTime */
+	if (CHECK_FLAG(peer->flags, PEER_FLAG_TIMER_IDLEHOLD)) {
+		peer->v_idlehold = peer->idlehold;
+	} else {
+		peer->v_idlehold = peer->bgp->default_idlehold;
 	}
 
 	peer->update_time = 0;
@@ -1702,6 +1747,18 @@ static int bgp_fsm_holdtime_expire(struct peer *peer)
 		zlog_debug("%s [FSM] Hold timer expire", peer->host);
 
 	return bgp_stop_with_notify(peer, BGP_NOTIFY_HOLD_ERR, 0);
+}
+
+/* IdleHold timer expire */
+static int bgp_fsm_idlehold_expire(struct peer *peer)
+{
+	if (bgp_debug_neighbor_events(peer))
+		zlog_debug("%s [FSM] IdleHold timer expire", peer->host);
+
+	/* TODO: reset the timer and try to establish a connection/stop blocking
+	 * connections */
+
+	return 0;
 }
 
 /* Start the selection deferral timer thread for the specified AFI, SAFI */
@@ -2089,6 +2146,7 @@ static const struct {
 		{bgp_ignore, Idle},   /* ConnectRetry_timer_expired   */
 		{bgp_ignore, Idle},   /* Hold_Timer_expired           */
 		{bgp_ignore, Idle},   /* KeepAlive_timer_expired      */
+		{bgp_fsm_idlehold_expire, Idle}, /* IdleHold_timer_expired      */
 		{bgp_ignore, Idle},   /* Receive_OPEN_message         */
 		{bgp_ignore, Idle},   /* Receive_KEEPALIVE_message    */
 		{bgp_ignore, Idle},   /* Receive_UPDATE_message       */
@@ -2106,6 +2164,7 @@ static const struct {
 		{bgp_reconnect, Connect},   /* ConnectRetry_timer_expired   */
 		{bgp_fsm_exeption, Idle},   /* Hold_Timer_expired           */
 		{bgp_fsm_exeption, Idle},   /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle},   /* IdleHold_timer_expired      */
 		{bgp_fsm_exeption, Idle},   /* Receive_OPEN_message         */
 		{bgp_fsm_exeption, Idle},   /* Receive_KEEPALIVE_message    */
 		{bgp_fsm_exeption, Idle},   /* Receive_UPDATE_message       */
@@ -2123,6 +2182,7 @@ static const struct {
 		{bgp_start, Connect},     /* ConnectRetry_timer_expired   */
 		{bgp_fsm_exeption, Idle}, /* Hold_Timer_expired           */
 		{bgp_fsm_exeption, Idle}, /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle}, /* IdleHold_timer_expired      */
 		{bgp_fsm_exeption, Idle}, /* Receive_OPEN_message         */
 		{bgp_fsm_exeption, Idle}, /* Receive_KEEPALIVE_message    */
 		{bgp_fsm_exeption, Idle}, /* Receive_UPDATE_message       */
@@ -2140,6 +2200,7 @@ static const struct {
 		{bgp_fsm_exeption, Idle}, /* ConnectRetry_timer_expired   */
 		{bgp_fsm_holdtime_expire, Idle}, /* Hold_Timer_expired */
 		{bgp_fsm_exeption, Idle},    /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle},    /* IdleHold_timer_expired      */
 		{bgp_fsm_open, OpenConfirm}, /* Receive_OPEN_message         */
 		{bgp_fsm_event_error, Idle}, /* Receive_KEEPALIVE_message    */
 		{bgp_fsm_event_error, Idle}, /* Receive_UPDATE_message       */
@@ -2157,6 +2218,7 @@ static const struct {
 		{bgp_fsm_exeption, Idle},  /* ConnectRetry_timer_expired   */
 		{bgp_fsm_holdtime_expire, Idle}, /* Hold_Timer_expired */
 		{bgp_ignore, OpenConfirm},    /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle},     /* IdleHold_timer_expired      */
 		{bgp_fsm_exeption, Idle},     /* Receive_OPEN_message         */
 		{bgp_establish, Established}, /* Receive_KEEPALIVE_message    */
 		{bgp_fsm_exeption, Idle},     /* Receive_UPDATE_message       */
@@ -2174,6 +2236,7 @@ static const struct {
 		{bgp_stop, Clearing},      /* ConnectRetry_timer_expired   */
 		{bgp_fsm_holdtime_expire, Clearing}, /* Hold_Timer_expired */
 		{bgp_ignore, Established}, /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle},  /* IdleHold_timer_expired      */
 		{bgp_stop, Clearing},      /* Receive_OPEN_message         */
 		{bgp_fsm_keepalive,
 		 Established}, /* Receive_KEEPALIVE_message    */
@@ -2193,6 +2256,7 @@ static const struct {
 		{bgp_stop, Clearing},   /* ConnectRetry_timer_expired   */
 		{bgp_stop, Clearing},   /* Hold_Timer_expired           */
 		{bgp_stop, Clearing},   /* KeepAlive_timer_expired      */
+		{bgp_fsm_exeption, Idle},   /* IdleHold_timer_expired      */
 		{bgp_stop, Clearing},   /* Receive_OPEN_message         */
 		{bgp_stop, Clearing},   /* Receive_KEEPALIVE_message    */
 		{bgp_stop, Clearing},   /* Receive_UPDATE_message       */
@@ -2210,6 +2274,7 @@ static const struct {
 		{bgp_ignore, Deleted}, /* ConnectRetry_timer_expired   */
 		{bgp_ignore, Deleted}, /* Hold_Timer_expired           */
 		{bgp_ignore, Deleted}, /* KeepAlive_timer_expired      */
+		{bgp_ignore, Deleted}, /* IdleHold_timer_expired      */
 		{bgp_ignore, Deleted}, /* Receive_OPEN_message         */
 		{bgp_ignore, Deleted}, /* Receive_KEEPALIVE_message    */
 		{bgp_ignore, Deleted}, /* Receive_UPDATE_message       */

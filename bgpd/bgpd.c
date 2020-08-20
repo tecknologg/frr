@@ -394,12 +394,13 @@ time_t bgp_clock(void)
 
 /* BGP timer configuration.  */
 void bgp_timers_set(struct bgp *bgp, uint32_t keepalive, uint32_t holdtime,
-		    uint32_t connect_retry)
+		    uint32_t connect_retry, uint32_t idlehold)
 {
 	bgp->default_keepalive =
 		(keepalive < holdtime / 3 ? keepalive : holdtime / 3);
 	bgp->default_holdtime = holdtime;
 	bgp->default_connect_retry = connect_retry;
+	bgp->default_idlehold = idlehold;
 }
 
 /* mostly for completeness - CLI uses its own defaults */
@@ -408,6 +409,7 @@ void bgp_timers_unset(struct bgp *bgp)
 	bgp->default_keepalive = BGP_DEFAULT_KEEPALIVE;
 	bgp->default_holdtime = BGP_DEFAULT_HOLDTIME;
 	bgp->default_connect_retry = BGP_DEFAULT_CONNECT_RETRY;
+	bgp->default_idlehold = BGP_DEFAULT_IDLEHOLD;
 }
 
 /* BGP confederation configuration.  */
@@ -1312,6 +1314,7 @@ void peer_xfer_config(struct peer *peer_dst, struct peer *peer_src)
 	peer_dst->v_keepalive = peer_src->v_keepalive;
 	peer_dst->routeadv = peer_src->routeadv;
 	peer_dst->v_routeadv = peer_src->v_routeadv;
+	peer_dst->v_idlehold = peer_src->v_idlehold;
 
 	/* password apply */
 	if (peer_src->password && !peer_dst->password)
@@ -2473,6 +2476,13 @@ static void peer_group2peer_config_copy(struct peer_group *group,
 			peer->v_connect = conf->connect;
 		else
 			peer->v_connect = peer->bgp->default_connect_retry;
+	}
+	if (!CHECK_FLAG(peer->flags_override, PEER_FLAG_TIMER_IDLEHOLD)) {
+		PEER_ATTR_INHERIT(peer, group, idlehold);
+		if (CHECK_FLAG(conf->flags, PEER_FLAG_TIMER_IDLEHOLD))
+			peer->v_idlehold = conf->idlehold;
+		else
+			peer->v_idlehold = peer->bgp->default_idlehold;
 	}
 
 	/* advertisement-interval apply */
@@ -3881,6 +3891,7 @@ static const struct peer_flag_action peer_flag_action_list[] = {
 	{PEER_FLAG_ROUTEADV, 0, peer_change_none},
 	{PEER_FLAG_TIMER, 0, peer_change_none},
 	{PEER_FLAG_TIMER_CONNECT, 0, peer_change_none},
+	{PEER_FLAG_TIMER_IDLEHOLD, 0, peer_change_none},
 	{PEER_FLAG_PASSWORD, 0, peer_change_none},
 	{PEER_FLAG_LOCAL_AS, 0, peer_change_none},
 	{PEER_FLAG_LOCAL_AS_NO_PREPEND, 0, peer_change_none},
@@ -5257,6 +5268,87 @@ int peer_advertise_interval_unset(struct peer *peer)
 		update_group_adjust_peer_afs(member);
 		if (member->status == Established)
 			bgp_announce_route_all(member);
+	}
+
+	return 0;
+}
+
+/* set peer idlehold flag and idlehold timer interval */
+int peer_timers_idlehold_set(struct peer *peer, uint32_t idlehold)
+{
+	struct peer *member;
+	struct listnode *node;
+
+	/* TODO: define a max interval value for IdleHoldTime
+	if (idlehold > BGP_TIMERS_IDLEHOLD_MAX_INTERVAL)
+		return BGP_ERR_INVALID_VALUE; */
+
+	/* Set flag and configuration on peer. */
+	peer_flag_set(peer, PEER_FLAG_TIMER_IDLEHOLD);
+	peer->idlehold = idlehold;
+	peer->v_idlehold = idlehold;
+
+	/* Skip peer-group mechanics for regular peers. */
+	if (!CHECK_FLAG(peer->sflags, PEER_STATUS_GROUP))
+		return 0;
+
+	/*
+	 * Set flag and configuration on all peer-group members, unless they are
+	 * explicitely overriding peer-group configuration.
+	 */
+	for (ALL_LIST_ELEMENTS_RO(peer->group->peer, node, member)) {
+		/* Skip peers with overridden configuration. */
+		if (CHECK_FLAG(member->flags_override, PEER_FLAG_TIMER_IDLEHOLD))
+			continue;
+
+		/* Set flag and configuration on peer-group member. */
+		SET_FLAG(member->flags, PEER_FLAG_TIMER_IDLEHOLD);
+		member->idlehold = idlehold;
+		member->v_idlehold = idlehold;
+	}
+
+	return 0;
+}
+
+/* unset peer idlehold flag and reset idlehold timer interval */
+int peer_timers_idlehold_unset(struct peer *peer)
+{
+	struct peer *member;
+	struct listnode *node;
+
+	/* Inherit configuration from peer-group if peer is member. */
+	if (peer_group_active(peer)) {
+		peer_flag_inherit(peer, PEER_FLAG_TIMER_IDLEHOLD);
+		PEER_ATTR_INHERIT(peer, peer->group, idlehold);
+	} else {
+		/* Otherwise remove flag and configuration from peer. */
+		peer_flag_unset(peer, PEER_FLAG_TIMER_IDLEHOLD);
+		peer->idlehold = 0;
+	}
+
+	/* Set timer with fallback to default value. */
+	if (peer->idlehold)
+		peer->v_idlehold = peer->idlehold;
+	else
+		peer->v_idlehold = peer->bgp->default_idlehold;
+
+	/* Skip peer-group mechanics for regular peers. */
+	if (!CHECK_FLAG(peer->sflags, PEER_STATUS_GROUP))
+		return 0;
+
+	/*
+	 * Remove flag and configuration from all peer-group members, unless
+	 * they are explicitely overriding peer-group configuration.
+	 */
+	for (ALL_LIST_ELEMENTS_RO(peer->group->peer, node, member)) {
+		/* Skip peers with overridden configuration. */
+		if (CHECK_FLAG(member->flags_override, PEER_FLAG_TIMER_IDLEHOLD))
+			continue;
+
+		/* Remove flag and configuration on peer-group member. */
+		UNSET_FLAG(member->flags, PEER_FLAG_TIMER_IDLEHOLD);
+		member->idlehold = 0;
+		member->v_idlehold = peer->bgp->default_idlehold;
 	}
 
 	return 0;

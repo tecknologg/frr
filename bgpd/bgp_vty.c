@@ -109,6 +109,9 @@ FRR_CFG_DEFAULT_ULONG(BGP_KEEPALIVE,
 	{ .val_ulong = 3, .match_profile = "datacenter", },
 	{ .val_ulong = 60 },
 )
+FRR_CFG_DEFAULT_ULONG(BGP_IDLEHOLD,
+	{ .val_ulong = 0 },
+)
 FRR_CFG_DEFAULT_BOOL(BGP_EBGP_REQUIRES_POLICY,
 	{ .val_bool = false, .match_profile = "datacenter", },
 	{ .val_bool = false, .match_version = "< 7.4", },
@@ -421,7 +424,7 @@ int bgp_get_vty(struct bgp **bgp, as_t *as, const char *name,
 
 	if (ret == BGP_CREATED) {
 		bgp_timers_set(*bgp, DFLT_BGP_KEEPALIVE, DFLT_BGP_HOLDTIME,
-			       DFLT_BGP_CONNECT_RETRY);
+			       DFLT_BGP_CONNECT_RETRY, DFLT_BGP_IDLEHOLD);
 
 		if (DFLT_BGP_IMPORT_CHECK)
 			SET_FLAG((*bgp)->flags, BGP_FLAG_IMPORT_CHECK);
@@ -2062,7 +2065,8 @@ DEFUN (bgp_timers,
 		return CMD_WARNING_CONFIG_FAILED;
 	}
 
-	bgp_timers_set(bgp, keepalive, holdtime, DFLT_BGP_CONNECT_RETRY);
+	bgp_timers_set(bgp, keepalive, holdtime, DFLT_BGP_CONNECT_RETRY,
+		       DFLT_BGP_IDLEHOLD);
 
 	return CMD_SUCCESS;
 }
@@ -2078,7 +2082,7 @@ DEFUN (no_bgp_timers,
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	bgp_timers_set(bgp, DFLT_BGP_KEEPALIVE, DFLT_BGP_HOLDTIME,
-		       DFLT_BGP_CONNECT_RETRY);
+		       DFLT_BGP_CONNECT_RETRY, DFLT_BGP_IDLEHOLD);
 
 	return CMD_SUCCESS;
 }
@@ -6287,6 +6291,53 @@ DEFUN (no_neighbor_timers_connect,
 	return peer_timers_connect_unset_vty(vty, argv[idx_peer]->arg);
 }
 
+DEFPY (neighbor_timers_idlehold,
+       neighbor_timers_idlehold_cmd,
+       "neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers idlehold (1-65535)$interval",
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
+       "BGP per neighbor timers\n"
+       "BGP IdleHold timer\n"
+       "IdleHold timer\n")
+{
+	struct peer *peer;
+
+	peer = peer_and_group_lookup_vty(vty, neighbor);
+	if (!peer)
+		return CMD_WARNING_CONFIG_FAILED;
+
+	if (!interval) {
+		if (peer_timers_idlehold_unset(peer))
+			return CMD_WARNING_CONFIG_FAILED;
+	} else {
+		if (peer_timers_idlehold_set(peer, interval))
+			return CMD_WARNING_CONFIG_FAILED;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (no_neighbor_timers_idlehold,
+       no_neighbor_timers_idlehold_cmd,
+       "no neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers idlehold [(0-65535)]",
+       NO_STR
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
+       "BGP per neighbor timers\n"
+       "BGP IdleHold timer\n"
+       "IdleHold timer\n")
+{
+	struct peer *peer;
+
+	peer = peer_and_group_lookup_vty(vty, neighbor);
+	if (!peer)
+		return CMD_WARNING_CONFIG_FAILED;
+
+	if (peer_timers_idlehold_unset(peer))
+			return CMD_WARNING_CONFIG_FAILED;
+
+	return CMD_SUCCESS;
+}
 
 static int peer_advertise_interval_vty(struct vty *vty, const char *ip_str,
 				       const char *time_str, int set)
@@ -11245,6 +11296,8 @@ static void bgp_show_peer(struct vty *vty, struct peer *p, bool use_json,
 		json_object_int_add(json_neigh,
 				    "bgpTimerKeepAliveIntervalMsecs",
 				    p->v_keepalive * 1000);
+		json_object_int_add(json_neigh, "bgpTimerIdleHoldMsecs",
+				    p->v_idlehold * 1000);
 		if (CHECK_FLAG(p->flags, PEER_FLAG_TIMER)) {
 			json_object_int_add(json_neigh,
 					    "bgpTimerConfiguredHoldTimeMsecs",
@@ -11262,6 +11315,11 @@ static void bgp_show_peer(struct vty *vty, struct peer *p, bool use_json,
 				json_neigh,
 				"bgpTimerConfiguredKeepAliveIntervalMsecs",
 				bgp->default_keepalive);
+		}
+		if (CHECK_FLAG(p->flags, PEER_FLAG_TIMER_IDLEHOLD)) {
+			json_object_int_add(json_neigh,
+					    "bgpTimerConfigureIdleHoldMsecs",
+					    p->idlehold * 1000);
 		}
 	} else {
 		/* Administrative shutdown. */
@@ -15078,6 +15136,10 @@ static void bgp_config_write_peer_global(struct vty *vty, struct bgp *bgp,
 		vty_out(vty, " neighbor %s timers connect %u\n", addr,
 			peer->bgp->default_connect_retry);
 
+	if (peergroup_flag_check(peer, PEER_FLAG_TIMER_IDLEHOLD))
+		vty_out(vty, " neighbor %s timers idlehold %u\n", addr,
+			peer->idlehold);
+
 	/* capability dynamic */
 	if (peergroup_flag_check(peer, PEER_FLAG_DYNAMIC_CAPABILITY))
 		vty_out(vty, " neighbor %s capability dynamic\n", addr);
@@ -16914,6 +16976,10 @@ void bgp_vty_init(void)
 	/* "neighbor advertisement-interval" commands. */
 	install_element(BGP_NODE, &neighbor_advertise_interval_cmd);
 	install_element(BGP_NODE, &no_neighbor_advertise_interval_cmd);
+
+	/* "neighbor timers idlehold" commands. */
+	install_element(BGP_NODE, &neighbor_timers_idlehold_cmd);
+	install_element(BGP_NODE, &no_neighbor_timers_idlehold_cmd);
 
 	/* "neighbor interface" commands. */
 	install_element(BGP_NODE, &neighbor_interface_cmd);
