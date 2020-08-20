@@ -187,6 +187,8 @@ struct isis_area {
 	struct isis_sr_db srdb;
 	int ipv6_circuits;
 	bool purge_originator;
+	/* Fast Re-Route information. */
+	size_t lfa_protected_links[ISIS_LEVELS];
 	/* Counters */
 	uint32_t circuit_state_changes;
 	struct isis_redist redist_settings[REDIST_PROTOCOL_COUNT]
@@ -272,6 +274,7 @@ extern unsigned long debug_flooding;
 extern unsigned long debug_bfd;
 extern unsigned long debug_tx_queue;
 extern unsigned long debug_sr;
+extern unsigned long debug_tilfa;
 
 #define DEBUG_ADJ_PACKETS                (1<<0)
 #define DEBUG_SNP_PACKETS                (1<<1)
@@ -286,6 +289,7 @@ extern unsigned long debug_sr;
 #define DEBUG_BFD                        (1<<10)
 #define DEBUG_TX_QUEUE                   (1<<11)
 #define DEBUG_SR                         (1<<12)
+#define DEBUG_TILFA                      (1<<13)
 
 /* Debug related macro. */
 #define IS_DEBUG_ADJ_PACKETS (debug_adj_pkt & DEBUG_ADJ_PACKETS)
@@ -301,6 +305,7 @@ extern unsigned long debug_sr;
 #define IS_DEBUG_BFD (debug_bfd & DEBUG_BFD)
 #define IS_DEBUG_TX_QUEUE (debug_tx_queue & DEBUG_TX_QUEUE)
 #define IS_DEBUG_SR (debug_sr & DEBUG_SR)
+#define IS_DEBUG_TILFA (debug_tilfa & DEBUG_TILFA)
 
 #define lsp_debug(...)                                                         \
 	do {                                                                   \

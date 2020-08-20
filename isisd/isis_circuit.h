@@ -139,6 +139,8 @@ struct isis_circuit {
 	uint8_t flags;
 	bool disable_threeway_adj;
 	struct bfd_info *bfd_info;
+	bool tilfa_protection[ISIS_LEVELS];
+	bool tilfa_node_protection[ISIS_LEVELS];
 	/*
 	 * Counters as in 10589--11.2.5.9
 	 */
