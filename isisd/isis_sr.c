@@ -1871,7 +1871,7 @@ static char *sr_op2str(char *buf, size_t size, mpls_label_t label_in,
 	}
 
 	if (label_stack) {
-		char buf_labels[BUFSIZ];
+		char buf_labels[256];
 
 		mpls_label2str(label_stack->num_labels, &label_stack->label[0],
 			       buf_labels, sizeof(buf_labels), 1);
