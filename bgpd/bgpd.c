@@ -5311,7 +5311,7 @@ int peer_timers_idlehold_set(struct peer *peer, uint32_t idlehold)
 }
 
 /* unset peer idlehold flag and reset idlehold timer interval */
-int peer_timers_idlehold_unset(struct peer *peer)
+int peer_timers_idlehold_unset(struct peer *peer, uint32_t idlehold)
 {
 	struct peer *member;
 	struct listnode *node;
@@ -5327,10 +5327,15 @@ int peer_timers_idlehold_unset(struct peer *peer)
 	}
 
 	/* Set timer with fallback to default value. */
-	if (peer->idlehold)
-		peer->v_idlehold = peer->idlehold;
-	else
-		peer->v_idlehold = peer->bgp->default_idlehold;
+	if (idlehold) {
+		if (peer->idlehold)
+			peer->v_idlehold = peer->idlehold;
+		else
+			peer->v_idlehold = peer->bgp->default_idlehold;
+	} else {
+		peer->idlehold = BGP_DEFAULT_IDLEHOLD;
+		peer->v_idlehold = BGP_DEFAULT_IDLEHOLD;
+	}
 
 	/* Skip peer-group mechanics for regular peers. */
 	if (!CHECK_FLAG(peer->sflags, PEER_STATUS_GROUP))

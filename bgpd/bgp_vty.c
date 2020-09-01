@@ -110,7 +110,7 @@ FRR_CFG_DEFAULT_ULONG(BGP_KEEPALIVE,
 	{ .val_ulong = 60 },
 )
 FRR_CFG_DEFAULT_ULONG(BGP_IDLEHOLD,
-	{ .val_ulong = 0 },
+	{ .val_ulong = BGP_DEFAULT_IDLEHOLD },
 )
 FRR_CFG_DEFAULT_BOOL(BGP_EBGP_REQUIRES_POLICY,
 	{ .val_bool = false, .match_profile = "datacenter", },
@@ -6291,14 +6291,10 @@ DEFUN (no_neighbor_timers_connect,
 	return peer_timers_connect_unset_vty(vty, argv[idx_peer]->arg);
 }
 
-DEFPY (neighbor_timers_idlehold,
-       neighbor_timers_idlehold_cmd,
-       "neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers idlehold (1-65535)$interval",
-       NEIGHBOR_STR
-       NEIGHBOR_ADDR_STR2
-       "BGP per neighbor timers\n"
-       "BGP IdleHold timer\n"
-       "IdleHold timer\n")
+DEFPY (neighbor_timers_idlehold, neighbor_timers_idlehold_cmd,
+       "neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers idlehold (1-3600)$interval",
+       NEIGHBOR_STR NEIGHBOR_ADDR_STR2 "BGP per neighbor timers\n"
+       "BGP IdleHold timer\n" "IdleHold timer\n")
 {
 	struct peer *peer;
 
@@ -6306,26 +6302,19 @@ DEFPY (neighbor_timers_idlehold,
 	if (!peer)
 		return CMD_WARNING_CONFIG_FAILED;
 
-	if (!interval) {
-		if (peer_timers_idlehold_unset(peer))
-			return CMD_WARNING_CONFIG_FAILED;
-	} else {
-		if (peer_timers_idlehold_set(peer, interval))
-			return CMD_WARNING_CONFIG_FAILED;
-	}
+	if (!interval)
+		return CMD_WARNING_CONFIG_FAILED;
+
+	if (peer_timers_idlehold_set(peer, interval))
+		return CMD_WARNING_CONFIG_FAILED;
 
 	return CMD_SUCCESS;
 }
 
-DEFPY (no_neighbor_timers_idlehold,
-       no_neighbor_timers_idlehold_cmd,
+DEFPY (no_neighbor_timers_idlehold, no_neighbor_timers_idlehold_cmd,
        "no neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor timers idlehold [(0-65535)]",
-       NO_STR
-       NEIGHBOR_STR
-       NEIGHBOR_ADDR_STR2
-       "BGP per neighbor timers\n"
-       "BGP IdleHold timer\n"
-       "IdleHold timer\n")
+       NO_STR NEIGHBOR_STR NEIGHBOR_ADDR_STR2 "BGP per neighbor timers\n"
+       "BGP IdleHold timer\n" "IdleHold timer\n")
 {
 	struct peer *peer;
 
@@ -6333,8 +6322,8 @@ DEFPY (no_neighbor_timers_idlehold,
 	if (!peer)
 		return CMD_WARNING_CONFIG_FAILED;
 
-	if (peer_timers_idlehold_unset(peer))
-			return CMD_WARNING_CONFIG_FAILED;
+	if (peer_timers_idlehold_unset(peer, idlehold))
+		return CMD_WARNING_CONFIG_FAILED;
 
 	return CMD_SUCCESS;
 }

@@ -1513,14 +1513,14 @@ Configuring Peers
    peer in question.  This number is between 0 and 600 seconds,
    with the default advertisement interval being 0.
 
-.. index:: [no] neighbor PEER timers idlehold [(0-3600)]
-.. clicmd:: [no] neighbor PEER timers idlehold [(0-3600)]
+.. index:: [no] neighbor PEER timers idlehold (1-3600)
+.. clicmd:: [no] neighbor PEER timers idlehold (1-3600)
 
    This command allows the user to switch the
    `RFC 4271 <https://tools.ietf.org/html/rfc4271/>` IdleHoldTimer on and off, as
    well as specify the timer interval for the peer. By default, the IdleHoldTimer
    is inactive and the interval set to a duration of 15 seconds. The interval can
-   be set to a value between 0 and 3600 seconds.
+   be set to a value between 1 and 3600 seconds.
 
 Displaying Information about Peers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

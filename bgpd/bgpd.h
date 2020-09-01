@@ -1640,7 +1640,7 @@ struct bgp_nlri {
 #define BGP_DEFAULT_IBGP_ROUTEADV                0
 
 /* BGP RFC 4271 IdleHoldTime default value */
-#define BGP_DEFAULT_IDLEHOLD                     0
+#define BGP_DEFAULT_IDLEHOLD 15
 
 /* BGP default local preference.  */
 #define BGP_DEFAULT_LOCAL_PREF                 100
@@ -1915,7 +1915,7 @@ extern int peer_advertise_interval_set(struct peer *, uint32_t);
 extern int peer_advertise_interval_unset(struct peer *);
 
 extern int peer_timers_idlehold_set(struct peer *peer, uint32_t idlehold);
-extern int peer_timers_idlehold_unset(struct peer *peer);
+extern int peer_timers_idlehold_unset(struct peer *peer, uint32_t idlehold);
 
 extern void peer_interface_set(struct peer *, const char *);
 extern void peer_interface_unset(struct peer *);
