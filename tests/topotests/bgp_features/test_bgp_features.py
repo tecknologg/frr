@@ -179,8 +179,10 @@ def test_bgp_convergence():
     # tgen.mininet_cli()
 
 
-def test_bgp_shutdown():
-    "Test BGP instance shutdown"
+
+
+def test_bgp_metric_config():
+    "Test BGP Changing metric values in route-maps"
 
     tgen = get_topogen()
 
@@ -188,54 +190,100 @@ def test_bgp_shutdown():
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
 
-    tgen.net['r1'].cmd('vtysh -c \"conf t\" -c \"router bgp 65000\" -c \"bgp shutdown message ABCDabcd\"')
+    logger.info("Configuring bgp route-maps on router r1 and r2 to update metric")
 
-    # Check BGP Summary on local and remote routers
-    for rtrNum in [1, 2, 4]:
-        logger.info("Checking BGP Summary after shutdown of R1 BGP on router r{}".format(rtrNum))
+    # # Adding the following configuration to r1:
+    # router bgp 65000
+    #  address-family ipv4 unicast
+    #   neighbor 192.168.0.2 route-map addmetric in
+    #   neighbor 192.168.101.2 route-map setmetric in
+    #  exit-address-family
+    # !
+    # ip prefix-list setmetric seq 10 permit 192.168.101.0/24
+    # ip prefix-list setmetric seq 20 permit 192.168.102.0/24
+    # !
+    # route-map setmetric permit 10
+    #  match ip address prefix-list setmetric
+    #  set metric 111
+    # !
+    # route-map setmetric permit 20
+    # ! 
+    # route-map addmetric permit 10
+    #  set metric +11
+    # !
+    tgen.net['r1'].cmd('vtysh -c "conf t" -c "router bgp 65000" '+
+        '-c "address-family ipv4 unicast" '+
+        '-c "neighbor 192.168.0.2 route-map addmetric in" '+
+        '-c "neighbor 192.168.101.2 route-map setmetric in"')
+    tgen.net['r1'].cmd('vtysh -c "conf t" '+
+        '-c "ip prefix-list setmetric seq 10 permit 192.168.101.0/24" '+
+        '-c "ip prefix-list setmetric seq 20 permit 192.168.102.0/24"')
+    tgen.net['r1'].cmd('vtysh -c "conf t" '+
+        '-c "route-map setmetric permit 10" '+
+        '-c "match ip address prefix-list setmetric" '+
+        '-c "set metric 111" '+
+        '-c "route-map setmetric permit 20"')
+    tgen.net['r1'].cmd('vtysh -c "conf t" '+
+        '-c "route-map addmetric permit 10" '+
+        '-c "set metric +11"')
 
-        router = tgen.gears["r{}".format(rtrNum)]
-        reffile = os.path.join(CWD, "r{}/bgp_shutdown_summary.json".format(rtrNum))
-        expected = json.loads(open(reffile).read())
+    # # Adding the following configuration to r2:
+    # router bgp 65000
+    #  address-family ipv4 unicast
+    #   neighbor 192.168.0.1 route-map subtractmetric in
+    #   neighbor 192.168.201.2 route-map setmetric in
+    #  exit-address-family
+    # !
+    # ip prefix-list setmetric seq 10 permit 192.168.201.0/24
+    # ip prefix-list setmetric seq 20 permit 192.168.202.0/24
+    # !
+    # route-map setmetric permit 10
+    #  match ip address prefix-list setmetric
+    #  set metric 222
+    # !
+    # route-map setmetric permit 20
+    # ! 
+    # route-map subtractmetric permit 10
+    #  set metric -22
+    # !
+    tgen.net['r2'].cmd('vtysh -c "conf t" -c "router bgp 65000" '+
+        '-c "address-family ipv4 unicast" '+
+        '-c "neighbor 192.168.0.1 route-map subtractmetric in" '+
+        '-c "neighbor 192.168.201.2 route-map setmetric in"')
+    tgen.net['r2'].cmd('vtysh -c "conf t" '+
+        '-c "ip prefix-list setmetric seq 10 permit 192.168.201.0/24" '+
+        '-c "ip prefix-list setmetric seq 20 permit 192.168.202.0/24"')
+    tgen.net['r2'].cmd('vtysh -c "conf t" '+
+        '-c "route-map setmetric permit 10" '+
+        '-c "match ip address prefix-list setmetric" '+
+        '-c "set metric 222" '+
+        '-c "route-map setmetric permit 20"')
+    tgen.net['r2'].cmd('vtysh -c "conf t" '+
+        '-c "route-map subtractmetric permit 10" '+
+        '-c "set metric -22"')
 
-        test_func = functools.partial(
-            topotest.router_json_cmp, router, "show ip bgp summary json", expected
-        )
-        _, res = topotest.run_and_expect(test_func, None, count=60, wait=2)
-        assertmsg = "BGP sessions on router R{} are in incorrect state (not down as expected?)".format(rtrNum)
-        assert res is None, assertmsg
-
-
-def test_bgp_shutdown_message():
-    "Test BGP Peer Shutdown Message"
-
-    tgen = get_topogen()
-
-    # Skip if previous fatal error condition is raised
-    if tgen.routers_have_failure():
-        pytest.skip(tgen.errors)
-
-    for rtrNum in [2, 4]:
-        logger.info("Checking BGP shutdown received on router r{}".format(rtrNum))
-
-        shut_message = tgen.net['r{}'.format(rtrNum)].cmd(
-            'tail bgpd.log | grep "NOTIFICATION.*Cease/Administratively Shutdown"')
-        assertmsg = "BGP shutdown message not received on router R{}".format(rtrNum)
-        assert shut_message != '', assertmsg
-
-        m = re.search('.*([0-9]+ bytes[ 0-9a-fA-F]+)', shut_message)
-        if m:
-            found = m.group(1)
-        else:
-            found = ''
-        assertmsg = "Incorrect BGP shutdown message received on router R{}".format(rtrNum)
-        assert found == '8 bytes 41 42 43 44 61 62 63 64', assertmsg
+    # Clear IN the bgp neighbors to make sure the route-maps are applied
+    tgen.net['r1'].cmd('vtysh -c "clear ip bgp 192.168.0.2 in" '+
+        '-c "clear ip bgp 192.168.101.2 in"')
+    tgen.net['r1'].cmd('vtysh -c "clear ip bgp 192.168.0.1 in" '+
+        '-c "clear ip bgp 192.168.201.2 in"')
 
     # tgen.mininet_cli()
 
+    # Checking BGP config - should show the bgp metric settings in the route-maps
+    logger.info("Checking BGP configuration for correct 'set metric' values")
 
-def test_bgp_no_shutdown():
-    "Test BGP instance no shutdown"
+    setmetric111 = tgen.net['r1'].cmd('vtysh -c "show running" | grep "^ set metric 111"').rstrip()
+    assertmsg = "'set metric 111' configuration applied to R1, but not visible in configuration"
+    assert setmetric111 == ' set metric 111', assertmsg
+
+    setmetric222 = tgen.net['r2'].cmd('vtysh -c "show running" | grep "^ set metric 222"').rstrip()
+    assertmsg = "'set metric 222' configuration applied to R2, but not visible in configuration"
+    assert setmetric222 == ' set metric 222', assertmsg
+
+
+def test_bgp_metric_add_config():
+    "Test BGP Changing metric values in route-maps"
 
     tgen = get_topogen()
 
@@ -243,22 +291,27 @@ def test_bgp_no_shutdown():
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
 
-    tgen.net['r1'].cmd('vtysh -c \"conf t\" -c \"router bgp 65000\" -c \"no bgp shutdown\"')
+    logger.info("Checking BGP configuration for correct 'set metric' ADD value")
 
-    # Check BGP Summary on local and remote routers
-    for rtrNum in [1, 2, 4]:
-        logger.info("Checking BGP Summary after removing bgp shutdown on router r1 on router r{}".format(rtrNum))
+    setmetricP11 = tgen.net['r1'].cmd('vtysh -c "show running" | grep "^ set metric +11"').rstrip()
+    assertmsg = "'set metric +11' configuration applied to R1, but not visible in configuration"
+    assert setmetricP11 == ' set metric +11', assertmsg
 
-        router = tgen.gears["r{}".format(rtrNum)]
-        reffile = os.path.join(CWD, "r{}/bgp_summary.json".format(rtrNum))
-        expected = json.loads(open(reffile).read())
 
-        test_func = functools.partial(
-            topotest.router_json_cmp, router, "show ip bgp summary json", expected
-        )
-        _, res = topotest.run_and_expect(test_func, None, count=60, wait=2)
-        assertmsg = "BGP sessions on router R{} are in incorrect state (not down as expected?)".format(rtrNum)
-        assert res is None, assertmsg
+def test_bgp_metric_subtract_config():
+    "Test BGP Changing metric values in route-maps"
+
+    tgen = get_topogen()
+
+    # Skip if previous fatal error condition is raised
+    #if tgen.routers_have_failure():
+    #    pytest.skip(tgen.errors)
+
+    logger.info("Checking BGP configuration for correct 'set metric' SUBTRACT value")
+
+    setmetricM22 = tgen.net['r2'].cmd('vtysh -c "show running" | grep "^ set metric -22"').rstrip()
+    assertmsg = "'set metric -22' configuration applied to R2, but not visible in configuration"
+    assert setmetricM22 == ' set metric -22', assertmsg
 
 
 
