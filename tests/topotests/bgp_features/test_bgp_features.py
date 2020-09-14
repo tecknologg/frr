@@ -195,77 +195,121 @@ def test_bgp_metric_config():
     # # Adding the following configuration to r1:
     # router bgp 65000
     #  address-family ipv4 unicast
-    #   neighbor 192.168.0.2 route-map addmetric in
-    #   neighbor 192.168.101.2 route-map setmetric in
+    #   neighbor 192.168.0.2 route-map addmetric-in in
+    #   neighbor 192.168.0.2 route-map addmetric-out out
+    #   neighbor 192.168.101.2 route-map setmetric-in in
+    #   neighbor 192.168.101.2 route-map setmetric-out out
     #  exit-address-family
     # !
-    # ip prefix-list setmetric seq 10 permit 192.168.101.0/24
-    # ip prefix-list setmetric seq 20 permit 192.168.102.0/24
+    # ip prefix-list net1 seq 10 permit 192.168.101.0/24
+    # ip prefix-list net2 seq 20 permit 192.168.1.0/24
     # !
-    # route-map setmetric permit 10
-    #  match ip address prefix-list setmetric
+    # route-map setmetric-in permit 10
+    #  match ip address prefix-list net1
     #  set metric 111
     # !
-    # route-map setmetric permit 20
-    # ! 
-    # route-map addmetric permit 10
+    # route-map setmetric-in permit 20
+    # !
+    # route-map setmetric-out permit 10
+    #  match ip address prefix-list net2
+    #  set metric 1011
+    # !
+    # route-map setmetric-out permit 20
+    # !
+    # route-map addmetric-in permit 10
     #  set metric +11
     # !
+    # route-map addmetric-out permit 10
+    #  set metric +12
+    # !
+
     tgen.net['r1'].cmd('vtysh -c "conf t" -c "router bgp 65000" '+
         '-c "address-family ipv4 unicast" '+
-        '-c "neighbor 192.168.0.2 route-map addmetric in" '+
-        '-c "neighbor 192.168.101.2 route-map setmetric in"')
+        '-c "neighbor 192.168.0.2 route-map addmetric-in in" '+
+        '-c "neighbor 192.168.0.2 route-map addmetric-out out" '+
+        '-c "neighbor 192.168.101.2 route-map setmetric-in in" '+
+        '-c "neighbor 192.168.101.2 route-map setmetric-out out" ')
     tgen.net['r1'].cmd('vtysh -c "conf t" '+
-        '-c "ip prefix-list setmetric seq 10 permit 192.168.101.0/24" '+
-        '-c "ip prefix-list setmetric seq 20 permit 192.168.102.0/24"')
+        '-c "ip prefix-list net1 seq 10 permit 192.168.101.0/24" '+
+        '-c "ip prefix-list net2 seq 20 permit 192.168.1.0/24"')
     tgen.net['r1'].cmd('vtysh -c "conf t" '+
-        '-c "route-map setmetric permit 10" '+
-        '-c "match ip address prefix-list setmetric" '+
+        '-c "route-map setmetric-in permit 10" '+
+        '-c "match ip address prefix-list net1" '+
         '-c "set metric 111" '+
-        '-c "route-map setmetric permit 20"')
+        '-c "route-map setmetric-in permit 20"')
     tgen.net['r1'].cmd('vtysh -c "conf t" '+
-        '-c "route-map addmetric permit 10" '+
+        '-c "route-map setmetric-out permit 10" '+
+        '-c "match ip address prefix-list net2" '+
+        '-c "set metric 1011" '+
+        '-c "route-map setmetric-out permit 20"')
+    tgen.net['r1'].cmd('vtysh -c "conf t" '+
+        '-c "route-map addmetric-in permit 10" '+
         '-c "set metric +11"')
+    tgen.net['r1'].cmd('vtysh -c "conf t" '+
+        '-c "route-map addmetric-out permit 10" '+
+        '-c "set metric +12"')
 
     # # Adding the following configuration to r2:
     # router bgp 65000
     #  address-family ipv4 unicast
-    #   neighbor 192.168.0.1 route-map subtractmetric in
-    #   neighbor 192.168.201.2 route-map setmetric in
+    # neighbor 192.168.0.1 route-map subtractmetric-in in
+    # neighbor 192.168.0.1 route-map subtractmetric-out out
+    # neighbor 192.168.201.2 route-map setmetric-in in
+    # neighbor 192.168.201.2 route-map setmetric-out out
     #  exit-address-family
     # !
-    # ip prefix-list setmetric seq 10 permit 192.168.201.0/24
-    # ip prefix-list setmetric seq 20 permit 192.168.202.0/24
+    # ip prefix-list net1 seq 10 permit 192.168.201.0/24
+    # ip prefix-list net2 seq 20 permit 192.168.2.0/24
     # !
-    # route-map setmetric permit 10
-    #  match ip address prefix-list setmetric
+    # route-map setmetric-in permit 10
+    #  match ip address prefix-list net1
     #  set metric 222
     # !
-    # route-map setmetric permit 20
-    # ! 
-    # route-map subtractmetric permit 10
+    # route-map setmetric-in permit 20
+    # !
+    # route-map setmetric-out permit 10
+    #  match ip address prefix-list net2
+    #  set metric 2022
+    # !
+    # route-map setmetric-out permit 20
+    # !
+    # route-map subtractmetric-in permit 10
     #  set metric -22
     # !
+    # route-map subtractmetric-out permit 10
+    #  set metric -23
+    # !
+
     tgen.net['r2'].cmd('vtysh -c "conf t" -c "router bgp 65000" '+
         '-c "address-family ipv4 unicast" '+
-        '-c "neighbor 192.168.0.1 route-map subtractmetric in" '+
-        '-c "neighbor 192.168.201.2 route-map setmetric in"')
+        '-c "neighbor 192.168.0.1 route-map subtractmetric-in in" '+
+        '-c "neighbor 192.168.0.1 route-map subtractmetric-out out" '+
+        '-c "neighbor 192.168.201.2 route-map setmetric-in in" ' +
+        '-c "neighbor 192.168.201.2 route-map setmetric-out out" ')
     tgen.net['r2'].cmd('vtysh -c "conf t" '+
-        '-c "ip prefix-list setmetric seq 10 permit 192.168.201.0/24" '+
-        '-c "ip prefix-list setmetric seq 20 permit 192.168.202.0/24"')
+        '-c "ip prefix-list net1 seq 10 permit 192.168.201.0/24" '+
+        '-c "ip prefix-list net2 seq 20 permit 192.168.2.0/24" ')
     tgen.net['r2'].cmd('vtysh -c "conf t" '+
-        '-c "route-map setmetric permit 10" '+
-        '-c "match ip address prefix-list setmetric" '+
+        '-c "route-map setmetric-in permit 10" '+
+        '-c "match ip address prefix-list net1" '+
         '-c "set metric 222" '+
-        '-c "route-map setmetric permit 20"')
+        '-c "route-map setmetric-in permit 20"')
     tgen.net['r2'].cmd('vtysh -c "conf t" '+
-        '-c "route-map subtractmetric permit 10" '+
+        '-c "route-map setmetric-out permit 10" '+
+        '-c "match ip address prefix-list net2" '+
+        '-c "set metric 2022" '+
+        '-c "route-map setmetric-out permit 20"')
+    tgen.net['r2'].cmd('vtysh -c "conf t" '+
+        '-c "route-map subtractmetric-in permit 10" '+
         '-c "set metric -22"')
+    tgen.net['r2'].cmd('vtysh -c "conf t" '+
+        '-c "route-map subtractmetric-out permit 10" '+
+        '-c "set metric -23"')
 
     # Clear IN the bgp neighbors to make sure the route-maps are applied
     tgen.net['r1'].cmd('vtysh -c "clear ip bgp 192.168.0.2 in" '+
         '-c "clear ip bgp 192.168.101.2 in"')
-    tgen.net['r1'].cmd('vtysh -c "clear ip bgp 192.168.0.1 in" '+
+    tgen.net['r2'].cmd('vtysh -c "clear ip bgp 192.168.0.1 in" '+
         '-c "clear ip bgp 192.168.201.2 in"')
 
     # tgen.mininet_cli()
@@ -304,14 +348,41 @@ def test_bgp_metric_subtract_config():
     tgen = get_topogen()
 
     # Skip if previous fatal error condition is raised
-    #if tgen.routers_have_failure():
-    #    pytest.skip(tgen.errors)
+    if tgen.routers_have_failure():
+        pytest.skip(tgen.errors)
 
     logger.info("Checking BGP configuration for correct 'set metric' SUBTRACT value")
 
     setmetricM22 = tgen.net['r2'].cmd('vtysh -c "show running" | grep "^ set metric -22"').rstrip()
     assertmsg = "'set metric -22' configuration applied to R2, but not visible in configuration"
     assert setmetricM22 == ' set metric -22', assertmsg
+
+
+def test_bgp_set_metric():
+    "Test setting metrics"
+
+    tgen = get_topogen()
+
+    # Skip if previous fatal error condition is raised
+    if tgen.routers_have_failure():
+        pytest.skip(tgen.errors)
+
+    logger.info("Test absolute metric")
+
+    # Check BGP Summary on local and remote routers
+    for rtrNum in [1, 2, 4, 5]:
+        logger.info("Checking metrics of BGP router on r{}".format(rtrNum))
+
+        router = tgen.gears["r{}".format(rtrNum)]
+        reffile = os.path.join(CWD, "r{}/show_bgp_metric_test.json".format(rtrNum))
+        expected = json.loads(open(reffile).read())
+
+        test_func = functools.partial(
+            topotest.router_json_cmp, router, "show ip bgp json", expected
+        )
+        _, res = topotest.run_and_expect(test_func, None, count=60, wait=2)
+        assertmsg = "BGP metrics on router r{} wrong".format(rtrNum)
+        assert res is None, assertmsg
 
 
 
