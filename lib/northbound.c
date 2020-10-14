@@ -552,6 +552,29 @@ int nb_candidate_edit(struct nb_config *candidate,
 		}
 		break;
 	case NB_OP_DESTROY:
+		/*
+		 * HACK: use lyd_new_path() with the EDIT flag to find the node
+		 * we want to delete. Ideally lyd_find_path() should be used
+		 * instead, but that function doesn't scale well for large
+		 * data trees as of libyang 1.0.184. The downside of using
+		 * lyd_new_path() is that it doesn't allow us to detect attempts
+		 * to remove a non-existing node and return an appropriate error
+		 * code (NB_ERR_NOT_FOUND).
+		 */
+		ly_errno = 0;
+		dnode = lyd_new_path(candidate->dnode, ly_native_ctx,
+				     xpath_edit, NULL, 0,
+				     LYD_PATH_OPT_UPDATE | LYD_PATH_OPT_EDIT);
+		if (!dnode && ly_errno) {
+			flog_warn(EC_LIB_LIBYANG, "%s: lyd_new_path() failed",
+				  __func__);
+			return NB_ERR;
+		}
+#if 0
+		/*
+		 * TODO: uncomment the following code once libyang's
+		 * lyd_find_path() function gets fast enough.
+		 */ 
 		dnode = yang_dnode_get(candidate->dnode, xpath_edit);
 		if (!dnode)
 			/*
@@ -559,6 +582,7 @@ int nb_candidate_edit(struct nb_config *candidate,
 			 * whether to ignore it or not.
 			 */
 			return NB_ERR_NOT_FOUND;
+#endif
 		lyd_free(dnode);
 		break;
 	case NB_OP_MOVE:
