@@ -64,13 +64,13 @@ class BGPECMPTopo1(Topo):
         router = tgen.add_router("r1")
 
         # Setup Switches - 1 switch per 5 peering routers
-        for swNum in range(1, (total_ebgp_peers + 4) / 5 + 1):
+        for swNum in range(1, int((total_ebgp_peers + 4) / 5) + 1):
             switch = tgen.add_switch("s{}".format(swNum))
             switch.add_link(router)
 
         # Add 'total_ebgp_peers' number of eBGP ExaBGP neighbors
         for peerNum in range(1, total_ebgp_peers + 1):
-            swNum = (peerNum - 1) / 5 + 1
+            swNum = int((peerNum - 1) / 5) + 1
 
             peer_ip = "10.0.{}.{}".format(swNum, peerNum + 100)
             peer_route = "via 10.0.{}.1".format(swNum)
