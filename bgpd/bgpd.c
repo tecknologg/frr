@@ -2307,6 +2307,13 @@ int peer_delete(struct peer *peer)
 
 	bgp_bfd_deregister_peer(peer);
 
+	/* Delete peer route flap dampening configuration. This needs to happen
+	 * before removing the peer from peer groups. */
+	FOREACH_AFI_SAFI(afi, safi)
+		if (peer_af_flag_check(peer, afi, safi,
+				       PEER_FLAG_CONFIG_DAMPENING))
+			bgp_peer_damp_disable(peer, afi, safi);
+
 	/* If this peer belongs to peer group, clear up the
 	   relationship.  */
 	if (peer->group) {
@@ -3380,6 +3387,7 @@ int bgp_delete(struct bgp *bgp)
 	int i;
 	struct graceful_restart_info *gr_info;
 
+
 	assert(bgp);
 
 	hook_call(bgp_inst_delete, bgp);
@@ -3402,6 +3410,11 @@ int bgp_delete(struct bgp *bgp)
 		BGP_TIMER_OFF(gr_info->t_route_select);
 		if (gr_info->route_list)
 			list_delete(&gr_info->route_list);
+	}
+
+	/* Delete route flap dampening configuration */
+	FOREACH_AFI_SAFI(afi, safi) {
+		bgp_damp_disable(bgp, afi, safi);
 	}
 
 	if (BGP_DEBUG(zebra, ZEBRA)) {
