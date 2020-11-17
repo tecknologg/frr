@@ -698,51 +698,6 @@ void ospf_route_table_dump(struct route_table *rt)
 	zlog_debug("========================================");
 }
 
-void ospf_route_table_print(struct vty *vty, struct route_table *rt)
-{
-	struct route_node *rn;
-	struct ospf_route * or ;
-	struct listnode *pnode;
-	struct ospf_path *path;
-	struct mpls_label_stack *label_stack;
-	char buf[MPLS_LABEL_STRLEN];
-
-	vty_out(vty, "========== OSPF routing table ==========\n");
-	for (rn = route_top(rt); rn; rn = route_next(rn)) {
-		if ((or = rn->info) == NULL)
-			continue;
-
-		if (or->type == OSPF_DESTINATION_NETWORK) {
-			vty_out(vty, "N %-18pFX %-15pI4 %s %d\n", &rn->p,
-				&or->u.std.area_id,
-				ospf_path_type_str[or->path_type], or->cost);
-
-			for (ALL_LIST_ELEMENTS_RO(or->paths, pnode, path)) {
-				if (path->nexthop.s_addr == 0)
-					continue;
-
-				vty_out(vty, "  -> %pI4 with adv router %pI4",
-					&path->nexthop, &path->adv_router);
-
-				if (path->srni.backup_label_stack) {
-					label_stack =
-						path->srni.backup_label_stack;
-					mpls_label2str(label_stack->num_labels,
-						       label_stack->label, buf,
-						       MPLS_LABEL_STRLEN, true);
-					vty_out(vty, " and backup path %s",
-						buf);
-				}
-				vty_out(vty, "\n");
-			}
-		} else
-			vty_out(vty, "R %-18pI4 %-15pI4 %s %d\n",
-				&rn->p.u.prefix4, & or->u.std.area_id,
-				ospf_path_type_str[or->path_type], or->cost);
-	}
-	vty_out(vty, "========================================\n");
-}
-
 /* This is 16.4.1 implementation.
    o Intra-area paths using non-backbone areas are always the most preferred.
    o The other paths, intra-area backbone paths and inter-area paths,
