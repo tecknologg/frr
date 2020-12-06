@@ -23,6 +23,7 @@
 #include "ldpe.h"
 #include "lde.h"
 #include "log.h"
+#include "rlfa.h"
 
 #include "mpls.h"
 
@@ -489,6 +490,8 @@ lde_check_mapping(struct map *map, struct lde_nbr *ln, int rcvd_label_mapping)
 	struct lde_req		*lre;
 	struct lde_map		*me;
 	struct l2vpn_pw		*pw;
+	struct prefix		 rlfa_dest;
+	struct ldp_rlfa_node	*rnode;
 	bool			 send_map = false;
 
 	lde_map2fec(map, ln->id, &fec);
@@ -609,6 +612,22 @@ lde_check_mapping(struct map *map, struct lde_nbr *ln, int rcvd_label_mapping)
 			break;
 		}
 	}
+
+	/*
+	 * Check if there's any registered RLFA client for this prefix/neighbor
+	 * (PQ node).
+	 */
+	lde_fec2prefix(&fec, &rlfa_dest);
+	rnode = rlfa_node_find(&rlfa_dest, ln->id);
+	if (rnode) {
+		struct ldp_rlfa_client *rclient;
+
+		rnode->pq_label = map->label;
+		RB_FOREACH (rclient, ldp_rlfa_client_head, &rnode->clients)
+			lde_rlfa_client_send(rclient);
+	} else
+		lde_rlfa_label_update(&fec);
+
 	/* LMp.13 & LMp.16: Record the mapping from this peer */
 	if (me == NULL)
 		me = lde_map_add(ln, fn, 0);
@@ -828,6 +847,8 @@ lde_check_withdraw(struct map *map, struct lde_nbr *ln)
 	struct lde_map		*me;
 	struct l2vpn_pw		*pw;
 	struct lde_nbr		*lnbr;
+	struct prefix		 rlfa_dest;
+	struct ldp_rlfa_node	*rnode;
 
 	/* wildcard label withdraw */
 	if (map->type == MAP_TYPE_WILDCARD ||
@@ -865,6 +886,21 @@ lde_check_withdraw(struct map *map, struct lde_nbr *ln)
 		lde_send_delete_klabel(fn, fnh);
 		fnh->remote_label = NO_LABEL;
 	}
+
+	/*
+	 * Check if there's any registered RLFA client for this prefix/neighbor
+	 * (PQ node).
+	 */
+	lde_fec2prefix(&fec, &rlfa_dest);
+	rnode = rlfa_node_find(&rlfa_dest, ln->id);
+	if (rnode) {
+		struct ldp_rlfa_client *rclient;
+
+		rnode->pq_label = MPLS_INVALID_LABEL;
+		RB_FOREACH (rclient, ldp_rlfa_client_head, &rnode->clients)
+			lde_rlfa_client_send(rclient);
+	} else
+		lde_rlfa_label_update(&fec);
 
 	/* LWd.2: send label release */
 	lde_send_labelrelease(ln, fn, NULL, map->label);
@@ -915,6 +951,9 @@ lde_check_withdraw_wcard(struct map *map, struct lde_nbr *ln)
 	lde_send_labelrelease(ln, NULL, map, map->label);
 
 	RB_FOREACH(f, fec_tree, &ft) {
+		struct prefix		 rlfa_dest;
+		struct ldp_rlfa_node	*rnode;
+
 		fn = (struct fec_node *)f;
 		me = (struct lde_map *)fec_find(&ln->recv_map, &fn->fec);
 
@@ -947,6 +986,22 @@ lde_check_withdraw_wcard(struct map *map, struct lde_nbr *ln)
 			lde_send_delete_klabel(fn, fnh);
 			fnh->remote_label = NO_LABEL;
 		}
+
+		/*
+		 * Check if there's any registered RLFA client for this
+		 * prefix/neighbor (PQ node).
+		 */
+		lde_fec2prefix(f, &rlfa_dest);
+		rnode = rlfa_node_find(&rlfa_dest, ln->id);
+		if (rnode) {
+			struct ldp_rlfa_client *rclient;
+
+			rnode->pq_label = MPLS_INVALID_LABEL;
+			RB_FOREACH (rclient, ldp_rlfa_client_head,
+				    &rnode->clients)
+				lde_rlfa_client_send(rclient);
+		} else
+			lde_rlfa_label_update(f);
 
 		/* LWd.3: check previously received label mapping */
 		if (me && (map->label == NO_LABEL ||
