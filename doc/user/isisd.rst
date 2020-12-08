@@ -188,21 +188,27 @@ ISIS Fast-Reroute
 
    Assign a priority to the prefixes that match the specified access-list.
 
-.. index:: fast-reroute priority-limit [critical | high | medium] [level-1 | level-2]
+.. index:: [no] fast-reroute priority-limit [critical | high | medium] [level-1 | level-2]
 .. clicmd:: [no] fast-reroute priority-limit [critical | high | medium] [level-1 | level-2]
 
    Limit LFA backup computation up to the specified prefix priority.
 
-.. index:: fast-reroute lfa tiebreaker [downstream | lowest-backup-metric | node-protecting] index (1-255) [level-1 | level-2]
+.. index:: [no] fast-reroute lfa tiebreaker [downstream | lowest-backup-metric | node-protecting] index (1-255) [level-1 | level-2]
 .. clicmd:: [no] fast-reroute lfa tiebreaker [downstream | lowest-backup-metric | node-protecting] index (1-255) [level-1 | level-2]
 
    Configure a tie-breaker for multiple LFA backups. Lower indexes are processed
    first.
 
-.. index:: fast-reroute load-sharing disable [level-1 | level-2]
+.. index:: [no] fast-reroute load-sharing disable [level-1 | level-2]
 .. clicmd:: [no] fast-reroute load-sharing disable [level-1 | level-2]
 
    Disable load sharing across multiple LFA backups.
+
+.. index:: fast-reroute remote-lfa prefix-list WORD [level-1 | level-2]
+.. clicmd:: [no] fast-reroute remote-lfa prefix-list [WORD] [level-1 | level-2]
+
+   Configure a prefix-list to select eligible PQ nodes (valid for all protected
+   interfaces).
 
 .. _isis-region:
 
@@ -399,6 +405,18 @@ ISIS interface
 .. clicmd:: [no] isis fast-reroute ti-lfa [level-1|level-2] [node-protection]
 
    Enable per-prefix TI-LFA fast reroute link or node protection.
+
+.. index:: [no] isis fast-reroute remote-lfa tunnel mpls-ldp [level-1 | level-2]
+.. clicmd:: [no] isis fast-reroute remote-lfa tunnel mpls-ldp [level-1 | level-2]
+
+   Enable per-prefix Remote LFA fast reroute link protection. Note that other
+   routers in the network need be configured to accept LDP targeted hello
+   messages in order for RLFA to work.
+
+.. index:: [no] isis fast-reroute remote-lfa maximum-metric (1-16777215) [level-1 | level-2]
+.. clicmd:: [no] isis fast-reroute remote-lfa maximum-metric (1-16777215) [level-1 | level-2]
+
+   Limit Remote LFA PQ node selection within the specified metric.
 
 .. _showing-isis-information:
 
