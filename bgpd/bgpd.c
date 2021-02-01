@@ -3359,7 +3359,6 @@ int bgp_handle_socket(struct bgp *bgp, struct vrf *vrf, vrf_id_t old_vrf_id,
 int bgp_lookup_by_as_name_type(struct bgp **bgp_val, as_t *as, const char *name,
 			       enum bgp_instance_type inst_type)
 {
-	ZLOG_KW_FRAME(kw_frame, 8);
 	struct bgp *bgp;
 
 	/* Multiple instance check. */
@@ -3387,6 +3386,7 @@ int bgp_lookup_by_as_name_type(struct bgp **bgp_val, as_t *as, const char *name,
 int bgp_get(struct bgp **bgp_val, as_t *as, const char *name,
 	    enum bgp_instance_type inst_type)
 {
+	ZLOG_KW_FRAME(kw_frame, 8);
 	struct bgp *bgp;
 	struct vrf *vrf = NULL;
 	int ret = 0;
