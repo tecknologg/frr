@@ -882,6 +882,9 @@ int bgp_socket(struct bgp *bgp, unsigned short port, const char *address)
 		if (ainfo->ai_family != AF_INET && ainfo->ai_family != AF_INET6)
 			continue;
 
+		zlog_debug("Creating socket for %u %u %u %u %s",
+			ainfo->ai_family, ainfo->ai_socktype,
+			ainfo->ai_protocol, bgp->vrf_id, bgp->name);
 		frr_with_privs(&bgpd_privs) {
 			sock = vrf_socket(ainfo->ai_family,
 					  ainfo->ai_socktype,
