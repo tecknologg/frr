@@ -46,6 +46,7 @@
 #include "northbound_cli.h"
 #include "network.h"
 #include "lib/printfrr.h"
+#include "lib/json.h"
 
 #include "ripd/ripd.h"
 #include "ripd/rip_nb.h"
@@ -3252,6 +3253,68 @@ DEFUN (show_ip_rip_status,
 	return CMD_SUCCESS;
 }
 
+DEFUN (show_ip_rip_timers,
+       show_ip_rip_timers_cmd,
+       "show ip rip [vrf NAME] timers [json]",
+       SHOW_STR
+       IP_STR
+       RIP_STR
+       VRF_CMD_HELP_STR
+       "Configured RIP timer values\n"
+       JSON_STR)
+{
+	struct rip *rip = NULL;
+	const char *vrf_name;
+	struct json_object *json_timers = NULL;
+	bool uj = use_json(argc, argv);
+	int idx = 0;
+
+	if (argv_find(argv, argc, "vrf", &idx))
+		vrf_name = argv[idx + 1]->arg;
+	else
+		vrf_name = VRF_DEFAULT_NAME;
+
+	rip = rip_lookup_by_vrf_name(vrf_name);
+	if (!rip) {
+		vty_out(vty, "%% RIP instance not found\n");
+		return CMD_WARNING;
+	}
+	if (!rip->enabled) {
+		vty_out(vty, "%% RIP instance is disabled\n");
+		return CMD_WARNING;
+	}
+
+	if (uj) {
+		/* TODO: maybe add vrf name to json output? */
+		json_timers = json_object_new_object();
+		json_object_int_add(json_timers, "updateTimerConfiguredValueMs",
+				    rip->update_time * 1000);
+		json_object_int_add(json_timers, "updateTimerRemainingValueMs",
+				    thread_timer_remain_second(rip->t_update) * 1000);
+		json_object_int_add(json_timers, "timeoutTimerConfiguredValueMs",
+				    rip->timeout_time * 1000);
+		json_object_int_add(json_timers, "garbageTimerConfiguredValueMs",
+				    rip->garbage_time * 1000);
+		vty_out(vty, "%s\n",
+			json_object_to_json_string_ext(json_timers,
+						       JSON_C_TO_STRING_PRETTY));
+		json_object_free(json_timers);
+	} else {
+		/* TODO: maybe add vrf name to text output? */
+		vty_out(
+			vty,
+			"Sending updates every %u seconds with +/-50%%, next due in %lu seconds\n",
+			rip->update_time,
+			thread_timer_remain_second(rip->t_update)
+		);
+		vty_out(vty, "Timeout after %u seconds\n", rip->timeout_time);
+		vty_out(vty, "Garbage collect after %u seconds\n",
+			rip->garbage_time);
+	}
+
+	return CMD_SUCCESS;
+}
+
 /* RIP configuration write function. */
 static int config_write_rip(struct vty *vty)
 {
@@ -3706,6 +3769,7 @@ void rip_init(void)
 	/* Install rip commands. */
 	install_element(VIEW_NODE, &show_ip_rip_cmd);
 	install_element(VIEW_NODE, &show_ip_rip_status_cmd);
+	install_element(VIEW_NODE, &show_ip_rip_timers_cmd);
 
 	install_default(RIP_NODE);
 
