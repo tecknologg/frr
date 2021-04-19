@@ -366,6 +366,16 @@ static void bgp_group_configure_bfd(struct peer *p)
 		bgp_peer_configure_bfd(pn, false);
 }
 
+void bgp_bfd_reconfigure_all(struct bgp *bgp)
+{
+	struct listnode *node;
+	struct peer *peer;
+
+	for (ALL_LIST_ELEMENTS_RO(bgp->peer, node, peer))
+		if (CHECK_FLAG(peer->flags, PEER_FLAG_CONFIG_NODE))
+			bgp_peer_config_apply(peer, peer->group);
+}
+
 static void bgp_group_remove_bfd(struct peer *p)
 {
 	struct listnode *n;

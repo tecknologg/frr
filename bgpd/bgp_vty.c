@@ -2836,6 +2836,7 @@ DEFUN (bgp_graceful_restart_preserve_fw,
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	SET_FLAG(bgp->flags, BGP_FLAG_GR_PRESERVE_FWD);
+	bgp_bfd_reconfigure_all(bgp);
 	return CMD_SUCCESS;
 }
 
@@ -2849,6 +2850,7 @@ DEFUN (no_bgp_graceful_restart_preserve_fw,
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
 	UNSET_FLAG(bgp->flags, BGP_FLAG_GR_PRESERVE_FWD);
+	bgp_bfd_reconfigure_all(bgp);
 	return CMD_SUCCESS;
 }
 

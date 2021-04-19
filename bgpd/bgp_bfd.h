@@ -77,4 +77,14 @@ extern void bgp_peer_remove_bfd_config(struct peer *p);
  */
 extern void bgp_peer_bfd_update_source(struct peer *p);
 
+/**
+ * Reconfigure all BFD sessions to apply the latest configuration.
+ *
+ * This is only useful for one case: when changing the graceful restart
+ * preserve forwarding state configuration.
+ *
+ * All other cases are handled on a peer/group basis.
+ */
+extern void bgp_bfd_reconfigure_all(struct bgp *bgp);
+
 #endif /* _QUAGGA_BGP_BFD_H */
