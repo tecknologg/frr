@@ -1574,8 +1574,8 @@ struct peer {
 		 * peer.
 		 */
 		bool manual;
-		/** Control Plane Independent. */
-		bool cbit;
+		/** Check for control plane failures. */
+		bool check_cbit;
 		/** Detection multiplier. */
 		uint8_t detection_multiplier;
 		/** Minimum required RX interval. */

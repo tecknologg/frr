@@ -60,7 +60,7 @@ static void bfd_session_status_update(struct bfd_session_params *bsp,
 
 	if (bss->state == BSS_DOWN && bss->previous_state == BSS_UP) {
 		if (CHECK_FLAG(peer->sflags, PEER_STATUS_NSF_MODE)
-		    && bfd_sess_cbit(bsp) && !bss->remote_cbit) {
+		    && peer->bfd_config->check_cbit && !bss->remote_cbit) {
 			if (BGP_DEBUG(bfd, BFD_LIB))
 				zlog_info(
 					"%s BFD DOWN message ignored in the process of graceful restart when C bit is cleared",
@@ -78,6 +78,18 @@ static void bfd_session_status_update(struct bfd_session_params *bsp,
 			BGP_EVENT_ADD(peer, BGP_Start);
 		}
 	}
+}
+
+/**
+ * Helper function that decides whether we should set the Control Plane
+ * Independent bit or not.
+ */
+static void bfd_sess_toggle_cbit(struct peer *p, bool check_cbit)
+{
+	if (!CHECK_FLAG(p->bgp->flags, BGP_FLAG_GR_PRESERVE_FWD) && !check_cbit)
+		bfd_sess_set_cbit(p->bfd_config->session, true);
+	else
+		bfd_sess_set_cbit(p->bfd_config->session, false);
 }
 
 void bgp_peer_config_apply(struct peer *p, struct peer_group *pg)
@@ -99,7 +111,7 @@ void bgp_peer_config_apply(struct peer *p, struct peer_group *pg)
 				    p->bfd_config->detection_multiplier,
 				    p->bfd_config->min_rx,
 				    p->bfd_config->min_tx);
-		bfd_sess_set_cbit(p->bfd_config->session, p->bfd_config->cbit);
+		bfd_sess_toggle_cbit(p, p->bfd_config->check_cbit);
 		bfd_sess_set_profile(p->bfd_config->session,
 				     p->bfd_config->profile);
 		bfd_sess_install(p->bfd_config->session);
@@ -116,11 +128,10 @@ void bgp_peer_config_apply(struct peer *p, struct peer_group *pg)
 	 * If using default control plane independent configuration,
 	 * then prefer group's (e.g. it means it wasn't manually configured).
 	 */
-	if (!p->bfd_config->cbit)
-		bfd_sess_set_cbit(p->bfd_config->session,
-				  gconfig->bfd_config->cbit);
+	if (!p->bfd_config->check_cbit)
+		bfd_sess_toggle_cbit(p, gconfig->bfd_config->check_cbit);
 	else
-		bfd_sess_set_cbit(p->bfd_config->session, p->bfd_config->cbit);
+		bfd_sess_toggle_cbit(p, p->bfd_config->check_cbit);
 
 	/* If no profile was specified in peer, then use the group profile. */
 	if (p->bfd_config->profile[0] == 0)
@@ -263,7 +274,7 @@ static void bgp_peer_bfd_reset(struct peer *p)
 	p->bfd_config->detection_multiplier = BFD_DEF_DETECT_MULT;
 	p->bfd_config->min_rx = BFD_DEF_MIN_RX;
 	p->bfd_config->min_tx = BFD_DEF_MIN_TX;
-	p->bfd_config->cbit = false;
+	p->bfd_config->check_cbit = false;
 	p->bfd_config->profile[0] = 0;
 }
 
@@ -413,7 +424,7 @@ void bgp_bfd_peer_config_write(struct vty *vty, const struct peer *peer,
 		vty_out(vty, " neighbor %s bfd profile %s\n", addr,
 			peer->bfd_config->profile);
 
-	if (peer->bfd_config->cbit)
+	if (peer->bfd_config->check_cbit)
 		vty_out(vty, " neighbor %s bfd check-control-plane-failure\n",
 			addr);
 }
@@ -522,7 +533,7 @@ DEFUN (neighbor_bfd_check_controlplane_failure,
 	else
 		bgp_peer_configure_bfd(peer, true);
 
-	peer->bfd_config->cbit = no == NULL;
+	peer->bfd_config->check_cbit = no == NULL;
 	bgp_peer_config_apply(peer, peer->group);
 
 	return CMD_SUCCESS;
