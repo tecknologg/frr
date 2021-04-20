@@ -795,11 +795,14 @@ static int bgp_listener(int sock, struct sockaddr *sa, socklen_t salen,
 			struct bgp *bgp)
 {
 	struct bgp_listener *listener;
-	int ret, en;
+	struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+	int ret;
 
 	sockopt_reuseaddr(sock);
 	sockopt_reuseport(sock);
 
+	zlog_debug("binding: socket: %u to %pI4 with length %d",
+		sock, &sin->sin_addr, salen);
 	frr_with_privs(&bgpd_privs) {
 
 #ifdef IPTOS_PREC_INTERNETCONTROL
@@ -813,11 +816,10 @@ static int bgp_listener(int sock, struct sockaddr *sa, socklen_t salen,
 		sockopt_v6only(sa->sa_family, sock);
 
 		ret = bind(sock, sa, salen);
-		en = errno;
 	}
 
 	if (ret < 0) {
-		flog_err_sys(EC_LIB_SOCKET, "bind: %s", safe_strerror(en));
+		flog_err_sys(EC_LIB_SOCKET, "bind: %s(%u)", safe_strerror(errno), errno);
 		return ret;
 	}
 
@@ -858,6 +860,7 @@ int bgp_socket(struct bgp *bgp, unsigned short port, const char *address)
 	int ret, count;
 	char port_str[BUFSIZ];
 
+	zlog_debug("address: %s port: %u", address, port);
 	snprintf(port_str, sizeof(port_str), "%d", port);
 	port_str[sizeof(port_str) - 1] = '\0';
 
