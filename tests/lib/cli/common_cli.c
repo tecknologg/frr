@@ -59,10 +59,14 @@ static void vty_do_exit(int isexit)
 		exit(0);
 }
 
+static const struct frr_yang_module_info *const *empty_yang_modules = NULL;
+#pragma weak test_yang_modules = empty_yang_modules
+
 /* main routine. */
 int main(int argc, char **argv)
 {
 	struct thread thread;
+	size_t yangcount;
 
 	/* Set umask before anything for security */
 	umask(0027);
@@ -80,7 +84,11 @@ int main(int argc, char **argv)
 	vty_init(master, false);
 	lib_cmd_init();
 	yang_init(true);
-	nb_init(master, NULL, 0, false);
+
+	for (yangcount = 0; test_yang_modules && test_yang_modules[yangcount];
+	     yangcount++)
+		;
+	nb_init(master, test_yang_modules, yangcount, false);
 
 	test_init(argc, argv);
 
