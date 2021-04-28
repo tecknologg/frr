@@ -1208,7 +1208,7 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ms
 		vrf = nb_running_get_entry(args->dnode, NULL, true);
 		pim = vrf->info;
 		yang_dnode_get_ip(&peer_ip, args->dnode, "./peer-ip");
-		yang_dnode_get_ip(&peer_ip, args->dnode, "./source-ip");
+		yang_dnode_get_ip(&source_ip, args->dnode, "./source-ip");
 		mp = pim_msdp_peer_new(pim, &peer_ip.ipaddr_v4,
 				       &source_ip.ipaddr_v4,
 				       MSDP_SOLO_PEER_GROUP_NAME);
@@ -1256,6 +1256,50 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ms
 		mp = nb_running_get_entry(args->dnode, NULL, true);
 		yang_dnode_get_ip(&source_ip, args->dnode, NULL);
 		pim_msdp_peer_change_source(mp, &source_ip.ipaddr_v4);
+		break;
+	}
+
+	return NB_OK;
+}
+
+/*
+ * XPath:
+ * /frr-routing:routing/control-plane-protocols/control-plane-protocol/frr-pim:pim/address-family/msdp-peer/as
+ */
+int routing_control_plane_protocols_control_plane_protocol_pim_address_family_msdp_peer_as_modify(
+	struct nb_cb_modify_args *args)
+{
+	struct pim_msdp_peer *mp;
+
+	switch (args->event) {
+	case NB_EV_VALIDATE:
+	case NB_EV_PREPARE:
+	case NB_EV_ABORT:
+		/* NOTHING */
+		break;
+	case NB_EV_APPLY:
+		mp = nb_running_get_entry(args->dnode, NULL, true);
+		mp->asn = yang_dnode_get_uint32(args->dnode, NULL);
+		break;
+	}
+
+	return NB_OK;
+}
+
+int routing_control_plane_protocols_control_plane_protocol_pim_address_family_msdp_peer_as_destroy(
+	struct nb_cb_destroy_args *args)
+{
+	struct pim_msdp_peer *mp;
+
+	switch (args->event) {
+	case NB_EV_VALIDATE:
+	case NB_EV_PREPARE:
+	case NB_EV_ABORT:
+		/* NOTHING */
+		break;
+	case NB_EV_APPLY:
+		mp = nb_running_get_entry(args->dnode, NULL, true);
+		mp->asn = 0;
 		break;
 	}
 
