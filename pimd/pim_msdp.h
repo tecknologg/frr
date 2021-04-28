@@ -149,6 +149,9 @@ struct pim_msdp_peer {
 
 	/* timestamps */
 	int64_t uptime;
+
+	/* BGP AS number for RPF check. */
+	uint32_t asn;
 };
 
 struct pim_msdp_mg_mbr {
