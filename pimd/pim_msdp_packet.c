@@ -19,7 +19,9 @@
 #include <zebra.h>
 
 #include <lib/log.h>
+#include <lib/filter.h>
 #include <lib/network.h>
+#include <lib/prefix.h>
 #include <lib/stream.h>
 #include <lib/thread.h>
 #include <lib/vty.h>
@@ -375,9 +377,57 @@ static void pim_msdp_pkt_sa_fill_one(struct pim_msdp_sa *sa)
 	stream_put_ipv4(sa->pim->msdp.work_obuf, sa->sg.src.s_addr);
 }
 
+static bool msdp_cisco_match(const struct filter *filter,
+			     const struct in_addr *source,
+			     const struct in_addr *group)
+{
+	const struct filter_cisco *cfilter = &filter->u.cfilter;
+	uint32_t source_addr;
+	uint32_t group_addr;
+
+	group_addr = group->s_addr & ~cfilter->addr_mask.s_addr;
+
+	if (cfilter->extended) {
+		source_addr = source->s_addr & ~cfilter->mask_mask.s_addr;
+		if (group_addr == cfilter->addr.s_addr
+		    && source_addr == cfilter->mask.s_addr)
+			return true;
+	} else if (group_addr == cfilter->addr.s_addr)
+		return true;
+
+	return false;
+}
+
+static enum filter_type msdp_access_list_apply(struct access_list *access,
+					       const struct in_addr *source,
+					       const struct in_addr *group)
+{
+	struct filter *filter;
+	struct prefix group_prefix;
+
+	if (access == NULL)
+		return FILTER_DENY;
+
+	for (filter = access->head; filter; filter = filter->next) {
+		if (filter->cisco) {
+			if (msdp_cisco_match(filter, source, group))
+				return filter->type;
+		} else {
+			group_prefix.family = AF_INET;
+			group_prefix.prefixlen = IPV4_MAX_BITLEN;
+			group_prefix.u.prefix4.s_addr = group->s_addr;
+			if (access_list_apply(access, &group_prefix))
+				return filter->type;
+		}
+	}
+
+	return FILTER_DENY;
+}
+
 static void pim_msdp_pkt_sa_gen(struct pim_instance *pim,
 				struct pim_msdp_peer *mp)
 {
+	struct access_list *acl;
 	struct listnode *sanode;
 	struct pim_msdp_sa *sa;
 	int sa_count;
@@ -399,6 +449,16 @@ static void pim_msdp_pkt_sa_gen(struct pim_instance *pim,
 			 * peers */
 			continue;
 		}
+
+		/* If filter is configured, apply it now. */
+		if (mp && mp->acl_out) {
+			acl = access_list_lookup(AFI_IP, mp->acl_out);
+			if (msdp_access_list_apply(acl, &sa->sg.src,
+						   &sa->sg.grp)
+			    == FILTER_DENY)
+				continue;
+		}
+
 		/* add sa into scratch pad */
 		pim_msdp_pkt_sa_fill_one(sa);
 		++sa_count;
@@ -492,6 +552,7 @@ static void pim_msdp_pkt_ka_rx(struct pim_msdp_peer *mp, int len)
 
 static void pim_msdp_pkt_sa_rx_one(struct pim_msdp_peer *mp, struct in_addr rp)
 {
+	struct access_list *acl;
 	int prefix_len;
 	struct prefix_sg sg;
 	struct listnode *peer_node;
@@ -515,6 +576,15 @@ static void pim_msdp_pkt_sa_rx_one(struct pim_msdp_peer *mp, struct in_addr rp)
 	if (PIM_DEBUG_MSDP_PACKETS) {
 		zlog_debug("  sg %s", pim_str_sg_dump(&sg));
 	}
+
+	/* Filter incoming SA with configured access list. */
+	if (mp->acl_in) {
+		acl = access_list_lookup(AFI_IP, mp->acl_in);
+		if (msdp_access_list_apply(acl, &sg.src, &sg.grp)
+		    == FILTER_DENY)
+			return;
+	}
+
 	pim_msdp_sa_ref(mp->pim, mp, &sg, rp);
 
 	/* Forwards the SA to the peers that are not in the RPF to the RP nor in
