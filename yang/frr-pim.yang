@@ -4,6 +4,10 @@ module frr-pim {
 
   prefix frr-pim;
 
+  import frr-filter {
+    prefix frr-filter;
+  }
+
   import frr-interface {
     prefix frr-interface;
   }
@@ -278,6 +282,18 @@ module frr-pim {
         type inet:as-number;
         description
           "BGP Autonomous System number.";
+      }
+
+      leaf sa-filter-in {
+        type frr-filter:access-list-name;
+        description
+          "Access list name used to filter the incoming SAs exchanged.";
+      }
+
+      leaf sa-filter-out {
+        type frr-filter:access-list-name;
+        description
+          "Access list name used to filter the outgoing SAs exchanged.";
       }
     }
 
