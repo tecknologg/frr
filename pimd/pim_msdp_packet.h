@@ -69,5 +69,7 @@ void pim_msdp_pkt_sa_tx_one(struct pim_msdp_sa *sa);
 void pim_msdp_pkt_sa_tx_to_one_peer(struct pim_msdp_peer *mp);
 void pim_msdp_pkt_sa_tx_one_to_one_peer(struct pim_msdp_peer *mp,
 					struct in_addr rp, struct prefix_sg sg);
+bool msdp_peer_sa_filter(struct pim_msdp_peer *mp,
+			 const struct pim_msdp_sa *sa);
 
 #endif
