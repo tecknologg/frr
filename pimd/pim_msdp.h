@@ -152,6 +152,11 @@ struct pim_msdp_peer {
 
 	/* BGP AS number for RPF check. */
 	uint32_t asn;
+
+	/** SA input access list name. */
+	char *acl_in;
+	/** SA output access list name. */
+	char *acl_out;
 };
 
 struct pim_msdp_mg_mbr {
