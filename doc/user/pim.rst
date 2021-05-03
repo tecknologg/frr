@@ -312,7 +312,7 @@ MSDP can be setup in different ways:
 
 .. note::
 
-   MSDP default peer and SA filtering is not implemented.
+   MSDP default peer is not implemented.
 
 
 Commands available for MSDP:
@@ -335,6 +335,15 @@ Commands available for MSDP:
 
       When using eBGP the parameter AS can be specified to MSDP so it
       can use the peer AS number information to detect loops.
+
+.. clicmd:: ip msdp peer A.B.C.D sa-filter ACL_NAME <in|out>
+
+   Configure incoming or outgoing SA filtering rule.
+
+   .. note::
+
+      The filtering will only take effect starting from the command
+      application.
 
 
 .. _show-pim-information:
