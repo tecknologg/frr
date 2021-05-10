@@ -9888,7 +9888,41 @@ DEFPY(no_ip_msdp_peer_sa_filter, no_ip_msdp_peer_sa_filter_cmd,
 }
 
 DEFPY(ip_msdp_peer_md5, ip_msdp_peer_md5_cmd,
-      "[no] ip msdp peer A.B.C.D$peer md5 WORD$psk",
+      "ip msdp peer A.B.C.D$peer password WORD$psk",
+      IP_STR
+      CFG_MSDP_STR
+      "Configure MSDP peer\n"
+      "MSDP Peer address\n"
+      "Use MD5 authentication\n"
+      "MD5 pre shared key\n")
+{
+	const struct lyd_node *peer_node;
+	const char *vrfname;
+	char xpath[XPATH_MAXLEN];
+
+	vrfname = pim_cli_get_vrf_name(vty);
+	if (vrfname == NULL)
+		return CMD_WARNING_CONFIG_FAILED;
+
+	snprintf(xpath, sizeof(xpath),
+		 FRR_PIM_AF_XPATH "/msdp-peer[peer-ip='%s']", "frr-pim:pimd",
+		 "pim", vrfname, "frr-routing:ipv4", peer_str);
+	peer_node = yang_dnode_get(vty->candidate_config->dnode, xpath);
+	if (peer_node == NULL) {
+		vty_out(vty, "%% MSDP peer %s not yet configured\n", peer_str);
+		return CMD_SUCCESS;
+	}
+
+	nb_cli_enqueue_change(vty, "./authentication-type",
+			      NB_OP_MODIFY, "MD5");
+	nb_cli_enqueue_change(vty, "./authentication-key",
+			      NB_OP_MODIFY, psk);
+
+	return nb_cli_apply_changes(vty, xpath);
+}
+
+DEFPY(no_ip_msdp_peer_md5, no_ip_msdp_peer_md5_cmd,
+      "no ip msdp peer A.B.C.D$peer password [WORD]",
       NO_STR
       IP_STR
       CFG_MSDP_STR
@@ -9914,15 +9948,8 @@ DEFPY(ip_msdp_peer_md5, ip_msdp_peer_md5_cmd,
 		return CMD_SUCCESS;
 	}
 
-	if (no) {
-		nb_cli_enqueue_change(vty, "./authentication-type",
-				      NB_OP_MODIFY, "None");
-	} else {
-		nb_cli_enqueue_change(vty, "./authentication-type",
-				      NB_OP_MODIFY, "MD5");
-		nb_cli_enqueue_change(vty, "./authentication-key",
-				      NB_OP_MODIFY, psk);
-	}
+	nb_cli_enqueue_change(vty, "./authentication-type",
+			      NB_OP_MODIFY, "None");
 
 	return nb_cli_apply_changes(vty, xpath);
 }
@@ -11299,6 +11326,8 @@ void pim_cmd_init(void)
 	install_element(VRF_NODE, &no_ip_msdp_peer_sa_filter_cmd);
 	install_element(CONFIG_NODE, &ip_msdp_peer_md5_cmd);
 	install_element(VRF_NODE, &ip_msdp_peer_md5_cmd);
+	install_element(CONFIG_NODE, &no_ip_msdp_peer_md5_cmd);
+	install_element(VRF_NODE, &no_ip_msdp_peer_md5_cmd);
 	install_element(CONFIG_NODE, &ip_pim_ecmp_cmd);
 	install_element(VRF_NODE, &ip_pim_ecmp_cmd);
 	install_element(CONFIG_NODE, &no_ip_pim_ecmp_cmd);

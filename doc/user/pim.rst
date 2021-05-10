@@ -342,8 +342,21 @@ Commands available for MSDP:
 
    .. note::
 
-      The filtering will only take effect starting from the command
+      The filtering will only take effect from the moment of the command
       application.
+
+      To apply it immediately call `clear ip msdp peer A.B.C.D`.
+
+.. clicmd:: ip msdp peer A.B.C.D password WORD
+
+   Use MD5 authentication to connect with the remote peer.
+
+   .. note::
+
+      The authentication will only take effect when starting a new
+      connection.
+
+      To apply it immediately call `clear ip msdp peer A.B.C.D`.
 
 
 .. _show-pim-information:
@@ -647,6 +660,14 @@ Clear commands reset various variables.
    This command will clear the BSM scope data struct. This command also
    removes the next hop tracking for the bsr and resets the upstreams
    for the dynamically learnt RPs.
+
+.. clicmd:: clear ip msdp peer A.B.C.D
+
+   Reset MSDP peer connection.
+
+   Use this command to apply/remove SA filtering or to set/unset MD5
+   authentication.
+
 
 PIM EVPN configuration
 ======================

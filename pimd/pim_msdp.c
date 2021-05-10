@@ -1383,7 +1383,7 @@ bool pim_msdp_peer_config_write(struct vty *vty, struct pim_instance *pim,
 				spaces, &mp->peer, mp->acl_out);
 
 		if (mp->auth_type == MSDP_AUTH_MD5)
-			vty_out(vty, "%sip msdp peer %pI4 md5 %s\n", spaces,
+			vty_out(vty, "%sip msdp peer %pI4 password %s\n", spaces,
 				&mp->peer, mp->auth_key);
 
 		written = true;
