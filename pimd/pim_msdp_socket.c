@@ -233,8 +233,6 @@ static int pim_msdp_sock_auth_accept(struct thread *t)
 
 int pim_msdp_sock_auth_listen(struct pim_msdp_peer *mp)
 {
-	zlog_debug("==> %s:%d", __FILE__, __LINE__);
-
 	/* Clear any listening connection if it exists. */
 	THREAD_OFF(mp->auth_listen_ev);
 	if (mp->auth_listen_sock != -1) {
