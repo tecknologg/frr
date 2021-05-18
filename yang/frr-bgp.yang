@@ -23,6 +23,10 @@ module frr-bgp {
     prefix frr-bt;
   }
 
+  import frr-pim-rp {
+    prefix frr-pim-rp;
+  }
+
   include "frr-bgp-common-structure";
 
   include "frr-bgp-common";
@@ -405,7 +409,7 @@ module frr-bgp {
       description
         "A list of network routes.";
       leaf prefix {
-        type rt-types:ipv4-multicast-group-address;
+        type frr-pim-rp:ipv4-multicast-group-address-prefix;
         description
           "IPv4 multicast destination prefix.";
       }
