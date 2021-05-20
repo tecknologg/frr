@@ -315,8 +315,8 @@ void pim_msdp_pkt_ka_tx(struct pim_msdp_peer *mp)
 	pim_msdp_pkt_send(mp, s);
 }
 
-static void pim_msdp_pkt_sa_push_to_one_peer(struct pim_instance *pim,
-					     struct pim_msdp_peer *mp)
+static void pim_msdp_pkt_sa_push(struct pim_instance *pim,
+				 struct pim_msdp_peer *mp)
 {
 	struct stream *s;
 
@@ -328,25 +328,6 @@ static void pim_msdp_pkt_sa_push_to_one_peer(struct pim_instance *pim,
 	if (s) {
 		pim_msdp_pkt_send(mp, s);
 		mp->flags |= PIM_MSDP_PEERF_SA_JUST_SENT;
-	}
-}
-
-/* push the stream into the obuf fifo of all the peers */
-static void pim_msdp_pkt_sa_push(struct pim_instance *pim,
-				 struct pim_msdp_peer *mp)
-{
-	struct listnode *mpnode;
-
-	if (mp) {
-		pim_msdp_pkt_sa_push_to_one_peer(pim, mp);
-	} else {
-		for (ALL_LIST_ELEMENTS_RO(pim->msdp.peer_list, mpnode, mp)) {
-			if (PIM_DEBUG_MSDP_INTERNAL) {
-				zlog_debug("MSDP peer %s pim_msdp_pkt_sa_push",
-					   mp->key_str);
-			}
-			pim_msdp_pkt_sa_push_to_one_peer(pim, mp);
-		}
 	}
 }
 
@@ -424,10 +405,26 @@ static enum filter_type msdp_access_list_apply(struct access_list *access,
 	return FILTER_DENY;
 }
 
+bool msdp_peer_sa_filter(struct pim_msdp_peer *mp, const struct pim_msdp_sa *sa)
+{
+	struct access_list *acl;
+
+	/* No output filter configured, just quit. */
+	if (mp->acl_out == NULL)
+		return false;
+
+	/* Find access list and test it. */
+	acl = access_list_lookup(AFI_IP, mp->acl_out);
+	if (msdp_access_list_apply(acl, &sa->sg.src, &sa->sg.grp)
+	    == FILTER_DENY)
+		return true;
+
+	return false;
+}
+
 static void pim_msdp_pkt_sa_gen(struct pim_instance *pim,
 				struct pim_msdp_peer *mp)
 {
-	struct access_list *acl;
 	struct listnode *sanode;
 	struct pim_msdp_sa *sa;
 	int sa_count;
@@ -450,14 +447,8 @@ static void pim_msdp_pkt_sa_gen(struct pim_instance *pim,
 			continue;
 		}
 
-		/* If filter is configured, apply it now. */
-		if (mp && mp->acl_out) {
-			acl = access_list_lookup(AFI_IP, mp->acl_out);
-			if (msdp_access_list_apply(acl, &sa->sg.src,
-						   &sa->sg.grp)
-			    == FILTER_DENY)
-				continue;
-		}
+		if (msdp_peer_sa_filter(mp, sa))
+			continue;
 
 		/* add sa into scratch pad */
 		pim_msdp_pkt_sa_fill_one(sa);
@@ -498,15 +489,28 @@ static void pim_msdp_pkt_sa_tx_done(struct pim_instance *pim)
 
 void pim_msdp_pkt_sa_tx(struct pim_instance *pim)
 {
-	pim_msdp_pkt_sa_gen(pim, NULL /* mp */);
+	struct pim_msdp_peer *mp;
+	struct listnode *node;
+
+	for (ALL_LIST_ELEMENTS_RO(pim->msdp.peer_list, node, mp))
+		pim_msdp_pkt_sa_gen(pim, mp);
+
 	pim_msdp_pkt_sa_tx_done(pim);
 }
 
 void pim_msdp_pkt_sa_tx_one(struct pim_msdp_sa *sa)
 {
+	struct pim_msdp_peer *mp;
+	struct listnode *node;
+
 	pim_msdp_pkt_sa_fill_hdr(sa->pim, 1 /* cnt */, sa->rp);
 	pim_msdp_pkt_sa_fill_one(sa);
-	pim_msdp_pkt_sa_push(sa->pim, NULL);
+	for (ALL_LIST_ELEMENTS_RO(sa->pim->msdp.peer_list, node, mp)) {
+		if (msdp_peer_sa_filter(mp, sa))
+			continue;
+
+		pim_msdp_pkt_sa_push(sa->pim, mp);
+	}
 	pim_msdp_pkt_sa_tx_done(sa->pim);
 }
 
@@ -528,6 +532,11 @@ void pim_msdp_pkt_sa_tx_one_to_one_peer(struct pim_msdp_peer *mp,
 	/* Fills the message contents. */
 	sa.pim = mp->pim;
 	sa.sg = sg;
+
+	/* Don't push it if filtered. */
+	if (msdp_peer_sa_filter(mp, &sa))
+		return;
+
 	pim_msdp_pkt_sa_fill_one(&sa);
 
 	/* Pushes the message. */
