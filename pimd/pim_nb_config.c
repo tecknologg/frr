@@ -1228,7 +1228,7 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ms
 	case NB_EV_ABORT:
 		break;
 	case NB_EV_APPLY:
-		mp = nb_running_get_entry(args->dnode, NULL, true);
+		mp = nb_running_unset_entry(args->dnode);
 		pim_msdp_peer_do_del(&mp);
 		break;
 	}
