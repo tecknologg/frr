@@ -463,12 +463,137 @@ bool pim_rpf_equal(const void *arg1, const void *arg2)
 	return prefix_same(&r1->rpf.rpf_addr, &r2->rpf.rpf_addr);
 }
 
+/**
+ * Explores all route next hops looking for the first direct next hop. If not
+ * found it asks for the route to the next hop and do all over again.
+ *
+ * This function only returns `true` when the next hop with the interface index
+ * is found.
+ */
+static bool route_lookup_recurse(struct in_addr *ia, struct pim_instance *pim,
+				 struct zroute_info *ri, struct pim_nexthop *pn,
+				 int max_depth)
+{
+	struct zroute_info *ri_next;
+	struct zroute_nh_info *rni;
+	struct interface *ifp;
+	bool found = false;
+
+	SLIST_FOREACH (rni, &ri->ri_nhlist, rni_entry) {
+		/* Skip routes without index. */
+		if (rni->rni_type != NEXTHOP_TYPE_IFINDEX
+		    && rni->rni_type != NEXTHOP_TYPE_IPV4_IFINDEX
+		    && rni->rni_type != NEXTHOP_TYPE_IPV6_IFINDEX)
+			continue;
+
+		/* Find valid interface. */
+		ifp = if_lookup_by_index(rni->rni_ifindex, pim->vrf->vrf_id);
+		if (ifp == NULL) {
+			if (PIM_DEBUG_ZEBRA)
+				zlog_debug(
+					"%s: could not find interface for ifindex %d (address %pI4)",
+					__func__, rni->rni_ifindex, ia);
+			continue;
+		}
+		if (ifp->info == NULL) {
+			if (PIM_DEBUG_ZEBRA)
+				zlog_debug(
+					"%s: multicast not enabled on input interface %s (ifindex=%d, RPF for source %pI4)",
+					__func__, ifp->name, rni->rni_ifindex,
+					ia);
+			continue;
+		}
+
+		/* Fill next hop parameter and return. */
+		switch (rni->rni_type) {
+		case NEXTHOP_TYPE_IPV4_IFINDEX:
+			if (PIM_DEBUG_ZEBRA)
+				zlog_debug(
+					"%s: found nexthop %pI4 for address %pI4: interface %s ifindex=%d metric=%d pref=%d",
+					__func__,
+					&rni->rni_addr.v4, ia, ifp->name,
+					rni->rni_ifindex, ri->ri_metric,
+					ri->ri_distance);
+
+			pn->mrib_nexthop_addr.u.prefix4 =
+				pn->mrib_nexthop_addr.u.prefix4;
+			pn->mrib_nexthop_addr.family = AF_INET;
+			break;
+		case NEXTHOP_TYPE_IPV6_IFINDEX:
+			if (PIM_DEBUG_ZEBRA)
+				zlog_debug(
+					"%s: found nexthop %pI6 for address %pI4: interface %s ifindex=%d metric=%d pref=%d",
+					__func__, &rni->rni_addr, ia,
+					ifp->name, rni->rni_ifindex,
+					ri->ri_metric, ri->ri_distance);
+
+			pn->mrib_nexthop_addr.family = AF_INET;
+			pn->mrib_nexthop_addr.u.prefix4 = *ia;
+			break;
+		case NEXTHOP_TYPE_IFINDEX:
+			if (PIM_DEBUG_ZEBRA)
+				zlog_debug(
+					"%s: found nexthop address %pI4: interface %s ifindex=%d metric=%d pref=%d",
+					__func__, ia,
+					ifp->name, rni->rni_ifindex,
+					ri->ri_metric, ri->ri_distance);
+
+			pn->mrib_nexthop_addr.u.prefix4 = *ia;
+			break;
+
+		default:
+			zlog_warn("%s: invalid next hop address type %d",
+				  __func__, rni->rni_type);
+			continue;
+		}
+
+		pn->interface = ifp;
+		pn->mrib_metric_preference = (uint32_t)ri->ri_distance;
+		pn->mrib_route_metric = (uint32_t)ri->ri_metric;
+		pn->last_lookup = *ia;
+		pn->last_lookup_time = pim_time_monotonic_usec();
+
+		found = true;
+		break;
+	}
+	if (found)
+		return true;
+
+	/* Maximum depth, quit attempting to recurse. */
+	if (max_depth == 0) {
+		if (PIM_DEBUG_ZEBRA)
+			zlog_debug("%s: recurse maximum depth reached",
+				   __func__);
+		return false;
+	}
+
+	if (PIM_DEBUG_ZEBRA)
+		zlog_debug("%s: not found on depth %d, trying next", __func__,
+			   max_depth);
+
+	/* No direct next hop, recurse again. */
+	SLIST_FOREACH (rni, &ri->ri_nhlist, rni_entry) {
+		if (rni->rni_type != NEXTHOP_TYPE_IPV4)
+			continue;
+
+		ri_next = zclient_route_lookup(pim, &rni->rni_addr.v4);
+		if (!route_lookup_recurse(&rni->rni_addr.v4, pim, ri_next, pn,
+					  max_depth - 1)) {
+			zroute_info_free(&ri_next);
+			continue;
+		}
+
+		zroute_info_free(&ri_next);
+		return true;
+	}
+
+	return false;
+}
+
 bool pim_route_lookup(struct pim_instance *pim, struct in_addr addr,
 		      uint32_t asn, struct pim_nexthop *pn)
 {
-	struct interface *ifp;
 	struct zroute_info *ri;
-	struct zroute_nh_info *rni;
 	bool found = false;
 
 	/* Zero out pim next hop response.*/
@@ -539,69 +664,9 @@ bool pim_route_lookup(struct pim_instance *pim, struct in_addr addr,
 				__func__, &addr, asn);
 	}
 
-	SLIST_FOREACH (rni, &ri->ri_nhlist, rni_entry) {
-		ifp = if_lookup_by_index(rni->rni_ifindex, pim->vrf_id);
-		if (ifp == NULL) {
-			if (PIM_DEBUG_ZEBRA)
-				zlog_debug(
-					"%s: could not find interface for ifindex %d (address %pI4)",
-					__func__, rni->rni_ifindex, &addr);
-			continue;
-		}
-		if (ifp->info == NULL) {
-			if (PIM_DEBUG_ZEBRA)
-				zlog_debug(
-					"%s: multicast not enabled on input interface %s (ifindex=%d, RPF for source %pI4)",
-					__func__, ifp->name, rni->rni_ifindex,
-					&addr);
-			continue;
-		}
-
-		/* Fill next hop parameter and return. */
-		switch (rni->rni_type) {
-		case NEXTHOP_TYPE_IPV4:
-		case NEXTHOP_TYPE_IPV4_IFINDEX:
-			if (PIM_DEBUG_ZEBRA)
-				zlog_debug(
-					"%s: found nexthop %pI4 for address %pI4: interface %s ifindex=%d metric=%d pref=%d",
-					__func__,
-					&rni->rni_addr.v4, &addr, ifp->name,
-					rni->rni_ifindex, ri->ri_metric,
-					ri->ri_distance);
-
-			pn->mrib_nexthop_addr.family = AF_INET;
-			pn->mrib_nexthop_addr.u.prefix4 = rni->rni_addr.v4;
-			break;
-		case NEXTHOP_TYPE_IPV6:
-		case NEXTHOP_TYPE_IPV6_IFINDEX:
-			if (PIM_DEBUG_ZEBRA)
-				zlog_debug(
-					"%s: found nexthop %pI6 for address %pI4: interface %s ifindex=%d metric=%d pref=%d",
-					__func__, &rni->rni_addr, &addr,
-					ifp->name, rni->rni_ifindex,
-					ri->ri_metric, ri->ri_distance);
-
-			pn->mrib_nexthop_addr.family = AF_INET6;
-			pn->mrib_nexthop_addr.u.prefix6 = rni->rni_addr.v6;
-			break;
-		case NEXTHOP_TYPE_IFINDEX:
-			break;
-
-		default:
-			zlog_warn("%s: invalid next hop address type %d",
-				  __func__, rni->rni_type);
-			continue;
-		}
-
-		pn->interface = ifp;
-		pn->mrib_metric_preference = ri->ri_distance;
-		pn->mrib_route_metric = ri->ri_metric;
-		pn->last_lookup = addr;
-		pn->last_lookup_time = pim_time_monotonic_usec();
-
-		found = true;
-		break;
-	}
+	/* Iterate over next hops to find next direct hop. */
+	found = route_lookup_recurse(&addr, pim, ri, pn,
+				     PIM_NEXTHOP_LOOKUP_MAX);
 
 free_and_exit:
 	zroute_info_free(&ri);
