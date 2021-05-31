@@ -52,7 +52,7 @@
 
 static const char * const ospf_exit_reason_desc[] = {
 	"Unknown reason",
-	"Helper inprogress",
+	"Helper in progress",
 	"Topology Change",
 	"Grace timer expiry",
 	"Successful graceful restart",
@@ -365,7 +365,7 @@ static int ospf_handle_grace_timer_expiry(struct thread *thread)
  *    Grace LSA received from RESTARTER.
  *
  * nbr
- *    ospf neighbour which requets the router to act as
+ *    OSPF neighbour which requests the router to act as
  *    HELPER.
  *
  * Returns:
@@ -397,11 +397,11 @@ int ospf_process_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
 
 	if (IS_DEBUG_OSPF_GR)
 		zlog_debug(
-			"%s, Grace LSA received from %pI4, grace interval:%u, restartreason :%s",
+			"%s, Grace LSA received from %pI4, grace interval:%u, restart reason:%s",
 			__func__, &restart_addr, grace_interval,
 			ospf_restart_reason2str(restart_reason));
 
-	/* Incase of broadcast links, if RESTARTER is DR_OTHER,
+	/* In case of broadcast links, if RESTARTER is DR_OTHER,
 	 * grace LSA might be received from DR, so need to get
 	 * actual neighbour info , here RESTARTER.
 	 */
@@ -464,7 +464,7 @@ int ospf_process_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
 		return OSPF_GR_NOT_HELPER;
 	}
 
-	/* Check the retranmission list of this
+	/* Check the retransmission list of this
 	 * neighbour, check any change in lsas.
 	 */
 	if (ospf->strict_lsa_check && !ospf_ls_retransmit_isempty(restarter)
@@ -482,7 +482,7 @@ int ospf_process_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
 	if (ntohs(lsa->data->ls_age) >= grace_interval) {
 		if (IS_DEBUG_OSPF_GR)
 			zlog_debug(
-				"%s, Grace LSA age(%d) is more than the graceinterval(%d)",
+				"%s, Grace LSA age(%d) is more than the grace interval(%d)",
 				__func__, lsa->data->ls_age, grace_interval);
 		restarter->gr_helper_info.rejected_reason =
 			OSPF_HELPER_LSA_AGE_MORE;
@@ -531,7 +531,7 @@ int ospf_process_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
 	restarter->gr_helper_info.gr_restart_reason = restart_reason;
 	restarter->gr_helper_info.rejected_reason = OSPF_HELPER_REJECTED_NONE;
 
-	/* Incremnet the active restarer count */
+	/* Increment the active restarter count */
 	ospf->active_restarter_cnt++;
 
 	if (IS_DEBUG_OSPF_GR)
@@ -551,7 +551,7 @@ int ospf_process_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
  * retransmission list.
  *
  * nbr
- *    ospf neighbor
+ *    OSPF neighbor
  *
  * Returns:
  *    TRUE  - if any change in the lsa.
@@ -602,7 +602,7 @@ static bool ospf_check_change_in_rxmt_list(struct ospf_neighbor *nbr)
  * ospf
  *    ospf pointer
  * lsa
- *    topo change occured due to this lsa type (1 to 5 and 7)
+ *    topo change occurred due to this lsa type (1 to 5 and 7)
  *
  * Returns:
  *    Nothing
@@ -616,7 +616,7 @@ void ospf_helper_handle_topo_chg(struct ospf *ospf, struct ospf_lsa *lsa)
 		return;
 
 	/* Topo change not required to be handled if strict
-	 * LSA check is disbaled for this router.
+	 * LSA check is disabled for this router.
 	 */
 	if (!ospf->strict_lsa_check)
 		return;
@@ -706,14 +706,14 @@ void ospf_gr_helper_exit(struct ospf_neighbor *nbr,
 	ospf->active_restarter_cnt--;
 
 	/* If the exit not triggered due to grace timer
-	 * expairy , stop the grace timer.
+	 * expiry, stop the grace timer.
 	 */
 	if (reason != OSPF_GR_HELPER_GRACE_TIMEOUT)
 		THREAD_OFF(nbr->gr_helper_info.t_grace_timer);
 
 	/* check exit triggered due to successful completion
 	 * of graceful restart.
-	 * If no, bringdown the neighbour.
+	 * If no, bring down the neighbour.
 	 */
 	if (reason != OSPF_GR_HELPER_COMPLETED) {
 		if (IS_DEBUG_OSPF_GR)
@@ -736,7 +736,7 @@ void ospf_gr_helper_exit(struct ospf_neighbor *nbr,
 }
 
 /*
- * Process Maxage Grace LSA.
+ * Process MaxAge Grace LSA.
  * It is a indication for successful completion of GR.
  * If router acting as HELPER, It exits from helper role.
  *
@@ -747,7 +747,7 @@ void ospf_gr_helper_exit(struct ospf_neighbor *nbr,
  *    Grace LSA received from RESTARTER.
  *
  * nbr
- *    ospf neighbour which requets the router to act as
+ *    OSPF neighbour which requests the router to act as
  *    HELPER.
  *
  * Returns:
@@ -802,7 +802,7 @@ void ospf_process_maxage_grace_lsa(struct ospf *ospf, struct ospf_lsa *lsa,
  * Disable/Enable HELPER support on router level.
  *
  * ospf
- *    OSPFpointer.
+ *    OSPF pointer.
  *
  * status
  *    TRUE/FALSE
@@ -843,7 +843,7 @@ void ospf_gr_helper_support_set(struct ospf *ospf, bool support)
 				lookup.advRtrAddr.s_addr =
 					nbr->router_id.s_addr;
 				/* check if helper support enabled for the
-				 * correspodning routerid.If enabled, dont
+				 * corresponding routerid.If enabled, dont
 				 * dont exit from helper role.
 				 */
 				if (hash_lookup(ospf->enable_rtr_list, &lookup))
