@@ -46,6 +46,7 @@
 #include "ospfd/ospf_abr.h"
 #include "ospfd/ospf_dump.h"
 #include "ospfd/ospf_sr.h"
+#include "ospfd/ospf_zebra.h"
 #include "ospfd/ospf_ti_lfa.h"
 #include "ospfd/ospf_errors.h"
 
@@ -1861,6 +1862,13 @@ static int ospf_spf_calculate_schedule_worker(struct thread *thread)
 	/* Update routing table. */
 	monotime(&start_time);
 	ospf_route_install(ospf, new_table);
+
+	/*
+	 * Uninstall remnant routes that were installed before the restart, but
+	 * that are no longer valid.
+	 */
+	if (spf_reason_flags & (1 << SPF_FLAG_GR_FINISH))
+		ospf_zebra_gr_disable(ospf);
 	rt_time = monotime_since(&start_time, NULL);
 
 	/* Free old ABR/ASBR routing table */
@@ -1903,6 +1911,8 @@ static int ospf_spf_calculate_schedule_worker(struct thread *thread)
 			strlcat(rbuf, "ASBR, ",	sizeof(rbuf));
 		if (spf_reason_flags & (1 << SPF_FLAG_MAXAGE))
 			strlcat(rbuf, "M, ", sizeof(rbuf));
+		if (spf_reason_flags & (1 << SPF_FLAG_GR_FINISH))
+			strlcat(rbuf, "GR, ", sizeof(rbuf));
 
 		size_t rbuflen = strlen(rbuf);
 		if (rbuflen >= 2)

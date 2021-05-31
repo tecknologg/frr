@@ -2025,9 +2025,11 @@ static void ospf_ls_upd(struct ospf *ospf, struct ip *iph,
 
 				ospf_ls_ack_send(nbr, lsa);
 
-				ospf_opaque_self_originated_lsa_received(nbr,
-									 lsa);
-				continue;
+				if (!ospf->gr_info.restart_in_progress) {
+					ospf_opaque_self_originated_lsa_received(
+						nbr, lsa);
+					continue;
+				}
 			}
 		}
 
@@ -2213,6 +2215,9 @@ static void ospf_ls_upd(struct ospf *ospf, struct ip *iph,
 
 	assert(listcount(lsas) == 0);
 	list_delete(&lsas);
+
+	if (ospf->gr_info.restart_in_progress)
+		ospf_gr_check_lsdb_consistency(oi->ospf, oi->area);
 }
 
 /* OSPF Link State Acknowledgment message read -- RFC2328 Section 13.7. */
@@ -3945,7 +3950,8 @@ void ospf_ls_upd_send_lsa(struct ospf_neighbor *nbr, struct ospf_lsa *lsa,
 
 	/*ospf instance is going down, send self originated
 	 * MAXAGE LSA update to neighbors to remove from LSDB */
-	if (nbr->oi->ospf->inst_shutdown && IS_LSA_MAXAGE(lsa))
+	if ((nbr->oi->ospf->inst_shutdown && IS_LSA_MAXAGE(lsa))
+	    || IS_GRACE_LSA(lsa))
 		ospf_ls_upd_send(nbr, update, flag, 1);
 	else
 		ospf_ls_upd_send(nbr, update, flag, 0);

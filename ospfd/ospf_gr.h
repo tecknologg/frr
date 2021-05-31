@@ -55,7 +55,8 @@ enum ospf_gr_helper_rejected_reason {
 	OSPF_HELPER_NOT_A_VALID_NEIGHBOUR,
 	OSPF_HELPER_PLANNED_ONLY_RESTART,
 	OSPF_HELPER_TOPO_CHANGE_RTXMT_LIST,
-	OSPF_HELPER_LSA_AGE_MORE
+	OSPF_HELPER_LSA_AGE_MORE,
+	OSPF_HELPER_RESTARTING,
 };
 
 /* Ref RFC3623 appendex-A */
@@ -152,6 +153,8 @@ struct advRtr {
 #define OSPF_GR_FAILURE 0
 #define OSPF_GR_INVALID -1
 
+#define OSPF_GR_DEFAULT_GRACE_PERIOD 120
+
 const char *ospf_exit_reason2str(unsigned int reason);
 const char *ospf_restart_reason2str(unsigned int reason);
 const char *ospf_rejected_reason2str(unsigned int reason);
@@ -178,4 +181,11 @@ extern void ospf_gr_helper_supported_gracetime_set(struct ospf *ospf,
 						   uint32_t interval);
 extern void ospf_gr_helper_set_supported_planned_only_restart(struct ospf *ospf,
 							     bool planned_only);
+
+extern void ospf_gr_check_lsdb_consistency(struct ospf *ospf,
+						  struct ospf_area *area);
+extern void ospf_gr_check_adjacencies(struct ospf *ospf);
+extern void ospf_gr_nvm_read(struct ospf *ospf);
+extern void ospf_gr_init(void);
+
 #endif /* _ZEBRA_OSPF_GR_H */

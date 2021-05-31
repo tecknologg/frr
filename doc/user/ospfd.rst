@@ -704,6 +704,12 @@ Redistribution
 Graceful Restart Helper
 =======================
 
+.. clicmd:: graceful-restart [grace-period (1-1800)]
+
+
+   Configure Graceful Restart (RFC 3623) restarting support.
+   Default 'grace period' is 120 seconds.
+
 .. clicmd:: graceful-restart helper-only [A.B.C.D]
 
 
@@ -733,6 +739,15 @@ Graceful Restart Helper
    It helps to support as HELPER only for planned
    restarts. By default, it supports both planned and
    unplanned outages.
+
+
+.. clicmd:: graceful-restart prepare ospf
+
+
+   Prepare a restart of OSPFd by sending out 'grace' LSAs and stalling the RIB.
+   During the 'prepare period' OSPFd should be restarted. This is an
+   EXEC-level command.
+
 
 .. _showing-ospf-information:
 
