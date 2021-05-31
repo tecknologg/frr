@@ -174,7 +174,7 @@ def teardown_module(mod):
     tgen.stop_topology()
 
 
-def router_compare_json_output(rname, command, reference):
+def router_compare_json_output(rname, initial_convergence, command, reference):
     "Compare router JSON output"
 
     logger.info('Comparing router "%s" "%s" output', rname, command)
@@ -184,26 +184,31 @@ def router_compare_json_output(rname, command, reference):
     expected = json.loads(open(filename).read())
 
     # Run test function until we get an result. Wait at most 60 seconds.
+    if initial_convergence:
+        count = 120
+    else:
+        count = 1
+
     test_func = partial(topotest.router_json_cmp, tgen.gears[rname], command, expected)
-    _, diff = topotest.run_and_expect(test_func, None, count=120, wait=0.5)
+    _, diff = topotest.run_and_expect(test_func, None, count=count, wait=0.5)
     assertmsg = '"{}" JSON output mismatches the expected result'.format(rname)
     assert diff is None, assertmsg
 
 
-def check_routers(restarting=None):
+def check_routers(restarting=None, initial_convergence=False):
     for rname in ["rt1", "rt2", "rt3", "rt4", "rt5", "rt6", "rt7"]:
         if rname != restarting:
+            #router_compare_json_output(
+            #    rname, initial_convergence, "show ip ospf neighbor json", "show_ip_ospf_neighbor.json"
+            #)
             router_compare_json_output(
-                rname, "show ip ospf neighbor json", "show_ip_ospf_neighbor.json"
+                rname, initial_convergence, "show ip ospf database json", "show_ip_ospf_database.json"
             )
             router_compare_json_output(
-                rname, "show ip ospf database json", "show_ip_ospf_database.json"
-            )
-            router_compare_json_output(
-                rname, "show ip ospf route json", "show_ip_ospf_route.json"
+                rname, initial_convergence, "show ip ospf route json", "show_ip_ospf_route.json"
             )
         router_compare_json_output(
-            rname, "show ip route ospf json", "show_ip_route.json"
+            rname, initial_convergence, "show ip route ospf json", "show_ip_route.json"
         )
 
 
@@ -218,7 +223,7 @@ def test_initial_convergence():
     if tgen.routers_have_failure():
         pytest.skip(tgen.errors)
 
-    check_routers()
+    check_routers(initial_convergence=True)
 
 
 #
@@ -233,9 +238,12 @@ def test_gr_rt1():
         pytest.skip(tgen.errors)
 
     tgen.net["rt1"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt1", ["ospfd"], save_config=False)
     check_routers(restarting="rt1")
+
     start_router_daemons(tgen, "rt1", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -251,9 +259,12 @@ def test_gr_rt2():
         pytest.skip(tgen.errors)
 
     tgen.net["rt2"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt2", ["ospfd"], save_config=False)
     check_routers(restarting="rt2")
+
     start_router_daemons(tgen, "rt2", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -269,9 +280,12 @@ def test_gr_rt3():
         pytest.skip(tgen.errors)
 
     tgen.net["rt3"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt3", ["ospfd"], save_config=False)
     check_routers(restarting="rt3")
+
     start_router_daemons(tgen, "rt3", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -287,9 +301,12 @@ def test_gr_rt4():
         pytest.skip(tgen.errors)
 
     tgen.net["rt4"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt4", ["ospfd"], save_config=False)
     check_routers(restarting="rt4")
+
     start_router_daemons(tgen, "rt4", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -305,9 +322,12 @@ def test_gr_rt5():
         pytest.skip(tgen.errors)
 
     tgen.net["rt5"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt5", ["ospfd"], save_config=False)
     check_routers(restarting="rt5")
+
     start_router_daemons(tgen, "rt5", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -323,9 +343,12 @@ def test_gr_rt6():
         pytest.skip(tgen.errors)
 
     tgen.net["rt6"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt6", ["ospfd"], save_config=False)
     check_routers(restarting="rt6")
+
     start_router_daemons(tgen, "rt6", ["ospfd"])
+    sleep(10)
     check_routers()
 
 
@@ -341,9 +364,12 @@ def test_gr_rt7():
         pytest.skip(tgen.errors)
 
     tgen.net["rt7"].cmd('vtysh -c "graceful-restart prepare ospf"')
+
     kill_router_daemons(tgen, "rt7", ["ospfd"], save_config=False)
     check_routers(restarting="rt7")
+
     start_router_daemons(tgen, "rt7", ["ospfd"])
+    sleep(10)
     check_routers()
 
 

@@ -1597,7 +1597,7 @@ class Router(Node):
                                     os.path.basename(d.rstrip().rsplit(".", 1)[0]),
                                 )
                             )
-                            self.cmd("kill -9 %s" % daemonpid)
+                            self.cmd("kill %s" % daemonpid)
                             self.waitOutput()
                             if pid_exists(int(daemonpid)):
                                 numRunning += 1
