@@ -450,7 +450,21 @@ void ospf6_interface_connected_route_update(struct interface *ifp)
 
 		route = ospf6_route_create();
 		memcpy(&route->prefix, c->address, sizeof(struct prefix));
-		apply_mask(&route->prefix);
+		if (oi->state != OSPF6_INTERFACE_POINTTOPOINT
+		    && oi->state != OSPF6_INTERFACE_LOOPBACK)
+			apply_mask(&route->prefix);
+		else {
+			/* On PtP, PtMP and loopback, only our own address is
+			 * our responsibility.  For PtP & PtMP particularly,
+			 * the prefix may include other routers;  if the link
+			 * is broken we would falsely claim reachability to
+			 * their addresses on this prefix.
+			 * (cf. RFC5340 section 4.4.3.9., 5th bulletpoint)
+			 */
+			route->prefix.prefixlen = 128;
+			route->prefix_options |= OSPF6_PREFIX_OPTION_LA;
+		}
+
 		route->type = OSPF6_DEST_TYPE_NETWORK;
 		route->path.area_id = oi->area->area_id;
 		route->path.type = OSPF6_PATH_TYPE_INTRA;

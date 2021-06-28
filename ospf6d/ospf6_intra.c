@@ -1011,6 +1011,7 @@ int ospf6_intra_prefix_lsa_originate_stub(struct thread *thread)
 	struct ospf6_prefix *op;
 	struct listnode *i, *j;
 	int full_count = 0;
+	bool la;
 	unsigned short prefix_num = 0;
 	struct ospf6_route_table *route_advertise;
 	int ls_id = 0;
@@ -1077,17 +1078,18 @@ int ospf6_intra_prefix_lsa_originate_stub(struct thread *thread)
 			if (on->state == OSPF6_NEIGHBOR_FULL)
 				full_count++;
 
-		if (oi->state != OSPF6_INTERFACE_LOOPBACK
-		    && oi->state != OSPF6_INTERFACE_POINTTOPOINT
-		    && full_count != 0) {
-			if (IS_OSPF6_DEBUG_ORIGINATE(INTRA_PREFIX))
-				zlog_debug("  Interface %s is not stub, ignore",
-					   oi->interface->name);
-			continue;
-		}
+		if (IS_OSPF6_DEBUG_ORIGINATE(INTRA_PREFIX)) {
+			const char *la_note = "";
 
-		if (IS_OSPF6_DEBUG_ORIGINATE(INTRA_PREFIX))
-			zlog_debug("  Interface %s:", oi->interface->name);
+			if (oi->state != OSPF6_INTERFACE_LOOPBACK
+			    && oi->state != OSPF6_INTERFACE_POINTTOPOINT
+			    && full_count != 0)
+				la_note =
+					" transit link, adding only LA prefixes";
+
+			zlog_debug("  Interface %s:%s", oi->interface->name,
+				   la_note);
+		}
 
 		/* connected prefix to advertise */
 		if (oi->ifmtu >= OSPF6_JUMBO_MTU)
@@ -1098,8 +1100,17 @@ int ospf6_intra_prefix_lsa_originate_stub(struct thread *thread)
 		for (route = ospf6_route_head(oi->route_connected), count = 0;
 		     route && count < max_addr_count;
 		     route = ospf6_route_best_next(route), count++) {
+			la = route->prefix_options & OSPF6_PREFIX_OPTION_LA;
+			if (full_count && !la)
+				/* local addresses only for transit links, cf.
+				 * RFC5340 section 4.4.3.9., 5th bulletpoint
+				 */
+				continue;
+
 			if (IS_OSPF6_DEBUG_ORIGINATE(INTRA_PREFIX))
-				zlog_debug("    include %pFX", &route->prefix);
+				zlog_debug("    include %pFX%s", &route->prefix,
+					   la ? " (LA)" : "");
+
 			ospf6_route_add(ospf6_route_copy(route),
 					route_advertise);
 		}
