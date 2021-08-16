@@ -265,6 +265,8 @@ static void ospf_process_self_originated_lsa(struct ospf *ospf,
 				ei_aggr.route_map_set.metric = -1;
 				ei_aggr.route_map_set.metric_type = -1;
 
+				SET_FLAG(aggr->flags,
+					 OSPF_EXTERNAL_AGGRT_ORIGINATED);
 				ospf_external_lsa_refresh(ospf, new, &ei_aggr,
 						  LSA_REFRESH_FORCE, true);
 				SET_FLAG(aggr->flags,
