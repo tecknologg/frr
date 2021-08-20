@@ -635,7 +635,8 @@ static int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 				&ip_hdr->ip_src, &ip_hdr->ip_dst);
 		}
 		if (igmp)
-			pim_igmp_packet(igmp, (char *)buf, buf_size);
+			pim_igmp_packet(igmp, (char *)buf, buf_size,
+					router_alert);
 		else if (PIM_DEBUG_IGMP_PACKETS) {
 			zlog_debug("No IGMP socket on interface: %s with connected source: %pFX",
 				   ifp->name, connected_src);
