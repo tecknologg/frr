@@ -191,7 +191,7 @@ class Commander(object):  # pylint: disable=R0205
         self.logger.debug('%s: %s("%s", kwargs: %s)', self, method, cmd, defaults)
 
         actual_cmd = cmd if skip_pre_cmd else pre_cmd + cmd
-        p = subprocess.Popen(actual_cmd, **defaults)
+        p = subprocess.Popen(actual_cmd, close_fds=False, **defaults)
         if not hasattr(p, "args"):
             p.args = actual_cmd
         return p, actual_cmd

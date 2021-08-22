@@ -63,6 +63,7 @@ import json
 import os
 import pytest
 import sys
+import fcntl
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(CWD, "../"))
@@ -97,6 +98,8 @@ def build_topo(tgen):
     tgen.add_link(tgen.gears["r1"], tgen.gears["r2"])
 
 
+exabgp_fds = {}
+
 def setup_module(mod):
     "Sets up the pytest environment"
     tgen = Topogen(build_topo, mod.__name__)
@@ -121,19 +124,26 @@ def setup_module(mod):
     # Start up exabgp peers
     peers = tgen.exabgp_peers()
     for peer in peers:
-        fifo_in = "/var/run/exabgp_{}.in".format(peer)
-        if os.path.exists(fifo_in):
-            os.remove(fifo_in)
-        os.mkfifo(fifo_in, 0o777)
         logger.info("Starting ExaBGP on peer {}".format(peer))
+
+        rdfd, wrfd = os.pipe()
+        fcntl.fcntl(wrfd, fcntl.F_SETFD, fcntl.fcntl(wrfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
+        fcntl.fcntl(rdfd, fcntl.F_SETFD, fcntl.fcntl(rdfd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
+        exabgp_fds[peer] = wrfd
+
         peer_dir = os.path.join(CWD, peer)
         env_file = os.path.join(CWD, "exabgp.env")
-        peers[peer].start(peer_dir, env_file)
+        peers[peer].start(peer_dir, env_file, rdfd)
+        os.close(rdfd)
 
 
 def teardown_module(mod):
     "Teardown the pytest environment"
     tgen = get_topogen()
+
+    while exabgp_fds:
+        _, fd = exabgp_fds.popitem()
+        os.close(fd)
 
     # This function tears down the whole topology.
     tgen.stop_topology()
@@ -147,10 +157,13 @@ def test_bgp_peer_type_multipath_relax():
         pytest.skip(tgen.errors)
 
     def exabgp_cmd(peer, cmd):
-        pipe = open("/run/exabgp_{}.in".format(peer), "w")
-        with pipe:
-            pipe.write(cmd)
-            pipe.close()
+        if not cmd.endswith('\n'):
+            cmd += '\n'
+        logger.debug("ExaBGP[%s]: %r", peer, cmd)
+        try:
+            os.write(exabgp_fds[peer], cmd.encode('UTF-8'))
+        except BrokenPipeError as e:
+            raise ChildProcessError('ExaBGP (%r) seems to have exited prematurely.  Check installation.' % (peer,)) from e
 
     # Prefixes used in the test
     prefix1 = "203.0.113.0/30"

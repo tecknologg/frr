@@ -1098,7 +1098,7 @@ class TopoExaBGP(TopoHost):
         gear += " TopoExaBGP<>".format()
         return gear
 
-    def start(self, peer_dir, env_file=None):
+    def start(self, peer_dir, env_file=None, rdfd=None):
         """
         Start running ExaBGP daemon:
         * Copy all peer* folder contents into /etc/exabgp
@@ -1119,6 +1119,8 @@ class TopoExaBGP(TopoHost):
         self.run("chmod a+x /etc/exabgp/*.py")
         self.run("chown -R exabgp:exabgp /etc/exabgp")
 
+        if rdfd is not None:
+            exacmd = 'TOPOTEST_FD=%d %s' % (rdfd, exacmd)
         output = self.run(exacmd + " -e /etc/exabgp/exabgp.env /etc/exabgp/exabgp.cfg")
         if output == None or len(output) == 0:
             output = "<none>"
