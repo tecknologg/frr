@@ -2046,6 +2046,8 @@ def test_BGP_active_standby_preemption_and_ecmp_p1(request):
                 topo["routers"]["r2"]["links"]["r4"][addr_type].split("/")[0],
                 topo["routers"]["r3"]["links"]["r4"][addr_type].split("/")[0],
             ],
+            # For debug let's check for 108s after the 12s retry to see where we end up
+            diag_pct=10.0,
         )
         assert result is True, "Testcase {} : Failed \n Error : {}".format(
             tc_name, result
