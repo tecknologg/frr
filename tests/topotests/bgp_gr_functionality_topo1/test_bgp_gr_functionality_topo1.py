@@ -1205,11 +1205,12 @@ def test_BGP_GR_TC_5_1_2_p1(request):
 
     logger.info("[Phase 2] : Now flap the link running the BGP session  ")
     # Shutdown interface
-    intf = "r2-r1-eth0"
-    shutdown_bringup_interface(tgen, "r2", intf)
+    shutdown_bringup_interface(tgen, "r2", "r2-r1-eth0")
+    shutdown_bringup_interface(tgen, "r1", "r1-r2-eth0")
 
     # Bring up Interface
-    shutdown_bringup_interface(tgen, "r2", intf, ifaceaction=True)
+    shutdown_bringup_interface(tgen, "r2", "r2-r1-eth0", ifaceaction=True)
+    shutdown_bringup_interface(tgen, "r1", "r1-r2-eth0", ifaceaction=True)
 
     for addr_type in ADDR_TYPES:
         result = verify_graceful_restart(
