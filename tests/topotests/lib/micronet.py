@@ -672,7 +672,7 @@ class Bridge(SharedNamespace):
 
         assert len(self.brid) <= 16  # Make sure fits in IFNAMSIZE
         self.cmd_raises("ip link delete {} || true".format(self.brid))
-        self.cmd_raises("ip link add {} type bridge".format(self.brid))
+        self.cmd_raises("ip link add {} type bridge mcast_snooping 0 mcast_router 0 stp_state 0 forward_delay 0".format(self.brid))
         self.cmd_raises("ip link set {} up".format(self.brid))
 
         self.logger.debug("%s: Created, Running", self)
