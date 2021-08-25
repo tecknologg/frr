@@ -50,6 +50,8 @@
 #include "pim_igmp_join.h"
 #include "pim_vxlan.h"
 
+DEFINE_MTYPE(PIMD, PIM_RMAP_NAME, "PIM route-map name");
+
 static void pim_if_igmp_join_del_all(struct interface *ifp);
 static int igmp_join_sock(const char *ifname, ifindex_t ifindex,
 			  struct in_addr group_addr,
@@ -230,6 +232,7 @@ void pim_if_delete(struct interface *ifp)
 		pim_ifchannel_delete(ch);
 	}
 
+	XFREE(MTYPE_PIM_RMAP_NAME, pim_ifp->igmp_source_rmap);
 	XFREE(MTYPE_PIM_PLIST_NAME, pim_ifp->nbr_plist);
 	XFREE(MTYPE_PIM_INTERFACE, pim_ifp);
 
