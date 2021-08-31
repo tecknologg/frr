@@ -256,7 +256,7 @@ void ospf6_lsack_print(struct ospf6_header *oh, int action)
 	}
 }
 
-static struct ospf6_packet *ospf6_packet_new(size_t size)
+struct ospf6_packet *ospf6_packet_new(size_t size)
 {
 	struct ospf6_packet *new;
 
@@ -266,7 +266,7 @@ static struct ospf6_packet *ospf6_packet_new(size_t size)
 	return new;
 }
 
-static void ospf6_packet_free(struct ospf6_packet *op)
+void ospf6_packet_free(struct ospf6_packet *op)
 {
 	if (op->s)
 		stream_free(op->s);
@@ -1869,8 +1869,8 @@ int ospf6_receive(struct thread *thread)
 	return 0;
 }
 
-static void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
-			      struct stream *s)
+void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
+		       struct stream *s)
 {
 	struct ospf6_header *oh;
 
@@ -1888,8 +1888,8 @@ static void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
 	stream_forward_endp(s, OSPF6_HEADER_SIZE);
 }
 
-static void ospf6_fill_header(struct ospf6_interface *oi, struct stream *s,
-			      uint16_t length)
+void ospf6_fill_header(struct ospf6_interface *oi, struct stream *s,
+		       uint16_t length)
 {
 	struct ospf6_header *oh;
 
@@ -2103,6 +2103,14 @@ int ospf6_hello_send(struct thread *thread)
 		return 0;
 	}
 
+	/* set next thread */
+	thread_add_timer(master, ospf6_hello_send, oi, oi->hello_interval,
+			 &oi->thread_send_hello);
+
+	/* Don't send hello during GR hello-delay interval. */
+	if (oi->gr.hello_delay.t_grace_send)
+		return 0;
+
 	op = ospf6_packet_new(oi->ifmtu);
 
 	ospf6_make_header(OSPF6_MESSAGE_TYPE_HELLO, oi, op->s);
@@ -2127,10 +2135,6 @@ int ospf6_hello_send(struct thread *thread)
 	 * can't get delayed by things like long queues of LS Update packets
 	 */
 	ospf6_packet_add_top(oi, op);
-
-	/* set next thread */
-	thread_add_timer(master, ospf6_hello_send, oi, oi->hello_interval,
-			 &oi->thread_send_hello);
 
 	OSPF6_MESSAGE_WRITE_ON(oi);
 

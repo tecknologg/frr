@@ -27,6 +27,7 @@
 #include "log.h"
 #include "hook.h"
 #include "printfrr.h"
+#include "lib_errors.h"
 
 #include "ospf6d/ospf6_lsa.h"
 #include "ospf6d/ospf6_lsdb.h"
@@ -38,6 +39,7 @@
 #include "ospf6d/ospf6_zebra.h"
 #include "ospf6d/ospf6_message.h"
 #include "ospf6d/ospf6_neighbor.h"
+#include "ospf6d/ospf6_network.h"
 #include "ospf6d/ospf6_flood.h"
 #include "ospf6d/ospf6_intra.h"
 #include "ospf6d/ospf6_spf.h"
@@ -47,14 +49,18 @@
 #endif
 
 static void ospf6_gr_nvm_delete(struct ospf6 *ospf6);
+static int ospf6_gr_grace_period_expired(struct thread *thread);
 
 /* Originate and install Grace-LSA for a given interface. */
-static int ospf6_gr_lsa_originate(struct ospf6_interface *oi)
+int ospf6_gr_lsa_originate(struct ospf6_interface *oi,
+			   enum ospf6_gr_restart_reason reason)
 {
-	struct ospf6_gr_info *gr_info = &oi->area->ospf6->gr_info;
+	struct ospf6 *ospf6 = oi->area->ospf6;
+	struct ospf6_gr_info *gr_info = &ospf6->gr_info;
 	struct ospf6_lsa_header *lsa_header;
 	struct ospf6_grace_lsa *grace_lsa;
 	struct ospf6_lsa *lsa;
+	uint16_t lsa_length;
 	char buffer[OSPF6_MAX_LSASIZE];
 
 	if (IS_OSPF6_DEBUG_ORIGINATE(LINK))
@@ -76,29 +82,57 @@ static int ospf6_gr_lsa_originate(struct ospf6_interface *oi)
 	/* Put restart reason. */
 	grace_lsa->tlv_reason.header.type = htons(RESTART_REASON_TYPE);
 	grace_lsa->tlv_reason.header.length = htons(RESTART_REASON_LENGTH);
-	if (gr_info->restart_support)
-		grace_lsa->tlv_reason.reason = OSPF6_GR_SW_RESTART;
-	else
-		grace_lsa->tlv_reason.reason = OSPF6_GR_UNKNOWN_RESTART;
+	grace_lsa->tlv_reason.reason = reason;
 
 	/* Fill LSA Header */
+	lsa_length = sizeof(*lsa_header) + sizeof(*grace_lsa);
 	lsa_header->age = 0;
 	lsa_header->type = htons(OSPF6_LSTYPE_GRACE_LSA);
 	lsa_header->id = htonl(oi->interface->ifindex);
-	lsa_header->adv_router = oi->area->ospf6->router_id;
+	lsa_header->adv_router = ospf6->router_id;
 	lsa_header->seqnum =
 		ospf6_new_ls_seqnum(lsa_header->type, lsa_header->id,
 				    lsa_header->adv_router, oi->lsdb);
-	lsa_header->length = htons(sizeof(*lsa_header) + sizeof(*grace_lsa));
+	lsa_header->length = htons(lsa_length);
 
 	/* LSA checksum */
 	ospf6_lsa_checksum(lsa_header);
 
-	/* create LSA */
-	lsa = ospf6_lsa_create(lsa_header);
+	if (reason == OSPF6_GR_SWITCH_CONTROL_PROCESSOR) {
+		struct ospf6_packet *op;
+		struct iovec iovector[2];
+		uint16_t length = OSPF6_HEADER_SIZE + 4 + lsa_length;
+		int n;
 
-	/* Originate */
-	ospf6_lsa_originate_interface(lsa, oi);
+		/* Create OSPF packet. */
+		op = ospf6_packet_new(oi->ifmtu);
+		ospf6_make_header(OSPF6_MESSAGE_TYPE_LSUPDATE, oi, op->s);
+		stream_putl(op->s, 1);
+		stream_put(op->s, lsa_header,
+			   sizeof(*lsa_header) + sizeof(*grace_lsa));
+
+		/* Fill header length. */
+		ospf6_fill_header(oi, op->s, length);
+		op->length = length;
+
+		/* Send packet. */
+		iovector[0].iov_base = (caddr_t)stream_pnt(op->s);
+		iovector[0].iov_len = op->length;
+		iovector[1].iov_base = NULL;
+		iovector[1].iov_len = 0;
+		n = ospf6_sendmsg(oi->linklocal_addr, &allspfrouters6,
+				  oi->interface->ifindex, iovector, ospf6->fd);
+		if (n != op->length)
+			flog_err(EC_LIB_DEVELOPMENT,
+				 "%s: could not send entire message", __func__);
+		ospf6_packet_free(op);
+	} else {
+		/* create LSA */
+		lsa = ospf6_lsa_create(lsa_header);
+
+		/* Originate */
+		ospf6_lsa_originate_interface(lsa, oi);
+	}
 
 	return 0;
 }
@@ -164,6 +198,11 @@ static void ospf6_gr_restart_exit(struct ospf6 *ospf6, const char *reason)
 		OSPF6_ROUTER_LSA_EXECUTE(area);
 
 		for (ALL_LIST_ELEMENTS_RO(area->if_list, anode, oi)) {
+			/* Disable hello delay. */
+			oi->gr.hello_delay.elapsed_seconds = 0;
+			THREAD_OFF(oi->gr.hello_delay.t_grace_send);
+
+			/* Update Link-LSA. */
 			OSPF6_LINK_LSA_EXECUTE(oi);
 
 			/*
@@ -189,6 +228,24 @@ static void ospf6_gr_restart_exit(struct ospf6 *ospf6, const char *reason)
 
 	/* 6) Any grace-LSAs that the router originated should be flushed. */
 	ospf6_gr_flush_grace_lsas(ospf6);
+}
+
+/* Enter the Graceful Restart mode. */
+void ospf6_gr_restart_enter(struct ospf6 *ospf6, int timestamp)
+{
+	unsigned long remaining_time;
+
+	ospf6->gr_info.restart_in_progress = true;
+
+	/* Schedule grace period timeout. */
+	remaining_time = timestamp - time(NULL);
+	if (IS_DEBUG_OSPF6_GR)
+		zlog_debug(
+			"GR: remaining time until grace period expires: %lu(s)",
+			remaining_time);
+
+	thread_add_timer(master, ospf6_gr_grace_period_expired, ospf6,
+			 remaining_time, &ospf6->gr_info.t_grace_period);
 }
 
 #define RTR_LSA_MISSING 0
@@ -465,6 +522,22 @@ static int ospf6_gr_grace_period_expired(struct thread *thread)
 	return 0;
 }
 
+/* Send extra Grace-LSA out the interface (unplanned outages only). */
+int ospf6_gr_iface_send_grace_lsa(struct thread *thread)
+{
+	struct ospf6_interface *oi = THREAD_ARG(thread);
+
+	oi->gr.hello_delay.t_grace_send = NULL;
+
+	ospf6_gr_lsa_originate(oi, OSPF6_GR_SWITCH_CONTROL_PROCESSOR);
+
+	if (++oi->gr.hello_delay.elapsed_seconds <= oi->gr.hello_delay.interval)
+		thread_add_timer(master, ospf6_gr_iface_send_grace_lsa, oi, 1,
+				 &oi->gr.hello_delay.t_grace_send);
+
+	return 0;
+}
+
 /*
  * Record in non-volatile memory that the given OSPF instance is attempting to
  * perform a graceful restart.
@@ -575,7 +648,6 @@ void ospf6_gr_nvm_read(struct ospf6 *ospf6)
 	json_object_object_get_ex(json_instance, "timestamp", &json_timestamp);
 	if (json_timestamp) {
 		time_t now;
-		unsigned long remaining_time;
 
 		/* Check if the grace period has already expired. */
 		now = time(NULL);
@@ -583,18 +655,8 @@ void ospf6_gr_nvm_read(struct ospf6 *ospf6)
 		if (now > timestamp) {
 			ospf6_gr_restart_exit(
 				ospf6, "grace period has expired already");
-		} else {
-			/* Schedule grace period timeout. */
-			ospf6->gr_info.restart_in_progress = true;
-			remaining_time = timestamp - time(NULL);
-			if (IS_DEBUG_OSPF6_GR)
-				zlog_debug(
-					"GR: remaining time until grace period expires: %lu(s)",
-					remaining_time);
-			thread_add_timer(master, ospf6_gr_grace_period_expired,
-					 ospf6, remaining_time,
-					 &ospf6->gr_info.t_grace_period);
-		}
+		} else
+			ospf6_gr_restart_enter(ospf6, timestamp);
 	}
 
 	json_object_object_del(json_instances, inst_name);
@@ -637,7 +699,7 @@ static void ospf6_gr_prepare(void)
 			for (ALL_LIST_ELEMENTS_RO(area->if_list, inode, oi)) {
 				if (oi->state < OSPF6_INTERFACE_POINTTOPOINT)
 					continue;
-				ospf6_gr_lsa_originate(oi);
+				ospf6_gr_lsa_originate(oi, OSPF6_GR_SW_RESTART);
 			}
 		}
 

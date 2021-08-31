@@ -157,6 +157,14 @@ extern void ospf6_lsreq_print(struct ospf6_header *, int action);
 extern void ospf6_lsupdate_print(struct ospf6_header *, int action);
 extern void ospf6_lsack_print(struct ospf6_header *, int action);
 
+struct ospf6_interface;
+extern struct ospf6_packet *ospf6_packet_new(size_t size);
+extern void ospf6_packet_free(struct ospf6_packet *op);
+extern void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
+			      struct stream *s);
+extern void ospf6_fill_header(struct ospf6_interface *oi, struct stream *s,
+			      uint16_t length);
+
 extern struct ospf6_fifo *ospf6_fifo_new(void);
 extern void ospf6_fifo_flush(struct ospf6_fifo *fifo);
 extern void ospf6_fifo_free(struct ospf6_fifo *fifo);
