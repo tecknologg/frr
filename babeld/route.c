@@ -792,7 +792,7 @@ update_route(const unsigned char *router_id,
     struct source *src;
     int metric, feasible;
     int add_metric;
-    int hold_time = MAX((4 * interval) / 100 + interval / 50, 15);
+    unsigned hold_time = MAX((4U * interval) / 100U + interval / 50U, 15U);
 
     if(memcmp(router_id, myid, 8) == 0)
         return NULL;

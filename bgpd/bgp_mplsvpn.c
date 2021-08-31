@@ -175,7 +175,7 @@ int bgp_nlri_parse_vpn(struct peer *peer, struct attr *attr,
 		}
 
 		/* sanity check against storage for the IP address portion */
-		if ((psize - VPN_PREFIXLEN_MIN_BYTES) > (ssize_t)sizeof(p.u)) {
+		if ((psize - (size_t)VPN_PREFIXLEN_MIN_BYTES) > sizeof(p.u)) {
 			flog_err(
 				EC_BGP_UPDATE_RCV,
 				"%s [Error] Update packet error / VPN (psize %d exceeds storage size %zu)",

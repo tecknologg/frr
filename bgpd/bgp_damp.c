@@ -553,9 +553,9 @@ static const char *bgp_get_reuse_time(unsigned int penalty, char *buf,
 	} else {
 		if (use_json) {
 			time_store =
-				(604800000 * tm.tm_yday / 7)
+				(604800000 * tm.tm_yday / 7U)
 				+ (86400000
-				   * (tm.tm_yday - ((tm.tm_yday / 7) * 7)))
+				   * (tm.tm_yday - ((tm.tm_yday / 7U) * 7)))
 				+ (3600000 * tm.tm_hour) + (60000 * tm.tm_min)
 				+ (1000 * tm.tm_sec);
 			json_object_int_add(json, "reuseTimerMsecs",

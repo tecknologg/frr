@@ -511,8 +511,8 @@ bool aspath_has_as4(struct aspath *aspath)
 static void aspath_make_str_count(struct aspath *as, bool make_json)
 {
 	struct assegment *seg;
-	int str_size;
-	int len = 0;
+	size_t str_size;
+	size_t len = 0;
 	char *str_buf;
 	json_object *jaspath_segments = NULL;
 	json_object *jseg = NULL;
@@ -548,8 +548,8 @@ static void aspath_make_str_count(struct aspath *as, bool make_json)
  * This was changed to 10 after the well-known BGP assertion, which
  * had hit some parts of the Internet in May of 2009.
  */
-#define ASN_STR_LEN (10 + 1)
-	str_size = MAX(assegment_count_asns(seg, 0) * ASN_STR_LEN + 2 + 1,
+#define ASN_STR_LEN (10U + 1U)
+	str_size = MAX(assegment_count_asns(seg, 0) * ASN_STR_LEN + 2U + 1U,
 		       ASPATH_STR_DEFAULT_LEN);
 	str_buf = XMALLOC(MTYPE_AS_STR, str_size);
 

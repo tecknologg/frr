@@ -574,7 +574,7 @@ static void vty_self_insert(struct vty *vty, char c)
 	int i;
 	int length;
 
-	if (vty->length + 1 >= VTY_BUFSIZ)
+	if (vty->length + 1U >= VTY_BUFSIZ)
 		return;
 
 	length = vty->length - vty->cp;

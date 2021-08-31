@@ -2113,8 +2113,8 @@ static uint16_t get_max_lsp_count(uint16_t size)
 
 	/* The last TLV, if any */
 	remaining_size = size % MAX_LSP_ENTRIES_TLV_SIZE;
-	if (remaining_size - 2 >= LSP_ENTRIES_LEN)
-		lsp_count += (remaining_size - 2) / LSP_ENTRIES_LEN;
+	if (remaining_size - 2U >= LSP_ENTRIES_LEN)
+		lsp_count += (remaining_size - 2U) / LSP_ENTRIES_LEN;
 
 	return lsp_count;
 }
