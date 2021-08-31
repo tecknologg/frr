@@ -256,7 +256,7 @@ void ospf6_lsack_print(struct ospf6_header *oh, int action)
 	}
 }
 
-static struct ospf6_packet *ospf6_packet_new(size_t size)
+struct ospf6_packet *ospf6_packet_new(size_t size)
 {
 	struct ospf6_packet *new;
 
@@ -266,7 +266,7 @@ static struct ospf6_packet *ospf6_packet_new(size_t size)
 	return new;
 }
 
-static void ospf6_packet_free(struct ospf6_packet *op)
+void ospf6_packet_free(struct ospf6_packet *op)
 {
 	if (op->s)
 		stream_free(op->s);
@@ -1864,8 +1864,8 @@ int ospf6_receive(struct thread *thread)
 	return 0;
 }
 
-static void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
-			      struct stream *s)
+void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
+		       struct stream *s)
 {
 	struct ospf6_header *oh;
 
@@ -1883,8 +1883,8 @@ static void ospf6_make_header(uint8_t type, struct ospf6_interface *oi,
 	stream_forward_endp(s, OSPF6_HEADER_SIZE);
 }
 
-static void ospf6_fill_header(struct ospf6_interface *oi, struct stream *s,
-			      uint16_t length)
+void ospf6_fill_header(struct ospf6_interface *oi, struct stream *s,
+		       uint16_t length)
 {
 	struct ospf6_header *oh;
 
@@ -2090,6 +2090,10 @@ int ospf6_hello_send(struct thread *thread)
 
 	oi = (struct ospf6_interface *)THREAD_ARG(thread);
 	oi->thread_send_hello = (struct thread *)NULL;
+
+	/* Check if the GR hello-delay is active. */
+	if (oi->gr.hello_delay.t_grace_send)
+		return 0;
 
 	if (oi->state <= OSPF6_INTERFACE_DOWN) {
 		if (IS_OSPF6_DEBUG_MESSAGE(OSPF6_MESSAGE_TYPE_HELLO, SEND_HDR))
