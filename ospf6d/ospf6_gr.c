@@ -132,6 +132,11 @@ int ospf6_gr_lsa_originate(struct ospf6_interface *oi,
 
 		/* Originate */
 		ospf6_lsa_originate_interface(lsa, oi);
+
+	        if (IS_DEBUG_OSPF6_GR)
+                         zlog_debug("Originated Graceful LSA for Interface %s",
+                                    oi->interface->name);
+
 	}
 
 	return 0;
