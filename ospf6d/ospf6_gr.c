@@ -63,8 +63,8 @@ int ospf6_gr_lsa_originate(struct ospf6_interface *oi,
 	uint16_t lsa_length;
 	char buffer[OSPF6_MAX_LSASIZE];
 
-	if (IS_OSPF6_DEBUG_ORIGINATE(LINK))
-		zlog_debug("Originate Link-LSA for Interface %s",
+	if (IS_OSPF6_DEBUG_ORIGINATE(LINK) || IS_DEBUG_OSPF6_GR)
+		zlog_debug("Originate Graceful Link-LSA for Interface %s",
 			   oi->interface->name);
 
 	/* prepare buffer */
@@ -125,6 +125,11 @@ int ospf6_gr_lsa_originate(struct ospf6_interface *oi,
 		if (n != op->length)
 			flog_err(EC_LIB_DEVELOPMENT,
 				 "%s: could not send entire message", __func__);
+
+		if (IS_DEBUG_OSPF6_GR)
+			zlog_debug("Originated Graceful LSA (GR_SWITCHOVER) for Interface %s",
+				oi->interface->name);
+
 		ospf6_packet_free(op);
 	} else {
 		/* create LSA */
@@ -133,9 +138,9 @@ int ospf6_gr_lsa_originate(struct ospf6_interface *oi,
 		/* Originate */
 		ospf6_lsa_originate_interface(lsa, oi);
 
-	        if (IS_DEBUG_OSPF6_GR)
-                         zlog_debug("Originated Graceful LSA for Interface %s",
-                                    oi->interface->name);
+		if (IS_DEBUG_OSPF6_GR)
+			zlog_debug("Originated Graceful LSA for Interface %s",
+				oi->interface->name);
 
 	}
 
