@@ -473,10 +473,9 @@ int pim_interface_config_write(struct vty *vty)
 				}
 
 				/* IF ip igmp sources  */
-				if (pim_ifp->igmp_source_rmap) {
-					vty_out(vty,
-						" ip igmp sources route-map %s\n",
-						pim_ifp->igmp_source_rmap);
+				if (pim_ifp->igmp_rmap) {
+					vty_out(vty, " ip igmp route-map %s\n",
+						pim_ifp->igmp_rmap);
 					++writes;
 				}
 
