@@ -5583,6 +5583,32 @@ DEFUN (show_ip_pim_rp_vrf_all,
 	return CMD_SUCCESS;
 }
 
+DEFPY (show_ip_pim_rpf_select,
+       show_ip_pim_rpf_select_cmd,
+       "show ip pim [vrf NANE] rp-select A.B.C.D$group",
+       SHOW_STR
+       IP_STR
+       PIM_STR
+       VRF_CMD_HELP_STR
+       "PIM RP selection result\n"
+       "Group address to show RP for\n")
+{
+	int idx = 2;
+	struct vrf *vrf = pim_cmd_lookup_vrf(vty, argv, argc, &idx);
+	struct pim_instance *pim;
+	struct in_addr src = { INADDR_ANY }, result;
+
+	if (!vrf || !vrf->info)
+		return CMD_WARNING;
+
+	pim = vrf->info;
+
+	pim_rp_set_upstream_addr(pim, &result, src, group);
+	vty_out(vty, "RP for %pI4: %pI4\n", &group, &result);
+	return CMD_SUCCESS;
+
+}
+
 DEFUN (show_ip_pim_rpf,
        show_ip_pim_rpf_cmd,
        "show ip pim [vrf NAME] rpf [json]",
@@ -11717,6 +11743,7 @@ void pim_cmd_init(void)
 	install_element(VIEW_NODE, &show_ip_pim_mlag_up_vrf_all_cmd);
 	install_element(VIEW_NODE, &show_ip_pim_neighbor_cmd);
 	install_element(VIEW_NODE, &show_ip_pim_neighbor_vrf_all_cmd);
+	install_element(VIEW_NODE, &show_ip_pim_rpf_select_cmd);
 	install_element(VIEW_NODE, &show_ip_pim_rpf_cmd);
 	install_element(VIEW_NODE, &show_ip_pim_rpf_vrf_all_cmd);
 	install_element(VIEW_NODE, &show_ip_pim_secondary_cmd);
