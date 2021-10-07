@@ -1004,6 +1004,49 @@ static int ospf_vl_set(struct ospf *ospf, struct ospf_vl_config_data *vl_config)
 	return CMD_SUCCESS;
 }
 
+void ospf_shutdown(struct ospf *ospf, bool shutdown, bool graceful)
+{
+	struct ospf_area *area;
+	struct ospf_interface *oi;
+	struct listnode *anode, *inode;
+
+	/* If already shutdown, then just quit */
+	if ((shutdown && CHECK_FLAG(ospf->config, OSPF_SHUTDOWN))
+	    || (!shutdown && !CHECK_FLAG(ospf->config, OSPF_SHUTDOWN)))
+		return;
+
+	if (shutdown) {
+		struct route_node *rn;
+		struct ospf_lsa *lsa;
+
+		/* Shut down interfaces. */
+		for (ALL_LIST_ELEMENTS_RO(ospf->oiflist, inode, oi))
+			ospf_if_down(oi);
+
+		/* Clear LSDB. */
+		for (ALL_LIST_ELEMENTS_RO(ospf->areas, anode, area)) {
+			ospf_area_lsdb_discard_delete(area);
+			ospf_lsdb_delete_all(area->lsdb);
+			ospf_lsa_unlock(&area->router_lsa_self);
+		}
+		LSDB_LOOP (OPAQUE_AS_LSDB(ospf), rn, lsa)
+			ospf_discard_from_db(ospf, ospf->lsdb, lsa);
+		LSDB_LOOP (EXTERNAL_LSDB(ospf), rn, lsa)
+			ospf_discard_from_db(ospf, ospf->lsdb, lsa);
+
+		SET_FLAG(ospf->config, OSPF_SHUTDOWN);
+		if (graceful)
+			SET_FLAG(ospf->config, OSPF_SHUTDOWN_GRACEFUL);
+	} else {
+		UNSET_FLAG(ospf->config, OSPF_SHUTDOWN);
+		UNSET_FLAG(ospf->config, OSPF_SHUTDOWN_GRACEFUL);
+
+		/* Bring interfaces back. */
+		for (ALL_LIST_ELEMENTS_RO(ospf->oiflist, inode, oi))
+			ospf_if_up(oi);
+	}
+}
+
 /* This stuff exists to make specifying all the alias commands A LOT simpler
  */
 #define VLINK_HELPSTR_IPADDR                                                   \

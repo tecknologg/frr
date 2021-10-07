@@ -54,6 +54,7 @@
 #include "ospfd/ospf_zebra.h"
 #include "ospfd/ospf_vty.h"
 #include "ospfd/ospf_bfd.h"
+#include "ospfd/ospf_nb.h"
 #include "ospfd/ospf_gr.h"
 #include "ospfd/ospf_errors.h"
 #include "ospfd/ospf_ldp_sync.h"
@@ -136,6 +137,7 @@ static const struct frr_yang_module_info *const ospfd_yang_modules[] = {
 	&frr_interface_info,
 	&frr_route_map_info,
 	&frr_vrf_info,
+	&frr_ospf_info,
 	&frr_ospf_route_map_info,
 };
 
@@ -204,6 +206,7 @@ int main(int argc, char **argv)
 	/* Library inits. */
 	ospf_debug_init();
 	ospf_vrf_init();
+	ospf_nb_init();
 
 	access_list_init();
 	prefix_list_init();
