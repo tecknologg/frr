@@ -13065,7 +13065,7 @@ static void show_adj_route_header(struct vty *vty, struct bgp *bgp,
 }
 
 static void
-show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
+show_adj_route(struct vty *vty, struct bgp *bgp, struct peer *peer, struct bgp_table *table,
 	       afi_t afi, safi_t safi, enum bgp_show_adj_route_type type,
 	       const char *rmap_name, json_object *json, json_object *json_ar,
 	       json_object *json_scode, json_object *json_ocode,
@@ -13075,7 +13075,6 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 	struct bgp_adj_in *ain;
 	struct bgp_adj_out *adj;
 	struct bgp_dest *dest;
-	struct bgp *bgp;
 	struct attr attr;
 	int ret;
 	struct update_subgroup *subgrp;
@@ -13087,18 +13086,6 @@ show_adj_route(struct vty *vty, struct peer *peer, struct bgp_table *table,
 			|| (safi == SAFI_EVPN))
 			       ? true
 			       : false;
-
-	bgp = peer->bgp;
-
-	if (!bgp) {
-		if (use_json) {
-			json_object_string_add(json, "alert", "no BGP");
-			vty_out(vty, "%s\n", json_object_to_json_string(json));
-			json_object_free(json);
-		} else
-			vty_out(vty, "%% No bgp\n");
-		return;
-	}
 
 	subgrp = peer_subgroup(peer, afi, safi);
 
@@ -13316,6 +13303,9 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 		json_ar = json_object_new_object();
 		json_scode = json_object_new_object();
 		json_ocode = json_object_new_object();
+		json_object_lock(json_ar);
+		json_object_lock(json_scode);
+		json_object_lock(json_ocode);
 
 		json_object_string_add(json_scode, "suppressed", "s");
 		json_object_string_add(json_scode, "damped", "d");
@@ -13340,6 +13330,9 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 				"No such neighbor or address family");
 			vty_out(vty, "%s\n", json_object_to_json_string(json));
 			json_object_free(json);
+			json_object_free(json_ar);
+			json_object_free(json_scode);
+			json_object_free(json_ocode);
 		} else
 			vty_out(vty, "%% No such neighbor or address family\n");
 
@@ -13356,6 +13349,9 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 				"Inbound soft reconfiguration not enabled");
 			vty_out(vty, "%s\n", json_object_to_json_string(json));
 			json_object_free(json);
+			json_object_free(json_ar);
+			json_object_free(json_scode);
+			json_object_free(json_ocode);
 		} else
 			vty_out(vty,
 				"%% Inbound soft reconfiguration not enabled\n");
@@ -13394,7 +13390,7 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 
 			prefix_rd2str(prd, rd_str, sizeof(rd_str));
 
-			show_adj_route(vty, peer, table, afi, safi, type,
+			show_adj_route(vty, bgp, peer, table, afi, safi, type,
 				       rmap_name, json, json_routes, json_scode,
 				       json_ocode, show_flags, &header1,
 				       &header2, rd_str, &output_count_per_rd,
@@ -13409,7 +13405,7 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 			filtered_count += filtered_count_per_rd;
 		}
 	} else
-		show_adj_route(vty, peer, table, afi, safi, type, rmap_name,
+		show_adj_route(vty, bgp, peer, table, afi, safi, type, rmap_name,
 			       json, json_ar, json_scode, json_ocode,
 			       show_flags, &header1, &header2, rd_str,
 			       &output_count, &filtered_count);
@@ -13424,13 +13420,10 @@ static int peer_adj_routes(struct vty *vty, struct peer *peer, afi_t afi,
 			json_object_to_json_string_ext(
 				json, JSON_C_TO_STRING_PRETTY));
 
-		if (!output_count && !filtered_count) {
-			json_object_free(json_scode);
-			json_object_free(json_ocode);
-		}
-
-		if (json)
-			json_object_free(json);
+		json_object_free(json_scode);
+		json_object_free(json_ocode);
+		json_object_free(json_ar);
+		json_object_free(json);
 
 	} else if (output_count > 0) {
 		if (filtered_count > 0)
