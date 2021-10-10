@@ -325,7 +325,7 @@ def __create_ospf_global(tgen, input_dict, router, build, load_config, ospf):
 
         if "opaque" in gr_data and gr_data["opaque"]:
             cmd = "capability opaque"
-            if gr_data.setdefault("delete", False):
+            if gr_data.setdefault("delete", True):
                 cmd = "no {}".format(cmd)
             config_data.append(cmd)
 
