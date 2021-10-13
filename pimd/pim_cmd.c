@@ -7848,7 +7848,7 @@ DEFPY (ip_pim_candidate_rp,
 
 DEFPY (ip_pim_candidate_rp_group,
        ip_pim_candidate_rp_group_cmd,
-       "[no] ip pim candidate-rp group A.B.C.D/M",
+       "[no] ip pim candidate-rp group WORD$group_str",
        NO_STR
        IP_STR
        "pim multicast routing\n"
@@ -7882,7 +7882,7 @@ DEFPY (ip_pim_candidate_rp_group,
 		nb_cli_enqueue_change(vty, cand_rp_xpath, NB_OP_DESTROY,
 				      group_str);
 	else
-		nb_cli_enqueue_change(vty, cand_rp_xpath, NB_OP_CREATE,
+		nb_cli_enqueue_change(vty, cand_rp_xpath, NB_OP_MODIFY,
 				      group_str);
 
 	return nb_cli_apply_changes(vty, NULL);

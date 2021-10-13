@@ -2962,13 +2962,12 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ca
 	return NB_OK;
 }
 
-int routing_control_plane_protocols_control_plane_protocol_pim_address_family_candidate_rp_group_list_create(
-	struct nb_cb_create_args *args)
+int routing_control_plane_protocols_control_plane_protocol_pim_address_family_candidate_rp_group_list_modify(
+	struct nb_cb_modify_args *args)
 {
 	struct vrf *vrf;
 	struct pim_instance *pim;
 	struct bsm_scope *scope;
-	struct prefix_ipv4 p;
 
 	switch (args->event) {
 	case NB_EV_VALIDATE:
@@ -2980,8 +2979,10 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ca
 		pim = vrf->info;
 		scope = &pim->global_scope;
 
-		yang_dnode_get_ipv4p(&p, args->dnode, ".");
-		pim_cand_rp_grp_add(scope, &p);
+		XFREE(MTYPE_TMP, scope->group_list);
+		scope->group_list = XSTRDUP(
+			MTYPE_TMP, yang_dnode_get_string(args->dnode, NULL));
+		pim_cand_rp_trigger(scope);
 		break;
 	}
 	return NB_OK;
@@ -2993,7 +2994,6 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ca
 	struct vrf *vrf;
 	struct pim_instance *pim;
 	struct bsm_scope *scope;
-	struct prefix_ipv4 p;
 
 	switch (args->event) {
 	case NB_EV_VALIDATE:
@@ -3005,8 +3005,8 @@ int routing_control_plane_protocols_control_plane_protocol_pim_address_family_ca
 		pim = vrf->info;
 		scope = &pim->global_scope;
 
-		yang_dnode_get_ipv4p(&p, args->dnode, ".");
-		pim_cand_rp_grp_del(scope, &p);
+		XFREE(MTYPE_TMP, scope->group_list);
+		pim_cand_rp_trigger(scope);
 		break;
 	}
 	return NB_OK;
