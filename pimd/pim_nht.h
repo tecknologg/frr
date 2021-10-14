@@ -99,4 +99,6 @@ void pim_nht_bsr_del(struct pim_instance *pim, struct in_addr bsr_addr);
 bool pim_nht_bsr_rpf_check(struct pim_instance *pim, struct in_addr bsr_addr,
 			   struct interface *src_ifp, struct in_addr src_ip);
 
+void pim_nht_init(void);
+
 #endif

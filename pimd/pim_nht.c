@@ -43,6 +43,8 @@
 #include "pim_zlookup.h"
 #include "pim_rp.h"
 
+static struct zclient *nht_zclient = NULL;
+
 /**
  * pim_sendmsg_zebra_rnh -- Format and send a nexthop register/Unregister
  *   command to Zebra.
@@ -1166,4 +1168,33 @@ int pim_ecmp_fib_lookup_if_vif_index(struct pim_instance *pim,
 	}
 
 	return vif_index;
+}
+
+/* Connect to zebra for nexthop lookup. */
+static int nht_zclient_connect(struct thread *t)
+{
+	assert(nht_zclient->sock == -1);
+
+	if (zclient_start(nht_zclient) < 0) {
+		zlog_warn("failure connecting NHT socket: failures=%d",
+			  zlookup->fail);
+
+		thread_add_timer(router->master, nht_zclient_connect, NULL, 1,
+				 &nht_zclient->t_connect);
+		return 0;
+	}
+
+	return 0;
+}
+
+void pim_nht_init(void)
+{
+	/* Socket for receiving updates from Zebra daemon */
+	nht_zclient = zclient_new(router->master, &zclient_options_default);
+	nht_zclient->sock = -1;
+	nht_zclient->privs = &pimd_privs;
+
+	nht_zclient->nexthop_update = pim_parse_nexthop_update;
+
+	thread_execute(router->master, nht_zclient_connect, NULL, 0);
 }

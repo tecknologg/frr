@@ -444,7 +444,7 @@ static zclient_handler *const pim_handlers[] = {
 	[ZEBRA_INTERFACE_ADDRESS_ADD] = pim_zebra_if_address_add,
 	[ZEBRA_INTERFACE_ADDRESS_DELETE] = pim_zebra_if_address_del,
 	[ZEBRA_INTERFACE_VRF_UPDATE] = pim_zebra_interface_vrf_update,
-	[ZEBRA_NEXTHOP_UPDATE] = pim_parse_nexthop_update,
+//	[ZEBRA_NEXTHOP_UPDATE] = pim_parse_nexthop_update,
 
 	[ZEBRA_VXLAN_SG_ADD] = pim_zebra_vxlan_sg_proc,
 	[ZEBRA_VXLAN_SG_DEL] = pim_zebra_vxlan_sg_proc,
@@ -469,6 +469,8 @@ void pim_zebra_init(void)
 	}
 
 	zclient_lookup_new();
+
+	pim_nht_init();
 }
 
 void igmp_anysource_forward_start(struct pim_instance *pim,
