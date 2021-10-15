@@ -7342,7 +7342,7 @@ DEFPY (bgp_condadv_period,
 
 DEFPY (neighbor_advertise_map,
        neighbor_advertise_map_cmd,
-       "[no$no] neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor advertise-map WORD$advertise_str <exist-map|non-exist-map>$exist WORD$condition_str",
+       "[no] neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor advertise-map WORD$advertise_str <exist-map|non-exist-map$nex> WORD$condition_str",
        NO_STR
        NEIGHBOR_STR
        NEIGHBOR_ADDR_STR2
@@ -7354,7 +7354,7 @@ DEFPY (neighbor_advertise_map,
 {
 	bool condition = CONDITION_EXIST;
 
-	if (!strcmp(exist, "non-exist-map"))
+	if (nex)
 		condition = CONDITION_NON_EXIST;
 
 	return peer_advertise_map_set_vty(vty, neighbor, bgp_node_afi(vty),
@@ -7363,7 +7363,7 @@ DEFPY (neighbor_advertise_map,
 }
 
 ALIAS_HIDDEN(neighbor_advertise_map, neighbor_advertise_map_hidden_cmd,
-	     "[no$no] neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor advertise-map WORD$advertise_str <exist-map|non-exist-map>$exist WORD$condition_str",
+	     "[no] neighbor <A.B.C.D|X:X::X:X|WORD>$neighbor advertise-map WORD$advertise_str <exist-map|non-exist-map$nex>$exist WORD$condition_str",
 	     NO_STR NEIGHBOR_STR NEIGHBOR_ADDR_STR2
 	     "Route-map to conditionally advertise routes\n"
 	     "Name of advertise map\n"
@@ -11824,22 +11824,31 @@ static void bgp_show_peer_afi(struct vty *vty, struct peer *p, afi_t afi,
 					       filter->usmap.name);
 
 		/* advertise-map */
-		if (filter->advmap.aname) {
+		if (filter->advmap[CONDITION_EXIST].aname) {
 			json_advmap = json_object_new_object();
-			json_object_string_add(json_advmap, "condition",
-					       filter->advmap.condition
-						       ? "EXIST"
-						       : "NON_EXIST");
 			json_object_string_add(json_advmap, "conditionMap",
-					       filter->advmap.cname);
+					       filter->advmap[CONDITION_EXIST].cname);
 			json_object_string_add(json_advmap, "advertiseMap",
-					       filter->advmap.aname);
+					       filter->advmap[CONDITION_EXIST].aname);
 			json_object_string_add(json_advmap, "advertiseStatus",
-					       filter->advmap.update_type
-							       == ADVERTISE
+					       filter->advmap[CONDITION_EXIST].status
 						       ? "Advertise"
 						       : "Withdraw");
-			json_object_object_add(json_addr, "advertiseMap",
+			json_object_object_add(json_addr, "advertiseMapCondExist",
+					       json_advmap);
+		}
+
+		if (filter->advmap[CONDITION_NON_EXIST].aname) {
+			json_advmap = json_object_new_object();
+			json_object_string_add(json_advmap, "conditionMap",
+					       filter->advmap[CONDITION_NON_EXIST].cname);
+			json_object_string_add(json_advmap, "advertiseMap",
+					       filter->advmap[CONDITION_NON_EXIST].aname);
+			json_object_string_add(json_advmap, "advertiseStatus",
+					       filter->advmap[CONDITION_NON_EXIST].status
+						       ? "Advertise"
+						       : "Withdraw");
+			json_object_object_add(json_addr, "advertiseMapCondNonExist",
 					       json_advmap);
 		}
 
@@ -12139,16 +12148,28 @@ static void bgp_show_peer_afi(struct vty *vty, struct peer *p, afi_t afi,
 				filter->usmap.name);
 
 		/* advertise-map */
-		if (filter->advmap.aname && filter->advmap.cname)
+		if (filter->advmap[CONDITION_EXIST].aname &&
+		    filter->advmap[CONDITION_EXIST].cname)
 			vty_out(vty,
-				"  Condition %s, Condition-map %s%s, Advertise-map %s%s, status: %s\n",
-				filter->advmap.condition ? "EXIST"
-							 : "NON_EXIST",
-				filter->advmap.cmap ? "*" : "",
-				filter->advmap.cname,
-				filter->advmap.amap ? "*" : "",
-				filter->advmap.aname,
-				filter->advmap.update_type == ADVERTISE
+				"  Condition EXIST, Condition-map %s%s, Advertise-map %s%s, status: %s\n",
+				filter->advmap[CONDITION_EXIST].cmap ? "*" : "",
+				filter->advmap[CONDITION_EXIST].cname,
+				filter->advmap[CONDITION_EXIST].amap ? "*" : "",
+				filter->advmap[CONDITION_EXIST].aname,
+				filter->advmap[CONDITION_EXIST].status
+					? "Advertise"
+					: "Withdraw");
+
+		/* advertise-map */
+		if (filter->advmap[CONDITION_NON_EXIST].aname &&
+		    filter->advmap[CONDITION_NON_EXIST].cname)
+			vty_out(vty,
+				"  Condition NON_EXIST, Condition-map %s%s, Advertise-map %s%s, status: %s\n",
+				filter->advmap[CONDITION_NON_EXIST].cmap ? "*" : "",
+				filter->advmap[CONDITION_NON_EXIST].cname,
+				filter->advmap[CONDITION_NON_EXIST].amap ? "*" : "",
+				filter->advmap[CONDITION_NON_EXIST].aname,
+				filter->advmap[CONDITION_NON_EXIST].status
 					? "Advertise"
 					: "Withdraw");
 
@@ -16155,10 +16176,12 @@ static bool peergroup_filter_check(struct peer *peer, afi_t afi, safi_t safi,
 		return !!(filter->map[direct].name);
 	case PEER_FT_UNSUPPRESS_MAP:
 		return !!(filter->usmap.name);
-	case PEER_FT_ADVERTISE_MAP:
-		return !!(filter->advmap.aname
-			  && ((filter->advmap.condition == direct)
-			      && filter->advmap.cname));
+	case PEER_FT_ADVERTISE_MAP_EX:
+		return !!(filter->advmap[CONDITION_EXIST].aname
+			  && filter->advmap[CONDITION_EXIST].cname);
+	case PEER_FT_ADVERTISE_MAP_NEX:
+		return !!(filter->advmap[CONDITION_NON_EXIST].aname
+			  && filter->advmap[CONDITION_NON_EXIST].cname);
 	default:
 		return false;
 	}
@@ -16356,16 +16379,18 @@ static void bgp_config_write_filter(struct vty *vty, struct peer *peer,
 			filter->usmap.name);
 
 	/* advertise-map : always applied in OUT direction*/
-	if (peergroup_filter_check(peer, afi, safi, PEER_FT_ADVERTISE_MAP,
-				   CONDITION_NON_EXIST))
+	if (peergroup_filter_check(peer, afi, safi, PEER_FT_ADVERTISE_MAP_EX,
+				   0))
+		vty_out(vty, "  neighbor %s advertise-map %s exist-map %s\n",
+			addr, filter->advmap[CONDITION_EXIST].aname,
+			filter->advmap[CONDITION_EXIST].cname);
+
+	if (peergroup_filter_check(peer, afi, safi, PEER_FT_ADVERTISE_MAP_NEX,
+				   0))
 		vty_out(vty,
 			"  neighbor %s advertise-map %s non-exist-map %s\n",
-			addr, filter->advmap.aname, filter->advmap.cname);
-
-	if (peergroup_filter_check(peer, afi, safi, PEER_FT_ADVERTISE_MAP,
-				   CONDITION_EXIST))
-		vty_out(vty, "  neighbor %s advertise-map %s exist-map %s\n",
-			addr, filter->advmap.aname, filter->advmap.cname);
+			addr, filter->advmap[CONDITION_NON_EXIST].aname,
+			filter->advmap[CONDITION_NON_EXIST].cname);
 
 	/* filter-list. */
 	if (peergroup_filter_check(peer, afi, safi, PEER_FT_FILTER_LIST,

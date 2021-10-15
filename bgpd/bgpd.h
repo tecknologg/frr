@@ -845,12 +845,27 @@ struct bgp_nexthop {
 #define BGP_GTSM_HOPS_CONNECTED 1
 
 /* Advertise map */
-#define CONDITION_NON_EXIST	false
-#define CONDITION_EXIST		true
+enum condition_type {
+	CONDITION_NON_EXIST = 0,
+	CONDITION_EXIST,
+
+	_CONDITION_TYPE_LEN,
+};
 
 enum update_type { WITHDRAW, ADVERTISE };
 
 #include "filter.h"
+
+struct bgp_filter_advmap {
+	char *aname;
+	struct route_map *amap;
+
+	char *cname;
+	struct route_map *cmap;
+
+	bool changed;
+	bool status;
+};
 
 /* BGP filter structure. */
 struct bgp_filter {
@@ -885,17 +900,7 @@ struct bgp_filter {
 	} usmap;
 
 	/* Advertise-map */
-	struct {
-		char *aname;
-		struct route_map *amap;
-
-		bool condition;
-
-		char *cname;
-		struct route_map *cmap;
-
-		enum update_type update_type;
-	} advmap;
+	struct bgp_filter_advmap advmap[_CONDITION_TYPE_LEN];
 };
 
 /* IBGP/EBGP identifier.  We also have a CONFED peer, which is to say,
@@ -1531,7 +1536,8 @@ struct peer {
 #define PEER_FT_PREFIX_LIST           (1U << 2) /* prefix-list */
 #define PEER_FT_ROUTE_MAP             (1U << 3) /* route-map */
 #define PEER_FT_UNSUPPRESS_MAP        (1U << 4) /* unsuppress-map */
-#define PEER_FT_ADVERTISE_MAP         (1U << 5) /* advertise-map */
+#define PEER_FT_ADVERTISE_MAP_EX      (1U << 5) /* advertise-map exist */
+#define PEER_FT_ADVERTISE_MAP_NEX     (1U << 6) /* advertise-map non-exist */
 
 	/* ORF Prefix-list */
 	struct prefix_list *orf_plist[AFI_MAX][SAFI_MAX];
@@ -2168,7 +2174,7 @@ extern int peer_advertise_map_set(struct peer *peer, afi_t afi, safi_t safi,
 				  struct route_map *advertise_map,
 				  const char *condition_name,
 				  struct route_map *condition_map,
-				  bool condition);
+				  enum condition_type condition);
 
 extern int peer_password_set(struct peer *, const char *);
 extern int peer_password_unset(struct peer *);
@@ -2180,7 +2186,7 @@ extern int peer_advertise_map_unset(struct peer *peer, afi_t afi, safi_t safi,
 				    struct route_map *advertise_map,
 				    const char *condition_name,
 				    struct route_map *condition_map,
-				    bool condition);
+				    enum condition_type condition);
 
 extern int peer_maximum_prefix_set(struct peer *, afi_t, safi_t, uint32_t,
 				   uint8_t, int, uint16_t, bool force);

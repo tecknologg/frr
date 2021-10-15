@@ -200,18 +200,34 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
 		UNSUPPRESS_MAP(dstfilter) = UNSUPPRESS_MAP(srcfilter);
 	}
 
-	if (ADVERTISE_MAP_NAME(srcfilter)) {
-		ADVERTISE_MAP_NAME(dstfilter) = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME, ADVERTISE_MAP_NAME(srcfilter));
-		ADVERTISE_MAP(dstfilter) = ADVERTISE_MAP(srcfilter);
-		ADVERTISE_CONDITION(dstfilter) = ADVERTISE_CONDITION(srcfilter);
-	}
+	dstfilter->advmap[CONDITION_EXIST].amap =
+		srcfilter->advmap[CONDITION_EXIST].amap;
+	dstfilter->advmap[CONDITION_EXIST].cmap =
+		srcfilter->advmap[CONDITION_EXIST].cmap;
+	dstfilter->advmap[CONDITION_NON_EXIST].amap =
+		srcfilter->advmap[CONDITION_NON_EXIST].amap;
+	dstfilter->advmap[CONDITION_NON_EXIST].cmap =
+		srcfilter->advmap[CONDITION_NON_EXIST].cmap;
 
-	if (CONDITION_MAP_NAME(srcfilter)) {
-		CONDITION_MAP_NAME(dstfilter) = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME, CONDITION_MAP_NAME(srcfilter));
-		CONDITION_MAP(dstfilter) = CONDITION_MAP(srcfilter);
-	}
+	if (srcfilter->advmap[CONDITION_EXIST].aname)
+		dstfilter->advmap[CONDITION_EXIST].aname = XSTRDUP(
+			MTYPE_BGP_FILTER_NAME,
+			srcfilter->advmap[CONDITION_EXIST].aname);
+
+	if (srcfilter->advmap[CONDITION_EXIST].cname)
+		dstfilter->advmap[CONDITION_EXIST].cname = XSTRDUP(
+			MTYPE_BGP_FILTER_NAME,
+			srcfilter->advmap[CONDITION_EXIST].cname);
+
+	if (srcfilter->advmap[CONDITION_NON_EXIST].aname)
+		dstfilter->advmap[CONDITION_NON_EXIST].aname = XSTRDUP(
+			MTYPE_BGP_FILTER_NAME,
+			srcfilter->advmap[CONDITION_NON_EXIST].aname);
+
+	if (srcfilter->advmap[CONDITION_NON_EXIST].cname)
+		dstfilter->advmap[CONDITION_NON_EXIST].cname = XSTRDUP(
+			MTYPE_BGP_FILTER_NAME,
+			srcfilter->advmap[CONDITION_NON_EXIST].cname);
 }
 
 /**
@@ -235,9 +251,12 @@ static void conf_release(struct peer *src, afi_t afi, safi_t safi)
 
 	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->usmap.name);
 
-	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap.aname);
-
-	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap.cname);
+	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap[CONDITION_EXIST].aname);
+	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap[CONDITION_EXIST].cname);
+	XFREE(MTYPE_BGP_FILTER_NAME,
+	      srcfilter->advmap[CONDITION_NON_EXIST].aname);
+	XFREE(MTYPE_BGP_FILTER_NAME,
+	      srcfilter->advmap[CONDITION_NON_EXIST].cname);
 
 	XFREE(MTYPE_BGP_PEER_HOST, src->host);
 }
@@ -375,10 +394,25 @@ static unsigned int updgrp_hash_key_make(const void *p)
 					strlen(filter->usmap.name), SEED1),
 				  key);
 
-	if (filter->advmap.aname)
-		key = jhash_1word(jhash(filter->advmap.aname,
-					strlen(filter->advmap.aname), SEED1),
-				  key);
+	if (filter->advmap[CONDITION_EXIST].aname)
+		key = jhash(filter->advmap[CONDITION_EXIST].aname,
+			    strlen(filter->advmap[CONDITION_EXIST].aname),
+			    key);
+
+	if (filter->advmap[CONDITION_EXIST].cname)
+		key = jhash(filter->advmap[CONDITION_EXIST].cname,
+			    strlen(filter->advmap[CONDITION_EXIST].cname),
+			    key);
+
+	if (filter->advmap[CONDITION_NON_EXIST].aname)
+		key = jhash(filter->advmap[CONDITION_NON_EXIST].aname,
+			    strlen(filter->advmap[CONDITION_NON_EXIST].aname),
+			    key);
+
+	if (filter->advmap[CONDITION_NON_EXIST].cname)
+		key = jhash(filter->advmap[CONDITION_NON_EXIST].cname,
+			    strlen(filter->advmap[CONDITION_NON_EXIST].cname),
+			    key);
 
 	if (peer->default_rmap[afi][safi].name)
 		key = jhash_1word(
@@ -411,6 +445,17 @@ static unsigned int updgrp_hash_key_make(const void *p)
 				  key);
 
 	return key;
+}
+
+static bool strdiff_null(const char *a, const char *b)
+{
+	if (!a && !b)
+		return false;
+	if ((a && !b) || (!a && b))
+		return true;
+	if (strcmp(a, b))
+		return true;
+	return false;
 }
 
 static bool updgrp_hash_cmp(const void *p1, const void *p2)
@@ -508,10 +553,20 @@ static bool updgrp_hash_cmp(const void *p1, const void *p2)
 		&& strcmp(fl1->usmap.name, fl2->usmap.name)))
 		return false;
 
-	if ((fl1->advmap.aname && !fl2->advmap.aname)
-	    || (!fl1->advmap.aname && fl2->advmap.aname)
-	    || (fl1->advmap.aname && fl2->advmap.aname
-		&& strcmp(fl1->advmap.aname, fl2->advmap.aname)))
+	if (strdiff_null(fl1->advmap[CONDITION_EXIST].aname,
+			 fl2->advmap[CONDITION_EXIST].aname))
+		return false;
+
+	if (strdiff_null(fl1->advmap[CONDITION_EXIST].cname,
+			 fl2->advmap[CONDITION_EXIST].cname))
+		return false;
+
+	if (strdiff_null(fl1->advmap[CONDITION_NON_EXIST].aname,
+			 fl2->advmap[CONDITION_NON_EXIST].aname))
+		return false;
+
+	if (strdiff_null(fl1->advmap[CONDITION_NON_EXIST].cname,
+			 fl2->advmap[CONDITION_NON_EXIST].cname))
 		return false;
 
 	if ((pe1->default_rmap[afi][safi].name

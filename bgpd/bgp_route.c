@@ -1731,7 +1731,10 @@ void bgp_notify_conditional_adv_scanner(struct update_subgroup *subgrp)
 	struct bgp *bgp = SUBGRP_INST(subgrp);
 	struct bgp_filter *filter = &peer->filter[afi][safi];
 
-	if (!ADVERTISE_MAP_NAME(filter))
+	if (!filter->advmap[CONDITION_EXIST].aname &&
+	    !filter->advmap[CONDITION_EXIST].cname &&
+	    !filter->advmap[CONDITION_NON_EXIST].aname &&
+	    !filter->advmap[CONDITION_NON_EXIST].cname)
 		return;
 
 	for (ALL_LIST_ELEMENTS(bgp->peer, temp_node, temp_nnode, temp_peer)) {

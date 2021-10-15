@@ -1133,12 +1133,14 @@ static void peer_free(struct peer *peer)
 					     peer);
 
 	FOREACH_AFI_SAFI (afi, safi) {
-		if (peer->filter[afi][safi].advmap.aname)
-			XFREE(MTYPE_BGP_FILTER_NAME,
-			      peer->filter[afi][safi].advmap.aname);
-		if (peer->filter[afi][safi].advmap.cname)
-			XFREE(MTYPE_BGP_FILTER_NAME,
-			      peer->filter[afi][safi].advmap.cname);
+		XFREE(MTYPE_BGP_FILTER_NAME,
+		      peer->filter[afi][safi].advmap[CONDITION_EXIST].aname);
+		XFREE(MTYPE_BGP_FILTER_NAME,
+		      peer->filter[afi][safi].advmap[CONDITION_EXIST].cname);
+		XFREE(MTYPE_BGP_FILTER_NAME,
+		      peer->filter[afi][safi].advmap[CONDITION_NON_EXIST].aname);
+		XFREE(MTYPE_BGP_FILTER_NAME,
+		      peer->filter[afi][safi].advmap[CONDITION_NON_EXIST].cname);
 	}
 
 	XFREE(MTYPE_PEER_TX_SHUTDOWN_MSG, peer->tx_shutdown_message);
@@ -6937,25 +6939,26 @@ static void peer_advertise_map_filter_update(struct peer *peer, afi_t afi,
 					     struct route_map *amap,
 					     const char *cmap_name,
 					     struct route_map *cmap,
-					     bool condition, bool set)
+					     enum condition_type condition,
+					     bool set)
 {
-	struct bgp_filter *filter;
+	struct bgp_filter_advmap *advmap;
 	bool filter_exists = false;
 
-	filter = &peer->filter[afi][safi];
+	advmap = &peer->filter[afi][safi].advmap[condition];
 
 	/* advertise-map is already configured. */
-	if (filter->advmap.aname) {
+	if (advmap->aname) {
 		filter_exists = true;
-		XFREE(MTYPE_BGP_FILTER_NAME, filter->advmap.aname);
-		XFREE(MTYPE_BGP_FILTER_NAME, filter->advmap.cname);
+		XFREE(MTYPE_BGP_FILTER_NAME, advmap->aname);
+		XFREE(MTYPE_BGP_FILTER_NAME, advmap->cname);
 	}
 
-	route_map_counter_decrement(filter->advmap.amap);
+	route_map_counter_decrement(advmap->amap);
 
 	/* Removed advertise-map configuration */
 	if (!set) {
-		memset(&filter->advmap, 0, sizeof(filter->advmap));
+		memset(advmap, 0, sizeof(*advmap));
 
 		/* decrement condition_filter_count delete timer if
 		 * this is the last advertise-map to be removed.
@@ -6967,19 +6970,16 @@ static void peer_advertise_map_filter_update(struct peer *peer, afi_t afi,
 	}
 
 	/* Update filter data with newly configured values. */
-	filter->advmap.aname = XSTRDUP(MTYPE_BGP_FILTER_NAME, amap_name);
-	filter->advmap.cname = XSTRDUP(MTYPE_BGP_FILTER_NAME, cmap_name);
-	filter->advmap.amap = amap;
-	filter->advmap.cmap = cmap;
-	filter->advmap.condition = condition;
-	route_map_counter_increment(filter->advmap.amap);
-	peer->advmap_config_change[afi][safi] = true;
+	advmap->aname = XSTRDUP(MTYPE_BGP_FILTER_NAME, amap_name);
+	advmap->cname = XSTRDUP(MTYPE_BGP_FILTER_NAME, cmap_name);
+	advmap->amap = amap;
+	advmap->cmap = cmap;
+	advmap->changed = true;
+	route_map_counter_increment(advmap->amap);
 
 	/* Increment condition_filter_count and/or create timer. */
-	if (!filter_exists) {
-		filter->advmap.update_type = ADVERTISE;
+	if (!filter_exists)
 		bgp_conditional_adv_enable(peer, afi, safi);
-	}
 }
 
 /* Set advertise-map to the peer but do not process peer route updates here.  *
@@ -6993,10 +6993,17 @@ int peer_advertise_map_set(struct peer *peer, afi_t afi, safi_t safi,
 			   const char *advertise_name,
 			   struct route_map *advertise_map,
 			   const char *condition_name,
-			   struct route_map *condition_map, bool condition)
+			   struct route_map *condition_map,
+			   enum condition_type condition)
 {
 	struct peer *member;
 	struct listnode *node, *nnode;
+	uint8_t flag;
+
+	if (condition == CONDITION_EXIST)
+		flag = PEER_FT_ADVERTISE_MAP_EX;
+	else
+		flag = PEER_FT_ADVERTISE_MAP_NEX;
 
 	/* Set configuration on peer. */
 	peer_advertise_map_filter_update(peer, afi, safi, advertise_name,
@@ -7006,8 +7013,7 @@ int peer_advertise_map_set(struct peer *peer, afi_t afi, safi_t safi,
 	/* Check if handling a regular peer & Skip peer-group mechanics. */
 	if (!CHECK_FLAG(peer->sflags, PEER_STATUS_GROUP)) {
 		/* Set override-flag and process peer route updates. */
-		SET_FLAG(peer->filter_override[afi][safi][RMAP_OUT],
-			 PEER_FT_ADVERTISE_MAP);
+		SET_FLAG(peer->filter_override[afi][safi][RMAP_OUT], flag);
 		return 0;
 	}
 
@@ -7018,7 +7024,7 @@ int peer_advertise_map_set(struct peer *peer, afi_t afi, safi_t safi,
 	for (ALL_LIST_ELEMENTS(peer->group->peer, node, nnode, member)) {
 		/* Skip peers with overridden configuration. */
 		if (CHECK_FLAG(member->filter_override[afi][safi][RMAP_OUT],
-			       PEER_FT_ADVERTISE_MAP))
+			       flag))
 			continue;
 
 		/* Set configuration on peer-group member. */
@@ -7035,26 +7041,32 @@ int peer_advertise_map_unset(struct peer *peer, afi_t afi, safi_t safi,
 			     const char *advertise_name,
 			     struct route_map *advertise_map,
 			     const char *condition_name,
-			     struct route_map *condition_map, bool condition)
+			     struct route_map *condition_map,
+			     enum condition_type condition)
 {
 	struct peer *member;
 	struct listnode *node, *nnode;
+	uint8_t flag;
+
+	if (condition == CONDITION_EXIST)
+		flag = PEER_FT_ADVERTISE_MAP_EX;
+	else
+		flag = PEER_FT_ADVERTISE_MAP_NEX;
 
 	/* advertise-map is not configured */
-	if (!peer->filter[afi][safi].advmap.aname)
+	if (!peer->filter[afi][safi].advmap[condition].aname)
 		return 0;
 
 	/* Unset override-flag unconditionally. */
-	UNSET_FLAG(peer->filter_override[afi][safi][RMAP_OUT],
-		   PEER_FT_ADVERTISE_MAP);
+	UNSET_FLAG(peer->filter_override[afi][safi][RMAP_OUT], flag);
 
 	/* Inherit configuration from peer-group if peer is member. */
 	if (peer_group_active(peer)) {
 		PEER_STR_ATTR_INHERIT(peer, peer->group,
-				      filter[afi][safi].advmap.aname,
+				      filter[afi][safi].advmap[condition].aname,
 				      MTYPE_BGP_FILTER_NAME);
 		PEER_ATTR_INHERIT(peer, peer->group,
-				  filter[afi][safi].advmap.amap);
+				  filter[afi][safi].advmap[condition].amap);
 	} else
 		peer_advertise_map_filter_update(
 			peer, afi, safi, advertise_name, advertise_map,
@@ -7079,7 +7091,7 @@ int peer_advertise_map_unset(struct peer *peer, afi_t afi, safi_t safi,
 	for (ALL_LIST_ELEMENTS(peer->group->peer, node, nnode, member)) {
 		/* Skip peers with overridden configuration. */
 		if (CHECK_FLAG(member->filter_override[afi][safi][RMAP_OUT],
-			       PEER_FT_ADVERTISE_MAP))
+			       flag))
 			continue;
 		/* Remove configuration on peer-group member. */
 		peer_advertise_map_filter_update(
