@@ -244,6 +244,18 @@ int pim_global_config_write_worker(struct pim_instance *pim, struct vty *vty)
 		++writes;
 	}
 
+	if (pim->join_filter.rmapname) {
+		vty_out(vty, "%sip pim route-map %s\n", spaces,
+			pim->join_filter.rmapname);
+		++writes;
+	}
+
+	if (pim->join_filter.alistname) {
+		vty_out(vty, "%sip pim access-list %s\n", spaces,
+			pim->join_filter.alistname);
+		++writes;
+	}
+
 	if (pim->spt.switchover == PIM_SPT_INFINITY) {
 		if (pim->spt.plist)
 			vty_out(vty,
