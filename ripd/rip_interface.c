@@ -1161,11 +1161,15 @@ void rip_interface_sync(struct interface *ifp)
 
 	vrf = vrf_lookup_by_id(ifp->vrf_id);
 	if (vrf) {
+		struct rip *rip = vrf->info;
 		struct rip_interface *ri;
+
+		if (rip && rip->shutdown)
+			rip = NULL;
 
 		ri = ifp->info;
 		if (ri)
-			ri->rip = vrf->info;
+			ri->rip = rip;
 	}
 }
 
