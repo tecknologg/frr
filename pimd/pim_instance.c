@@ -71,7 +71,8 @@ static void pim_instance_terminate(struct pim_instance *pim)
 
 	pim_msdp_exit(pim);
 
-	XFREE(MTYPE_PIM_RMAP_NAME, pim->mfib_rmap);
+	pim_filter_ref_fini(&pim->mfib_filter);
+
 	XFREE(MTYPE_PIM_PLIST_NAME, pim->spt.plist);
 	XFREE(MTYPE_PIM_PLIST_NAME, pim->register_plist);
 
@@ -87,6 +88,8 @@ static struct pim_instance *pim_instance_init(struct vrf *vrf)
 	pim = XCALLOC(MTYPE_PIM_PIM_INSTANCE, sizeof(struct pim_instance));
 
 	pim_if_init(pim);
+
+	pim_filter_ref_init(&pim->mfib_filter);
 
 	pim->mcast_if_count = 0;
 	pim->keep_alive_time = PIM_KEEPALIVE_PERIOD;
