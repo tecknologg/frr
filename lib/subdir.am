@@ -161,6 +161,7 @@ endif
 
 clippy_scan += \
 	lib/if.c \
+	lib/filter.c \
 	lib/filter_cli.c \
 	lib/log_vty.c \
 	lib/nexthop_group.c \

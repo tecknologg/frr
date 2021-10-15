@@ -39,7 +39,7 @@ static void test_yang_modules_set(void)
 void test_init(int argc, char **argv)
 {
 	prefix_list_init();
-	filter_cli_init();
+	access_list_init();
 
 	/* nothing else to do here, giving stand-alone access to the prefix
 	 * list code's "debug prefix-list ..." command is the only purpose of
