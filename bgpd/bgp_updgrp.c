@@ -135,6 +135,8 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
 {
 	struct bgp_filter *srcfilter;
 	struct bgp_filter *dstfilter;
+	struct bgp_advmap *srcadvmap;
+	struct bgp_advmap *dstadvmap;
 
 	srcfilter = &src->filter[afi][safi];
 	dstfilter = &dst->filter[afi][safi];
@@ -159,6 +161,14 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
 	dst->change_local_as = src->change_local_as;
 	dst->shared_network = src->shared_network;
 	memcpy(&(dst->nexthop), &(src->nexthop), sizeof(struct bgp_nexthop));
+
+	while ((dstadvmap = bgp_advmaps_pop(dstfilter->advmaps))) {
+		route_map_counter_decrement(dstadvmap->amap);
+		route_map_counter_decrement(dstadvmap->cmap);
+		XFREE(MTYPE_BGP_FILTER_NAME, dstadvmap->aname);
+		XFREE(MTYPE_BGP_FILTER_NAME, dstadvmap->cname);
+		XFREE(MTYPE_BGP_ADVMAP, dstadvmap);
+	}
 
 	dst->group = src->group;
 
@@ -200,34 +210,21 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
 		UNSUPPRESS_MAP(dstfilter) = UNSUPPRESS_MAP(srcfilter);
 	}
 
-	dstfilter->advmap[CONDITION_EXIST].amap =
-		srcfilter->advmap[CONDITION_EXIST].amap;
-	dstfilter->advmap[CONDITION_EXIST].cmap =
-		srcfilter->advmap[CONDITION_EXIST].cmap;
-	dstfilter->advmap[CONDITION_NON_EXIST].amap =
-		srcfilter->advmap[CONDITION_NON_EXIST].amap;
-	dstfilter->advmap[CONDITION_NON_EXIST].cmap =
-		srcfilter->advmap[CONDITION_NON_EXIST].cmap;
+	frr_each (bgp_advmaps, srcfilter->advmaps, srcadvmap) {
+		dstadvmap = XCALLOC(MTYPE_BGP_ADVMAP, sizeof(*dstadvmap));
+		dstadvmap->seqno = srcadvmap->seqno;
+		dstadvmap->aname = XSTRDUP(MTYPE_BGP_FILTER_NAME,
+					   srcadvmap->aname);
+		dstadvmap->amap = srcadvmap->amap;
+		dstadvmap->cname = XSTRDUP(MTYPE_BGP_FILTER_NAME,
+					   srcadvmap->cname);
+		dstadvmap->cmap = srcadvmap->cmap;
+		dstadvmap->cond = srcadvmap->cond;
 
-	if (srcfilter->advmap[CONDITION_EXIST].aname)
-		dstfilter->advmap[CONDITION_EXIST].aname = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME,
-			srcfilter->advmap[CONDITION_EXIST].aname);
-
-	if (srcfilter->advmap[CONDITION_EXIST].cname)
-		dstfilter->advmap[CONDITION_EXIST].cname = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME,
-			srcfilter->advmap[CONDITION_EXIST].cname);
-
-	if (srcfilter->advmap[CONDITION_NON_EXIST].aname)
-		dstfilter->advmap[CONDITION_NON_EXIST].aname = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME,
-			srcfilter->advmap[CONDITION_NON_EXIST].aname);
-
-	if (srcfilter->advmap[CONDITION_NON_EXIST].cname)
-		dstfilter->advmap[CONDITION_NON_EXIST].cname = XSTRDUP(
-			MTYPE_BGP_FILTER_NAME,
-			srcfilter->advmap[CONDITION_NON_EXIST].cname);
+		route_map_counter_increment(dstadvmap->amap);
+		route_map_counter_increment(dstadvmap->cmap);
+		bgp_advmaps_add(dstfilter->advmaps, dstadvmap);
+	}
 }
 
 /**
@@ -235,6 +232,7 @@ static void conf_copy(struct peer *dst, struct peer *src, afi_t afi,
  */
 static void conf_release(struct peer *src, afi_t afi, safi_t safi)
 {
+	struct bgp_advmap *advmap;
 	struct bgp_filter *srcfilter;
 
 	srcfilter = &src->filter[afi][safi];
@@ -251,12 +249,13 @@ static void conf_release(struct peer *src, afi_t afi, safi_t safi)
 
 	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->usmap.name);
 
-	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap[CONDITION_EXIST].aname);
-	XFREE(MTYPE_BGP_FILTER_NAME, srcfilter->advmap[CONDITION_EXIST].cname);
-	XFREE(MTYPE_BGP_FILTER_NAME,
-	      srcfilter->advmap[CONDITION_NON_EXIST].aname);
-	XFREE(MTYPE_BGP_FILTER_NAME,
-	      srcfilter->advmap[CONDITION_NON_EXIST].cname);
+	while ((advmap = bgp_advmaps_pop(srcfilter->advmaps))) {
+		route_map_counter_decrement(advmap->amap);
+		route_map_counter_decrement(advmap->cmap);
+		XFREE(MTYPE_BGP_FILTER_NAME, advmap->aname);
+		XFREE(MTYPE_BGP_FILTER_NAME, advmap->cname);
+		XFREE(MTYPE_BGP_ADVMAP, advmap);
+	}
 
 	XFREE(MTYPE_BGP_PEER_HOST, src->host);
 }
@@ -297,6 +296,7 @@ static void *updgrp_hash_alloc(void *p)
 	updgrp = XCALLOC(MTYPE_BGP_UPDGRP, sizeof(struct update_group));
 	memcpy(updgrp, in, sizeof(struct update_group));
 	updgrp->conf = XCALLOC(MTYPE_BGP_PEER, sizeof(struct peer));
+	bgp_advmaps_init(updgrp->conf->filter[in->afi][in->safi].advmaps);
 	conf_copy(updgrp->conf, in->conf, in->afi, in->safi);
 	return updgrp;
 }
@@ -332,6 +332,7 @@ static unsigned int updgrp_hash_key_make(const void *p)
 	const struct update_group *updgrp;
 	const struct peer *peer;
 	const struct bgp_filter *filter;
+	const struct bgp_advmap *advmap;
 	uint32_t flags;
 	uint32_t key;
 	afi_t afi;
@@ -394,25 +395,13 @@ static unsigned int updgrp_hash_key_make(const void *p)
 					strlen(filter->usmap.name), SEED1),
 				  key);
 
-	if (filter->advmap[CONDITION_EXIST].aname)
-		key = jhash(filter->advmap[CONDITION_EXIST].aname,
-			    strlen(filter->advmap[CONDITION_EXIST].aname),
-			    key);
-
-	if (filter->advmap[CONDITION_EXIST].cname)
-		key = jhash(filter->advmap[CONDITION_EXIST].cname,
-			    strlen(filter->advmap[CONDITION_EXIST].cname),
-			    key);
-
-	if (filter->advmap[CONDITION_NON_EXIST].aname)
-		key = jhash(filter->advmap[CONDITION_NON_EXIST].aname,
-			    strlen(filter->advmap[CONDITION_NON_EXIST].aname),
-			    key);
-
-	if (filter->advmap[CONDITION_NON_EXIST].cname)
-		key = jhash(filter->advmap[CONDITION_NON_EXIST].cname,
-			    strlen(filter->advmap[CONDITION_NON_EXIST].cname),
-			    key);
+	frr_each (bgp_advmaps_const, filter->advmaps, advmap) {
+		if (advmap->aname)
+			key = jhash(advmap->aname, strlen(advmap->aname), key);
+		if (advmap->cname)
+			key = jhash(advmap->cname, strlen(advmap->cname), key);
+		key = jhash_2words(advmap->cond, advmap->seqno, key);
+	}
 
 	if (peer->default_rmap[afi][safi].name)
 		key = jhash_1word(
@@ -468,6 +457,8 @@ static bool updgrp_hash_cmp(const void *p1, const void *p2)
 	uint32_t flags2;
 	const struct bgp_filter *fl1;
 	const struct bgp_filter *fl2;
+	const struct bgp_advmap *advmap1;
+	const struct bgp_advmap *advmap2;
 	afi_t afi;
 	safi_t safi;
 
@@ -553,20 +544,23 @@ static bool updgrp_hash_cmp(const void *p1, const void *p2)
 		&& strcmp(fl1->usmap.name, fl2->usmap.name)))
 		return false;
 
-	if (strdiff_null(fl1->advmap[CONDITION_EXIST].aname,
-			 fl2->advmap[CONDITION_EXIST].aname))
-		return false;
+	advmap2 = bgp_advmaps_const_first(fl2->advmaps);
 
-	if (strdiff_null(fl1->advmap[CONDITION_EXIST].cname,
-			 fl2->advmap[CONDITION_EXIST].cname))
-		return false;
+	frr_each (bgp_advmaps_const, fl1->advmaps, advmap1) {
+		if (!advmap2)
+			return false;
 
-	if (strdiff_null(fl1->advmap[CONDITION_NON_EXIST].aname,
-			 fl2->advmap[CONDITION_NON_EXIST].aname))
-		return false;
+		if (advmap1->seqno != advmap2->seqno)
+			return false;
+		if (strdiff_null(advmap1->aname, advmap2->aname))
+			return false;
+		if (strdiff_null(advmap1->cname, advmap2->cname))
+			return false;
 
-	if (strdiff_null(fl1->advmap[CONDITION_NON_EXIST].cname,
-			 fl2->advmap[CONDITION_NON_EXIST].cname))
+		advmap2 = bgp_advmaps_const_next(fl2->advmaps, advmap2);
+	}
+
+	if (advmap2)
 		return false;
 
 	if ((pe1->default_rmap[afi][safi].name
@@ -829,6 +823,8 @@ static void update_group_delete(struct update_group *updgrp)
 	XFREE(MTYPE_BGP_PEER_HOST, updgrp->conf->host);
 
 	XFREE(MTYPE_BGP_PEER_IFNAME, updgrp->conf->ifname);
+
+	bgp_advmaps_fini(updgrp->conf->filter[updgrp->afi][updgrp->safi].advmaps);
 
 	XFREE(MTYPE_BGP_PEER, updgrp->conf);
 	XFREE(MTYPE_BGP_UPDGRP, updgrp);
