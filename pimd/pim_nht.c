@@ -1177,7 +1177,7 @@ static int nht_zclient_connect(struct thread *t)
 
 	if (zclient_start(nht_zclient) < 0) {
 		zlog_warn("failure connecting NHT socket: failures=%d",
-			  zlookup->fail);
+			  nht_zclient->fail);
 
 		thread_add_timer(router->master, nht_zclient_connect, NULL, 1,
 				 &nht_zclient->t_connect);
@@ -1187,14 +1187,18 @@ static int nht_zclient_connect(struct thread *t)
 	return 0;
 }
 
+static struct zclient_options nht_zcopts = {
+	.supplemental = true,
+};
+
 void pim_nht_init(void)
 {
 	/* Socket for receiving updates from Zebra daemon */
-	nht_zclient = zclient_new(router->master, &zclient_options_default);
+	nht_zclient = zclient_new(router->master, &nht_zcopts, NULL, 0);
 	nht_zclient->sock = -1;
 	nht_zclient->privs = &pimd_privs;
 
-	nht_zclient->nexthop_update = pim_parse_nexthop_update;
+	//nht_zclient->nexthop_update = pim_parse_nexthop_update;
 
 	thread_execute(router->master, nht_zclient_connect, NULL, 0);
 }
