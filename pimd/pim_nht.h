@@ -46,6 +46,8 @@ struct pim_nexthop_data {
 #define PIM_NEXTHOP_ANSWER_RECEIVED   (1 << 1)
 };
 
+PREDECL_DLIST(pending_pncs);
+
 /* PIM nexthop cache value structure. */
 struct pim_nexthop_cache {
 	struct pim_rpf rpf;
@@ -63,6 +65,8 @@ struct pim_nexthop_cache {
 
 	/* SAFI_UNSPEC = not reachable */
 	safi_t rib_sel;
+
+	struct pending_pncs_item pending_itm;
 };
 
 static inline struct pim_nexthop_data *pnc_nhdata(struct pim_nexthop_cache *pnc)
@@ -82,11 +86,14 @@ void pim_delete_tracked_nexthop(struct pim_instance *pim, struct prefix *addr,
 				struct pim_upstream *up, struct rp_info *rp);
 struct pim_nexthop_cache *pim_nexthop_cache_find(struct pim_instance *pim,
 						 struct pim_rpf *rpf);
+bool pim_nexthop_cache_wait(struct pim_instance *pim,
+			    struct pim_nexthop_cache *pnc, unsigned timeout_ms);
+
 uint32_t pim_compute_ecmp_hash(struct prefix *src, struct prefix *grp);
 int pim_ecmp_nexthop_lookup(struct pim_instance *pim,
 			    struct pim_nexthop *nexthop, struct prefix *src,
 			    struct prefix *grp, int neighbor_needed);
-void pim_sendmsg_zebra_rnh(struct pim_instance *pim, struct zclient *zclient,
+void pim_sendmsg_zebra_rnh(struct pim_instance *pim,
 			   struct pim_nexthop_cache *pnc, int command);
 int pim_ecmp_fib_lookup_if_vif_index(struct pim_instance *pim,
 				     struct prefix *src, struct prefix *grp);
