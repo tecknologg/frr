@@ -339,6 +339,11 @@ struct zclient {
 	/* Thread to write buffered data to zebra. */
 	struct thread *t_write;
 
+	/* nested thread master & threads used for zclient_wait() */
+	struct thread_master *wait_master;
+	struct thread *t_wait_read;
+	struct thread *t_wait_timeout;
+
 	/* Redistribute information. */
 	uint8_t redist_default; /* clients protocol */
 	unsigned short instance;
@@ -819,6 +824,9 @@ struct zclient_options {
 	 * supplemental) zclients for specific purposes.
 	 */
 	bool supplemental;
+
+	/* need zclient_wait() support on this zclient */
+	bool can_wait;
 };
 
 extern struct zclient_options zclient_options_default;
@@ -878,6 +886,8 @@ extern int zclient_start(struct zclient *);
 extern void zclient_stop(struct zclient *);
 extern void zclient_reset(struct zclient *);
 extern void zclient_free(struct zclient *);
+
+extern bool zclient_wait(struct zclient *, const struct timeval *deadline);
 
 extern int zclient_socket_connect(struct zclient *);
 
