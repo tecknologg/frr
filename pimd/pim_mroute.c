@@ -44,6 +44,7 @@
 #include "pim_sock.h"
 #include "pim_vxlan.h"
 #include "pim_routemap.h"
+#include "pim_nht.h"
 
 static void mroute_read_on(struct pim_instance *pim);
 
