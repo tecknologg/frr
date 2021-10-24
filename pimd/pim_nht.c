@@ -180,8 +180,7 @@ int pim_find_or_track_nexthop(struct pim_instance *pim, struct prefix *addr,
 
 	if (pnc->rib_sel != SAFI_UNSPEC) {
 		if (out_nhd)
-			memcpy(out_nhd, pnc_nhdata(pnc),
-			       sizeof(struct pim_nexthop_cache));
+			memcpy(out_nhd, pnc_nhdata(pnc), sizeof(*out_nhd));
 		return 1;
 	}
 
