@@ -2156,7 +2156,8 @@ static int peer_activate_af(struct peer *peer, afi_t afi, safi_t safi)
 						    CAPABILITY_ACTION_SET);
 				if (peer->afc_recv[afi][safi]) {
 					peer->afc_nego[afi][safi] = 1;
-					bgp_announce_route(peer, afi, safi);
+					bgp_announce_route(peer, afi, safi,
+							   false);
 				}
 			} else {
 				peer->last_reset = PEER_DOWN_AF_ACTIVATE;
@@ -4142,7 +4143,7 @@ void peer_change_action(struct peer *peer, afi_t afi, safi_t safi,
 				 SUBGRP_STATUS_FORCE_UPDATES);
 
 		update_group_adjust_peer(paf);
-		bgp_announce_route(peer, afi, safi);
+		bgp_announce_route(peer, afi, safi, false);
 	}
 }
 
@@ -5058,7 +5059,7 @@ int peer_default_originate_set(struct peer *peer, afi_t afi, safi_t safi,
 		if (peer_established(peer) && peer->afc_nego[afi][safi]) {
 			update_group_adjust_peer(peer_af_find(peer, afi, safi));
 			bgp_default_originate(peer, afi, safi, 0);
-			bgp_announce_route(peer, afi, safi);
+			bgp_announce_route(peer, afi, safi, false);
 		}
 
 		/* Skip peer-group mechanics for regular peers. */
@@ -5095,7 +5096,7 @@ int peer_default_originate_set(struct peer *peer, afi_t afi, safi_t safi,
 			update_group_adjust_peer(
 				peer_af_find(member, afi, safi));
 			bgp_default_originate(member, afi, safi, 0);
-			bgp_announce_route(member, afi, safi);
+			bgp_announce_route(member, afi, safi, false);
 		}
 	}
 
@@ -5134,7 +5135,7 @@ int peer_default_originate_unset(struct peer *peer, afi_t afi, safi_t safi)
 		if (peer_established(peer) && peer->afc_nego[afi][safi]) {
 			update_group_adjust_peer(peer_af_find(peer, afi, safi));
 			bgp_default_originate(peer, afi, safi, 1);
-			bgp_announce_route(peer, afi, safi);
+			bgp_announce_route(peer, afi, safi, false);
 		}
 
 		/* Skip peer-group mechanics for regular peers. */
@@ -5165,7 +5166,7 @@ int peer_default_originate_unset(struct peer *peer, afi_t afi, safi_t safi)
 		if (peer_established(member) && member->afc_nego[afi][safi]) {
 			update_group_adjust_peer(peer_af_find(member, afi, safi));
 			bgp_default_originate(member, afi, safi, 1);
-			bgp_announce_route(member, afi, safi);
+			bgp_announce_route(member, afi, safi, false);
 		}
 	}
 
@@ -5213,7 +5214,7 @@ static void peer_on_policy_change(struct peer *peer, afi_t afi, safi_t safi,
 	if (outbound) {
 		update_group_adjust_peer(peer_af_find(peer, afi, safi));
 		if (peer_established(peer))
-			bgp_announce_route(peer, afi, safi);
+			bgp_announce_route(peer, afi, safi, false);
 	} else {
 		if (!peer_established(peer))
 			return;
@@ -6266,7 +6267,8 @@ static void peer_distribute_update(struct access_list *access)
 
 	for (ALL_LIST_ELEMENTS(bm->bgp, mnode, mnnode, bgp)) {
 		if (access->name)
-			update_group_policy_update(bgp, BGP_POLICY_FILTER_LIST,
+			update_group_policy_update(bgp,
+						   BGP_POLICY_DISTRIBUTE_LIST,
 						   access->name, 0, 0);
 		for (ALL_LIST_ELEMENTS(bgp->peer, node, nnode, peer)) {
 			FOREACH_AFI_SAFI (afi, safi) {
@@ -7479,7 +7481,7 @@ int peer_clear_soft(struct peer *peer, afi_t afi, safi_t safi,
 			UNSET_FLAG(paf->subgroup->sflags,
 				   SUBGRP_STATUS_DEFAULT_ORIGINATE);
 
-		bgp_announce_route(peer, afi, safi);
+		bgp_announce_route(peer, afi, safi, false);
 	}
 
 	if (stype == BGP_CLEAR_SOFT_IN_ORF_PREFIX) {
@@ -7882,8 +7884,7 @@ struct peer *peer_lookup_in_view(struct vty *vty, struct bgp *bgp,
 					json_no, JSON_C_TO_STRING_PRETTY));
 			json_object_free(json_no);
 		} else
-			vty_out(vty, "No such neighbor in %s\n",
-				bgp->name_pretty);
+			vty_out(vty, "No such neighbor in this view/vrf\n");
 		return NULL;
 	}
 

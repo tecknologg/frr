@@ -217,6 +217,7 @@ class ltemplateRtrCmd:
         self.resetCounts()
 
     def doCmd(self, tgen, rtr, cmd, checkstr=None):
+        logger.info("doCmd: {} {}".format(rtr, cmd))
         output = tgen.net[rtr].cmd(cmd).strip()
         if len(output):
             self.output += 1
@@ -227,9 +228,10 @@ class ltemplateRtrCmd:
                 else:
                     self.match += 1
                 return ret
-            logger.info("command: {} {}".format(rtr, cmd))
             logger.info("output: " + output)
-        self.none += 1
+        else:
+            logger.info("No output")
+            self.none += 1
         return None
 
     def resetCounts(self):
@@ -289,7 +291,7 @@ def ltemplateVersionCheck(
             # collect/log info on iproute2
             cc = ltemplateRtrCmd()
             found = cc.doCmd(
-                tgen, rname, "apt-cache policy iproute2", "Installed: ([\d\.]*)"
+                tgen, rname, "apt-cache policy iproute2", r"Installed: ([\d\.]*)"
             )
             if found != None:
                 iproute2Ver = found.group(1)

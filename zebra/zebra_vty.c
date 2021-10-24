@@ -59,6 +59,7 @@
 #include "northbound_cli.h"
 #include "zebra/zebra_nb.h"
 #include "zebra/kernel_netlink.h"
+#include "zebra/table_manager.h"
 
 extern int allow_delete;
 
@@ -775,6 +776,13 @@ static void show_nexthop_json_helper(json_object *json_nexthop,
 		break;
 	}
 
+	/* This nexthop is a resolver for the parent nexthop.
+	 * Set resolver flag for better clarity and delimiter
+	 * in flat list of nexthops in json.
+	 */
+	if (nexthop->rparent)
+		json_object_boolean_true_add(json_nexthop, "resolver");
+
 	if (nexthop->vrf_id != re->vrf_id)
 		json_object_string_add(json_nexthop, "vrf",
 				       vrf_id_to_name(nexthop->vrf_id));
@@ -965,6 +973,7 @@ static void vty_show_ip_route(struct vty *vty, struct route_node *rn,
 		json_object_int_add(json_route, "internalNextHopActiveNum",
 				    nexthop_group_active_nexthop_num(
 					    &(re->nhe->nhg)));
+		json_object_int_add(json_route, "nexthopGroupId", re->nhe_id);
 
 		json_object_string_add(json_route, "uptime", up_str);
 
@@ -1314,7 +1323,7 @@ static int do_show_ip_route(struct vty *vty, const char *vrf_name, afi_t afi,
 
 DEFPY (show_ip_nht,
        show_ip_nht_cmd,
-       "show <ip$ipv4|ipv6$ipv6> <nht|import-check>$type [<A.B.C.D|X:X::X:X>$addr|vrf NAME$vrf_name [<A.B.C.D|X:X::X:X>$addr]|vrf all$vrf_all]",
+       "show <ip$ipv4|ipv6$ipv6> <nht|import-check>$type [<A.B.C.D|X:X::X:X>$addr|vrf NAME$vrf_name [<A.B.C.D|X:X::X:X>$addr]|vrf all$vrf_all] [mrib$mrib]",
        SHOW_STR
        IP_STR
        IP6_STR
@@ -1330,12 +1339,7 @@ DEFPY (show_ip_nht,
 	afi_t afi = ipv4 ? AFI_IP : AFI_IP6;
 	vrf_id_t vrf_id = VRF_DEFAULT;
 	struct prefix prefix, *p = NULL;
-	enum rnh_type rtype;
-
-	if (strcmp(type, "nht") == 0)
-		rtype = RNH_NEXTHOP_TYPE;
-	else
-		rtype = RNH_IMPORT_CHECK_TYPE;
+	safi_t safi = mrib ? SAFI_MULTICAST : SAFI_UNICAST;
 
 	if (vrf_all) {
 		struct vrf *vrf;
@@ -1344,8 +1348,8 @@ DEFPY (show_ip_nht,
 		RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name)
 			if ((zvrf = vrf->info) != NULL) {
 				vty_out(vty, "\nVRF %s:\n", zvrf_name(zvrf));
-				zebra_print_rnh_table(zvrf_id(zvrf), afi, vty,
-						      rtype, NULL);
+				zebra_print_rnh_table(zvrf_id(zvrf), afi, safi,
+						      vty, NULL);
 			}
 		return CMD_SUCCESS;
 	}
@@ -1359,7 +1363,7 @@ DEFPY (show_ip_nht,
 			return CMD_WARNING;
 	}
 
-	zebra_print_rnh_table(vrf_id, afi, vty, rtype, p);
+	zebra_print_rnh_table(vrf_id, afi, safi, vty, p);
 	return CMD_SUCCESS;
 }
 
@@ -1378,9 +1382,9 @@ DEFUN (ip_nht_default_route,
 	if (zvrf->zebra_rnh_ip_default_route)
 		return CMD_SUCCESS;
 
-	zvrf->zebra_rnh_ip_default_route = 1;
+	zvrf->zebra_rnh_ip_default_route = true;
 
-	zebra_evaluate_rnh(zvrf, AFI_IP, 0, RNH_NEXTHOP_TYPE, NULL);
+	zebra_evaluate_rnh(zvrf, AFI_IP, 0, NULL, SAFI_UNICAST);
 	return CMD_SUCCESS;
 }
 
@@ -1717,8 +1721,8 @@ DEFUN (no_ip_nht_default_route,
 	if (!zvrf->zebra_rnh_ip_default_route)
 		return CMD_SUCCESS;
 
-	zvrf->zebra_rnh_ip_default_route = 0;
-	zebra_evaluate_rnh(zvrf, AFI_IP, 0, RNH_NEXTHOP_TYPE, NULL);
+	zvrf->zebra_rnh_ip_default_route = false;
+	zebra_evaluate_rnh(zvrf, AFI_IP, 0, NULL, SAFI_UNICAST);
 	return CMD_SUCCESS;
 }
 
@@ -1737,8 +1741,8 @@ DEFUN (ipv6_nht_default_route,
 	if (zvrf->zebra_rnh_ipv6_default_route)
 		return CMD_SUCCESS;
 
-	zvrf->zebra_rnh_ipv6_default_route = 1;
-	zebra_evaluate_rnh(zvrf, AFI_IP6, 0, RNH_NEXTHOP_TYPE, NULL);
+	zvrf->zebra_rnh_ipv6_default_route = true;
+	zebra_evaluate_rnh(zvrf, AFI_IP6, 0, NULL, SAFI_UNICAST);
 	return CMD_SUCCESS;
 }
 
@@ -1758,8 +1762,8 @@ DEFUN (no_ipv6_nht_default_route,
 	if (!zvrf->zebra_rnh_ipv6_default_route)
 		return CMD_SUCCESS;
 
-	zvrf->zebra_rnh_ipv6_default_route = 0;
-	zebra_evaluate_rnh(zvrf, AFI_IP6, 0, RNH_NEXTHOP_TYPE, NULL);
+	zvrf->zebra_rnh_ipv6_default_route = false;
+	zebra_evaluate_rnh(zvrf, AFI_IP6, 0, NULL, SAFI_UNICAST);
 	return CMD_SUCCESS;
 }
 
@@ -4290,6 +4294,31 @@ DEFUN_HIDDEN(no_zebra_kernel_netlink_batch_tx_buf,
 
 #endif /* HAVE_NETLINK */
 
+DEFUN(ip_table_range, ip_table_range_cmd,
+      "[no] ip table range (1-4294967295) (1-4294967295)",
+      NO_STR IP_STR
+      "table configuration\n"
+      "Configure table range\n"
+      "Start Routing Table\n"
+      "End Routing Table\n")
+{
+	ZEBRA_DECLVAR_CONTEXT(vrf, zvrf);
+
+	if (!zvrf)
+		return CMD_WARNING;
+
+	if (zvrf_id(zvrf) != VRF_DEFAULT && !vrf_is_backend_netns()) {
+		vty_out(vty,
+			"VRF subcommand does not make any sense in l3mdev based vrf's\n");
+		return CMD_WARNING;
+	}
+
+	if (strmatch(argv[0]->text, "no"))
+		return table_manager_range(vty, false, zvrf, NULL, NULL);
+
+	return table_manager_range(vty, true, zvrf, argv[3]->arg, argv[4]->arg);
+}
+
 /* IP node for static routes. */
 static int zebra_ip_config(struct vty *vty);
 static struct cmd_node ip_node = {
@@ -4437,6 +4466,9 @@ void zebra_vty_init(void)
 	install_element(VIEW_NODE, &show_dataplane_providers_cmd);
 	install_element(CONFIG_NODE, &zebra_dplane_queue_limit_cmd);
 	install_element(CONFIG_NODE, &no_zebra_dplane_queue_limit_cmd);
+
+	install_element(CONFIG_NODE, &ip_table_range_cmd);
+	install_element(VRF_NODE, &ip_table_range_cmd);
 
 #ifdef HAVE_NETLINK
 	install_element(CONFIG_NODE, &zebra_kernel_netlink_batch_tx_buf_cmd);

@@ -2145,7 +2145,7 @@ Numbered Community Lists
 When number is used for BGP community list name, the number has
 special meanings. Community list number in the range from 1 and 99 is
 standard community list. Community list number in the range from 100
-to 199 is expanded community list. These community lists are called
+to 500 is expanded community list. These community lists are called
 as numbered community lists. On the other hand normal community lists
 is called as named community lists.
 
@@ -2154,10 +2154,10 @@ is called as named community lists.
    This command defines a new community list. The argument to (1-99) defines
    the list identifier.
 
-.. clicmd:: bgp community-list (100-199) permit|deny COMMUNITY
+.. clicmd:: bgp community-list (100-500) permit|deny COMMUNITY
 
    This command defines a new expanded community list. The argument to
-   (100-199) defines the list identifier.
+   (100-500) defines the list identifier.
 
 .. _bgp-community-alias:
 
@@ -3539,6 +3539,10 @@ structure is extended with :clicmd:`show bgp [afi] [safi]`.
 
    The ``received-routes`` keyword displays all routes belonging to this
    address-family (prior to inbound policy) that were received by this peer.
+
+.. clicmd:: show bgp [<view|vrf> VIEWVRFNAME] [afi] [safi] neighbors PEER received prefix-filter [json]
+
+   Display Address Prefix ORFs received from this peer.
 
 .. clicmd:: show bgp [afi] [safi] [all] dampening dampened-paths [wide|json]
 
