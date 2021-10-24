@@ -1334,7 +1334,8 @@ DEFPY (show_ip_nht,
        VRF_CMD_HELP_STR
        "IPv4 Address\n"
        "IPv6 Address\n"
-       VRF_ALL_CMD_HELP_STR)
+       VRF_ALL_CMD_HELP_STR
+       "Show MRIB NHT rather than URIB\n")
 {
 	afi_t afi = ipv4 ? AFI_IP : AFI_IP6;
 	vrf_id_t vrf_id = VRF_DEFAULT;
