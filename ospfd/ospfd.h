@@ -278,8 +278,8 @@ struct ospf {
 	struct stream *ibuf;
 	struct list *oi_write_q;
 
-	/* Authentication sequence number to start from. */
-	uint32_t auth_seq_num;
+	/* Authentication sequence number offset from time */
+	uint32_t auth_seq_num_offset;
 
 	/* Distribute lists out of other route sources. */
 	struct {
