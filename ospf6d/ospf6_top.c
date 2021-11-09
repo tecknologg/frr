@@ -461,6 +461,13 @@ struct ospf6 *ospf6_instance_create(const char *name)
 	if (ospf6->router_id == 0)
 		ospf6_router_id_update(ospf6, true);
 	ospf6_add(ospf6);
+
+	/*
+	 * Read from non-volatile memory whether this instance is performing a
+	 * graceful restart or not.
+	 */
+	ospf6_gr_nvm_read(ospf6);
+
 	if (ospf6->vrf_id != VRF_UNKNOWN) {
 		vrf = vrf_lookup_by_id(ospf6->vrf_id);
 		FOR_ALL_INTERFACES (vrf, ifp) {
@@ -470,12 +477,6 @@ struct ospf6 *ospf6_instance_create(const char *name)
 	}
 	if (ospf6->fd < 0)
 		return ospf6;
-
-	/*
-	 * Read from non-volatile memory whether this instance is performing a
-	 * graceful restart or not.
-	 */
-	ospf6_gr_nvm_read(ospf6);
 
 	thread_add_read(master, ospf6_receive, ospf6, ospf6->fd,
 			&ospf6->t_ospf6_receive);
