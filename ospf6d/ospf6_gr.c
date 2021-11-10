@@ -183,9 +183,6 @@ static void ospf6_gr_restart_exit(struct ospf6 *ospf6, const char *reason)
 	ospf6->gr_info.finishing_restart = true;
 	THREAD_OFF(ospf6->gr_info.t_grace_period);
 
-	/* Record in non-volatile memory that the restart is complete. */
-	ospf6_gr_nvm_delete(ospf6);
-
 	for (ALL_LIST_ELEMENTS_RO(ospf6->area_list, onode, area)) {
 		struct ospf6_interface *oi;
 
