@@ -496,6 +496,7 @@ void ospf6_delete(struct ospf6 *o)
 	ospf6_gr_helper_deinit(o);
 	if (!o->gr_info.prepare_in_progress)
 		ospf6_flush_self_originated_lsas_now(o);
+	XFREE(MTYPE_TMP, o->gr_info.exit_reason);
 	ospf6_disable(o);
 	ospf6_del(o);
 
@@ -1308,8 +1309,9 @@ DEFPY(ospf6_instance_shutdown_graceful, ospf6_instance_shutdown_graceful_cmd,
 
 	if (no) {
 		/* Reenable routing instance in the GR mode. */
-		ospf6_gr_restart_enter(
-			ospf6, time(NULL) + ospf6->gr_info.grace_period);
+		ospf6_gr_restart_enter(ospf6, OSPF6_GR_SWITCH_CONTROL_PROCESSOR,
+				       time(NULL)
+					       + ospf6->gr_info.grace_period);
 
 		/*
 		 * RFC 3623 - Section 5 ("Unplanned Outages"):
@@ -1425,6 +1427,8 @@ static void ospf6_show(struct vty *vty, struct ospf6 *o, json_object *json,
 			adjacency = "NotLogged";
 		json_object_string_add(json, "adjacencyChanges", adjacency);
 
+		ospf6_gr_show(vty, o, json);
+
 		for (ALL_LIST_ELEMENTS_RO(o->area_list, n, oa))
 			ospf6_area_show(vty, oa, json_areas, use_json);
 
@@ -1501,6 +1505,7 @@ static void ospf6_show(struct vty *vty, struct ospf6 *o, json_object *json,
 				vty_out(vty, " Adjacency changes are logged\n");
 		}
 
+		ospf6_gr_show(vty, o, NULL);
 
 		vty_out(vty, "\n");
 
