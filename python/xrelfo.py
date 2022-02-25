@@ -130,7 +130,8 @@ class XrefLogmsg(ELFDissectStruct, XrelfoJson):
         (re.compile(r'((?<![\?:] )prefix_mac2str)'),                          'cleanup: replace prefix_mac2str(...) with %pEA',      lambda s: True),
         (re.compile(r'((?<![\?:] )sockunion2str)'),                           'cleanup: replace sockunion2str(...) with %pSU',       lambda s: True),
 
-    #   (re.compile(r'^(\s*__(?:func|FUNCTION|PRETTY_FUNCTION)__\s*)'), 'error: debug message starts with __func__', lambda s: (s.priority & 7 == 7) ),
+    # debug messages should NOT start with "%s: ", __func__
+        (re.compile(r'^(\s*__(?:func|FUNCTION|PRETTY_FUNCTION)__\s*)'), 'error: debug message starts with __func__', lambda s: (s.priority & 7 == 7) ),
     ]
 
     def check(self, wopt):
