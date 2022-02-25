@@ -282,9 +282,8 @@ struct ospf_interface *ospf_if_new(struct ospf *ospf, struct interface *ifp,
 	QOBJ_REG(oi, ospf_interface);
 
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: ospf interface %s vrf %s id %u created",
-			   __func__, ifp->name, ospf_get_name(ospf),
-			   ospf->vrf_id);
+		zlog_debug("ospf interface %s vrf %s id %u created", ifp->name,
+			   ospf_get_name(ospf), ospf->vrf_id);
 
 	return oi;
 }
@@ -359,8 +358,8 @@ void ospf_if_free(struct ospf_interface *oi)
 	list_delete(&oi->ls_ack_direct.ls_ack);
 
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: ospf interface %s vrf %s id %u deleted",
-			   __func__, oi->ifp->name, oi->ifp->vrf->name,
+		zlog_debug("ospf interface %s vrf %s id %u deleted",
+			   oi->ifp->name, oi->ifp->vrf->name,
 			   oi->ifp->vrf->vrf_id);
 
 	ospf_delete_from_if(oi->ifp, oi);
@@ -1010,15 +1009,14 @@ struct ospf_vl_data *ospf_vl_lookup(struct ospf *ospf, struct ospf_area *area,
 	struct listnode *node;
 
 	if (IS_DEBUG_OSPF_EVENT) {
-		zlog_debug("%s: Looking for %pI4", __func__, &vl_peer);
+		zlog_debug("Looking for %pI4", &vl_peer);
 		if (area)
-			zlog_debug("%s: in area %pI4", __func__,
-				   &area->area_id);
+			zlog_debug("in area %pI4", &area->area_id);
 	}
 
 	for (ALL_LIST_ELEMENTS_RO(ospf->vlinks, node, vl_data)) {
 		if (IS_DEBUG_OSPF_EVENT)
-			zlog_debug("%s: VL %s, peer %pI4", __func__,
+			zlog_debug("VL %s, peer %pI4",
 				   vl_data->vl_oi->ifp->name,
 				   &vl_data->vl_peer);
 
@@ -1142,10 +1140,9 @@ static int ospf_vl_set_params(struct ospf_area *area,
 	}
 
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: %s peer address: %pI4, cost: %d,%schanged",
-			   __func__, vl_data->vl_oi->ifp->name,
-			   &vl_data->peer_addr, voi->output_cost,
-			   (changed ? " " : " un"));
+		zlog_debug("%s peer address: %pI4, cost: %d,%schanged",
+			   vl_data->vl_oi->ifp->name, &vl_data->peer_addr,
+			   voi->output_cost, (changed ? " " : " un"));
 
 	return changed;
 }
@@ -1169,11 +1166,10 @@ void ospf_vl_up_check(struct ospf_area *area, struct in_addr rid,
 
 	for (ALL_LIST_ELEMENTS_RO(ospf->vlinks, node, vl_data)) {
 		if (IS_DEBUG_OSPF_EVENT) {
-			zlog_debug("%s: considering VL, %s in area %pI4",
-				   __func__, vl_data->vl_oi->ifp->name,
+			zlog_debug("considering VL, %s in area %pI4",
+				   vl_data->vl_oi->ifp->name,
 				   &vl_data->vl_area_id);
-			zlog_debug("%s: peer ID: %pI4", __func__,
-				   &vl_data->vl_peer);
+			zlog_debug("peer ID: %pI4", &vl_data->vl_peer);
 		}
 
 		if (IPV4_ADDR_SAME(&vl_data->vl_peer, &rid)

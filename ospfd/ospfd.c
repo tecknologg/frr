@@ -325,8 +325,8 @@ struct ospf *ospf_new_alloc(unsigned short instance, const char *name)
 	new->name = XSTRDUP(MTYPE_OSPF_TOP, name);
 	if (IS_DEBUG_OSPF_EVENT)
 		zlog_debug(
-			"%s: Create new ospf instance with vrf_name %s vrf_id %u",
-			__func__, name, new->vrf_id);
+			"Create new ospf instance with vrf_name %s vrf_id %u",
+			name, new->vrf_id);
 
 	if (vrf)
 		ospf_vrf_link(new, vrf);
@@ -1434,8 +1434,8 @@ void ospf_if_update(struct ospf *ospf, struct interface *ifp)
 
 	if (IS_DEBUG_OSPF_EVENT)
 		zlog_debug(
-			"%s: interface %s vrf %s(%u) ospf vrf %s vrf_id %u router_id %pI4",
-			__func__, ifp->name, ifp->vrf->name, ifp->vrf->vrf_id,
+			"interface %s vrf %s(%u) ospf vrf %s vrf_id %u router_id %pI4",
+			ifp->name, ifp->vrf->name, ifp->vrf->vrf_id,
 			ospf_vrf_id_to_name(ospf->vrf_id), ospf->vrf_id,
 			&ospf->router_id);
 
@@ -2141,8 +2141,7 @@ void ospf_vrf_unlink(struct ospf *ospf, struct vrf *vrf)
 static int ospf_vrf_new(struct vrf *vrf)
 {
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: VRF Created: %s(%u)", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF Created: %s(%u)", vrf->name, vrf->vrf_id);
 
 	return 0;
 }
@@ -2151,8 +2150,7 @@ static int ospf_vrf_new(struct vrf *vrf)
 static int ospf_vrf_delete(struct vrf *vrf)
 {
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: VRF Deletion: %s(%u)", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF Deletion: %s(%u)", vrf->name, vrf->vrf_id);
 
 	return 0;
 }
@@ -2167,9 +2165,8 @@ static void ospf_set_redist_vrf_bitmaps(struct ospf *ospf, bool set)
 		if (!red_list)
 			continue;
 		if (IS_DEBUG_OSPF_EVENT)
-			zlog_debug(
-				"%s: setting redist vrf %d bitmap for type %d",
-				__func__, ospf->vrf_id, type);
+			zlog_debug("setting redist vrf %d bitmap for type %d",
+				   ospf->vrf_id, type);
 		if (set)
 			vrf_bitmap_set(zclient->redist[AFI_IP][type],
 				       ospf->vrf_id);
@@ -2197,8 +2194,7 @@ static int ospf_vrf_enable(struct vrf *vrf)
 	int ret = 0;
 
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: VRF %s id %u enabled", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF %s id %u enabled", vrf->name, vrf->vrf_id);
 
 	ospf = ospf_lookup_by_name(vrf->name);
 	if (ospf) {
@@ -2207,8 +2203,8 @@ static int ospf_vrf_enable(struct vrf *vrf)
 		ospf_vrf_link(ospf, vrf);
 		if (IS_DEBUG_OSPF_EVENT)
 			zlog_debug(
-				"%s: ospf linked to vrf %s vrf_id %u (old id %u)",
-				__func__, vrf->name, ospf->vrf_id, old_vrf_id);
+				"ospf linked to vrf %s vrf_id %u (old id %u)",
+				vrf->name, ospf->vrf_id, old_vrf_id);
 
 		if (old_vrf_id != ospf->vrf_id) {
 			ospf_set_redist_vrf_bitmaps(ospf, true);
@@ -2239,8 +2235,7 @@ static int ospf_vrf_disable(struct vrf *vrf)
 		return 0;
 
 	if (IS_DEBUG_OSPF_EVENT)
-		zlog_debug("%s: VRF %s id %d disabled.", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF %s id %d disabled.", vrf->name, vrf->vrf_id);
 
 	ospf = ospf_lookup_by_name(vrf->name);
 	if (ospf) {
@@ -2256,8 +2251,7 @@ static int ospf_vrf_disable(struct vrf *vrf)
 		ospf_vrf_unlink(ospf, vrf);
 		ospf->oi_running = 0;
 		if (IS_DEBUG_OSPF_EVENT)
-			zlog_debug("%s: ospf old_vrf_id %d unlinked", __func__,
-				   old_vrf_id);
+			zlog_debug("ospf old_vrf_id %d unlinked", old_vrf_id);
 		thread_cancel(&ospf->t_read);
 		close(ospf->fd);
 		ospf->fd = -1;

@@ -54,7 +54,7 @@ static void dr_election_by_addr(struct interface *ifp)
 	pim_ifp->pim_dr_addr = pim_ifp->primary_address;
 
 	if (PIM_DEBUG_PIM_TRACE) {
-		zlog_debug("%s: on interface %s", __func__, ifp->name);
+		zlog_debug("on interface %s", ifp->name);
 	}
 
 	for (ALL_LIST_ELEMENTS_RO(pim_ifp->pim_neighbor_list, node, neigh)) {
@@ -77,8 +77,7 @@ static void dr_election_by_pri(struct interface *ifp)
 	dr_pri = pim_ifp->pim_dr_priority;
 
 	if (PIM_DEBUG_PIM_TRACE) {
-		zlog_debug("%s: dr pri %u on interface %s", __func__, dr_pri,
-			   ifp->name);
+		zlog_debug("dr pri %u on interface %s", dr_pri, ifp->name);
 	}
 
 	for (ALL_LIST_ELEMENTS_RO(pim_ifp->pim_neighbor_list, node, neigh)) {
@@ -123,10 +122,9 @@ int pim_if_dr_election(struct interface *ifp)
 	if (pim_addr_cmp(old_dr_addr, pim_ifp->pim_dr_addr)) {
 
 		if (PIM_DEBUG_PIM_EVENTS)
-			zlog_debug(
-				"%s: DR was %pPA now is %pPA on interface %s",
-				__func__, &old_dr_addr, &pim_ifp->pim_dr_addr,
-				ifp->name);
+			zlog_debug("DR was %pPA now is %pPA on interface %s",
+				   &old_dr_addr, &pim_ifp->pim_dr_addr,
+				   ifp->name);
 
 		pim_ifp->pim_dr_election_last =
 			pim_time_monotonic_sec(); /* timestamp */
@@ -242,8 +240,8 @@ void pim_neighbor_timer_reset(struct pim_neighbor *neigh, uint16_t holdtime)
 	}
 
 	if (PIM_DEBUG_PIM_TRACE_DETAIL)
-		zlog_debug("%s: starting %u sec timer for neighbor %pPA on %s",
-			   __func__, neigh->holdtime, &neigh->source_addr,
+		zlog_debug("starting %u sec timer for neighbor %pPA on %s",
+			   neigh->holdtime, &neigh->source_addr,
 			   neigh->interface->name);
 
 	thread_add_timer(router->master, on_neighbor_timer, neigh,
@@ -256,9 +254,8 @@ static void on_neighbor_jp_timer(struct thread *t)
 	struct pim_rpf rpf;
 
 	if (PIM_DEBUG_PIM_TRACE)
-		zlog_debug("%s:Sending JP Agg to %pPA on %s with %d groups",
-			   __func__, &neigh->source_addr,
-			   neigh->interface->name,
+		zlog_debug("Sending JP Agg to %pPA on %s with %d groups",
+			   &neigh->source_addr, neigh->interface->name,
 			   neigh->upstream_jp_agg->count);
 
 	rpf.source_nexthop.interface = neigh->interface;
@@ -320,8 +317,8 @@ pim_neighbor_new(struct interface *ifp, pim_addr source_addr,
 	PIM_IF_FLAG_UNSET_HELLO_SENT(pim_ifp->flags);
 
 	if (PIM_DEBUG_PIM_EVENTS)
-		zlog_debug("%s: creating PIM neighbor %pPA on interface %s",
-			   __func__, &source_addr, ifp->name);
+		zlog_debug("creating PIM neighbor %pPA on interface %s",
+			   &source_addr, ifp->name);
 
 	zlog_notice("PIM NEIGHBOR UP: neighbor %pPA on interface %s",
 		    &source_addr, ifp->name);
@@ -371,10 +368,9 @@ static void delete_prefix_list(struct pim_neighbor *neigh)
 			pim_inet4_dump("<addr?>", p->u.prefix4, addr_str,
 				       sizeof(addr_str));
 			zlog_debug(
-				"%s: DUMP_PREFIX_LIST neigh=%x prefix_list=%x prefix=%x addr=%s [%d/%d]",
-				__func__, (unsigned)neigh,
-				(unsigned)neigh->prefix_list, (unsigned)p,
-				addr_str, i, list_size);
+				"DUMP_PREFIX_LIST neigh=%x prefix_list=%x prefix=%x addr=%s [%d/%d]",
+				(unsigned)neigh, (unsigned)neigh->prefix_list,
+				(unsigned)p, addr_str, i, list_size);
 			++i;
 		}
 #endif
@@ -490,7 +486,7 @@ pim_neighbor_add(struct interface *ifp, pim_addr source_addr,
 	listnode_add(pim_ifp->pim_neighbor_list, neigh);
 
 	if (PIM_DEBUG_PIM_TRACE_DETAIL)
-		zlog_debug("%s: neighbor %pPA added ", __func__, &source_addr);
+		zlog_debug("neighbor %pPA added ", &source_addr);
 	/*
 	  RFC 4601: 4.3.2.  DR Election
 
@@ -641,8 +637,8 @@ void pim_neighbor_delete(struct interface *ifp, struct pim_neighbor *neigh,
 	}
 
 	if (PIM_DEBUG_PIM_TRACE) {
-		zlog_debug("%s: deleting PIM neighbor %pPA on interface %s",
-			   __func__, &neigh->source_addr, ifp->name);
+		zlog_debug("deleting PIM neighbor %pPA on interface %s",
+			   &neigh->source_addr, ifp->name);
 	}
 
 	listnode_delete(pim_ifp->pim_neighbor_list, neigh);
@@ -765,8 +761,8 @@ void pim_neighbor_update(struct pim_neighbor *neigh,
 
 #ifdef DUMP_PREFIX_LIST
 	zlog_debug(
-		"%s: DUMP_PREFIX_LIST old_prefix_list=%x old_size=%d new_prefix_list=%x new_size=%d",
-		__func__, (unsigned)neigh->prefix_list,
+		"DUMP_PREFIX_LIST old_prefix_list=%x old_size=%d new_prefix_list=%x new_size=%d",
+		(unsigned)neigh->prefix_list,
 		neigh->prefix_list ? (int)listcount(neigh->prefix_list) : -1,
 		(unsigned)addr_list,
 		addr_list ? (int)listcount(addr_list) : -1);

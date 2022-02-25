@@ -109,8 +109,7 @@ int netlink_netconf_change(struct nlmsghdr *h, ns_id_t ns_id, int startup)
 		 * what that is yet, or where we would store it.
 		 */
 		if (IS_ZEBRA_DEBUG_KERNEL)
-			zlog_debug("%s: Ignoring global ifindex %d",
-				   __func__, ifindex);
+			zlog_debug("Ignoring global ifindex %d", ifindex);
 
 		return 0;
 	default:
@@ -134,8 +133,8 @@ int netlink_netconf_change(struct nlmsghdr *h, ns_id_t ns_id, int startup)
 	}
 
 	if (IS_ZEBRA_DEBUG_KERNEL)
-		zlog_debug("%s: interface %u is mpls on: %d multicast on: %d",
-			   __func__, ifindex, mpls_on, mcast_on);
+		zlog_debug("interface %u is mpls on: %d multicast on: %d",
+			   ifindex, mpls_on, mcast_on);
 
 	/* Create a dplane context and pass it along for processing */
 	netlink_netconf_dplane_update(ns_id, ifindex, mpls_on, mcast_on);
@@ -159,7 +158,7 @@ int netlink_request_netconf(int sockfd)
 	nls = kernel_netlink_nlsock_lookup(sockfd);
 
 	if (IS_ZEBRA_DEBUG_KERNEL)
-		zlog_debug("%s: nlsock %s", __func__, nls ? nls->name : "NULL");
+		zlog_debug("nlsock %s", nls ? nls->name : "NULL");
 
 	if (nls == NULL)
 		return -1;

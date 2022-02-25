@@ -947,8 +947,8 @@ static struct adv_if *adv_if_add(struct zebra_vrf *zvrf, const char *name)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u IF %s count: %zu", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf), name,
+		zlog_debug("%s:%u IF %s count: %zu", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf), name,
 			   adv_if_list_count(&zvrf->rtadv.adv_if));
 	}
 
@@ -971,8 +971,8 @@ static struct adv_if *adv_if_del(struct zebra_vrf *zvrf, const char *name)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u IF %s count: %zu", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf), name,
+		zlog_debug("%s:%u IF %s count: %zu", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf), name,
 			   adv_if_list_count(&zvrf->rtadv.adv_if));
 	}
 
@@ -995,8 +995,8 @@ static struct adv_if *adv_msec_if_add(struct zebra_vrf *zvrf, const char *name)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u IF %s count: %zu", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf), name,
+		zlog_debug("%s:%u IF %s count: %zu", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf), name,
 			   adv_if_list_count(&zvrf->rtadv.adv_msec_if));
 	}
 
@@ -1019,8 +1019,8 @@ static struct adv_if *adv_msec_if_del(struct zebra_vrf *zvrf, const char *name)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u IF %s count: %zu", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf), name,
+		zlog_debug("%s:%u IF %s count: %zu", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf), name,
 			   adv_if_list_count(&zvrf->rtadv.adv_msec_if));
 	}
 
@@ -1033,8 +1033,8 @@ static void adv_if_clean(struct zebra_vrf *zvrf)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u count: %zu -> 0", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf),
+		zlog_debug("%s:%u count: %zu -> 0", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf),
 			   adv_if_list_count(&zvrf->rtadv.adv_if));
 	}
 
@@ -1047,8 +1047,8 @@ static void adv_msec_if_clean(struct zebra_vrf *zvrf)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s: %s:%u count: %zu -> 0", __func__,
-			   VRF_LOGNAME(vrf), zvrf_id(zvrf),
+		zlog_debug("%s:%u count: %zu -> 0", VRF_LOGNAME(vrf),
+			   zvrf_id(zvrf),
 			   adv_if_list_count(&zvrf->rtadv.adv_msec_if));
 	}
 
@@ -2733,8 +2733,8 @@ static void rtadv_event(struct zebra_vrf *zvrf, enum rtadv_event event, int val)
 	if (IS_ZEBRA_DEBUG_EVENT) {
 		struct vrf *vrf = zvrf->vrf;
 
-		zlog_debug("%s(%s) with event: %d and val: %d", __func__,
-			   VRF_LOGNAME(vrf), event, val);
+		zlog_debug("(%s) with event: %d and val: %d", VRF_LOGNAME(vrf),
+			   event, val);
 	}
 
 	rtadv = &zvrf->rtadv;

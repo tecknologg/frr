@@ -55,8 +55,7 @@ bgp_check_rmap_prefixes_in_bgp_table(struct bgp_table *table,
 				bgp_dest_unlock_node(dest);
 				if (BGP_DEBUG(update, UPDATE_OUT))
 					zlog_debug(
-						"%s: Condition map routes present in BGP table",
-						__func__);
+						"Condition map routes present in BGP table");
 
 				return ret;
 			}
@@ -64,8 +63,7 @@ bgp_check_rmap_prefixes_in_bgp_table(struct bgp_table *table,
 	}
 
 	if (BGP_DEBUG(update, UPDATE_OUT))
-		zlog_debug("%s: Condition map routes not present in BGP table",
-			   __func__);
+		zlog_debug("Condition map routes not present in BGP table");
 
 	return ret;
 }
@@ -99,7 +97,7 @@ static void bgp_conditional_adv_routes(struct peer *peer, afi_t afi,
 	SET_FLAG(subgrp->sflags, SUBGRP_STATUS_TABLE_REPARSING);
 
 	if (BGP_DEBUG(update, UPDATE_OUT))
-		zlog_debug("%s: %s routes to/from %s for %s", __func__,
+		zlog_debug("%s routes to/from %s for %s",
 			   update_type == ADVERTISE ? "Advertise" : "Withdraw",
 			   peer->host, get_afi_safi_str(afi, safi, false));
 
@@ -226,12 +224,12 @@ static void bgp_conditional_adv_timer(struct thread *t)
 			if (BGP_DEBUG(update, UPDATE_OUT)) {
 				if (peer->advmap_table_change)
 					zlog_debug(
-						"%s: %s - routes changed in BGP table.",
-						__func__, peer->host);
+						"%s - routes changed in BGP table.",
+						peer->host);
 				if (peer->advmap_config_change[afi][safi])
 					zlog_debug(
-						"%s: %s for %s - advertise/condition map configuration is changed.",
-						__func__, peer->host,
+						"%s for %s - advertise/condition map configuration is changed.",
+						peer->host,
 						get_afi_safi_str(afi, safi,
 								 false));
 			}
@@ -263,8 +261,8 @@ static void bgp_conditional_adv_timer(struct thread *t)
 
 				if (BGP_DEBUG(update, UPDATE_OUT))
 					zlog_debug(
-						"%s: Configuration is changed on peer %s for %s, send the normal update first.",
-						__func__, peer->host,
+						"Configuration is changed on peer %s for %s, send the normal update first.",
+						peer->host,
 						get_afi_safi_str(afi, safi,
 								 false));
 
@@ -305,7 +303,7 @@ void bgp_conditional_adv_enable(struct peer *peer, afi_t afi, safi_t safi)
 	 */
 	if (++bgp->condition_filter_count > 1) {
 		if (BGP_DEBUG(update, UPDATE_OUT))
-			zlog_debug("%s: condition_filter_count %d", __func__,
+			zlog_debug("condition_filter_count %d",
 				   bgp->condition_filter_count);
 
 		return;
@@ -328,7 +326,7 @@ void bgp_conditional_adv_disable(struct peer *peer, afi_t afi, safi_t safi)
 	 */
 	if (--bgp->condition_filter_count != 0) {
 		if (BGP_DEBUG(update, UPDATE_OUT))
-			zlog_debug("%s: condition_filter_count %d", __func__,
+			zlog_debug("condition_filter_count %d",
 				   bgp->condition_filter_count);
 
 		return;

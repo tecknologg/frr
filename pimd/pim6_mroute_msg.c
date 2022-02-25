@@ -165,8 +165,8 @@ int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 			return 0;
 		if (PIM_DEBUG_MROUTE) {
 			zlog_debug(
-				"%s: pim kernel upcall %s type=%d ip_p=%d from fd=%d for (S,G)=(%pI6,%pI6) on %s mifi=%d  size=%ld",
-				__func__, mrt6msgtype2str[msg->im6_msgtype],
+				"pim kernel upcall %s type=%d ip_p=%d from fd=%d for (S,G)=(%pI6,%pI6) on %s mifi=%d  size=%ld",
+				mrt6msgtype2str[msg->im6_msgtype],
 				msg->im6_msgtype, ip6_hdr->ip6_nxt,
 				pim->mroute_socket, &msg->im6_src,
 				&msg->im6_dst, ifp->name, msg->im6_mif,

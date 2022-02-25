@@ -964,8 +964,8 @@ int rfapiShowVncQueries(void *stream, struct prefix *pfx_match)
 				++queries_total;
 
 				vnc_zlog_debug_verbose(
-					"%s: checking rfd=%p mon_eth=%p",
-					__func__, rfd, mon_eth);
+					"checking rfd=%p mon_eth=%p", rfd,
+					mon_eth);
 
 				memset((void *)&pfx_mac, 0,
 				       sizeof(struct prefix));
@@ -2179,9 +2179,8 @@ register_add(struct vty *vty, struct cmd_token *carg_prefix,
 	}
 
 	vnc_zlog_debug_verbose(
-		"%s: vn=%s, un=%s, prefix=%s, cost=%s, lifetime=%s, lnh=%s",
-		__func__, arg_vn, arg_un, arg_prefix,
-		(arg_cost ? arg_cost : "NULL"),
+		"vn=%s, un=%s, prefix=%s, cost=%s, lifetime=%s, lnh=%s", arg_vn,
+		arg_un, arg_prefix, (arg_cost ? arg_cost : "NULL"),
 		(arg_lifetime ? arg_lifetime : "NULL"),
 		(arg_lnh ? arg_lnh : "NULL"));
 
@@ -2232,8 +2231,7 @@ register_add(struct vty *vty, struct cmd_token *carg_prefix,
 		struct rfapi_next_hop_entry *tail = NULL;
 		struct rfapi_vn_option *vn_opt_new;
 
-		vnc_zlog_debug_verbose(
-			"%s: rfapi_register succeeded, returning 0", __func__);
+		vnc_zlog_debug_verbose("rfapi_register succeeded, returning 0");
 
 		if (h->rfp_methods.local_cb) {
 			struct rfapi_descriptor *r =
@@ -2253,7 +2251,7 @@ register_add(struct vty *vty, struct cmd_token *carg_prefix,
 		return 0;
 	}
 
-	vnc_zlog_debug_verbose("%s: rfapi_register failed", __func__);
+	vnc_zlog_debug_verbose("rfapi_register failed");
 	vty_out(vty, "\n");
 	vty_out(vty, "Registration failed.\n");
 	vty_out(vty,
@@ -2261,7 +2259,7 @@ register_add(struct vty *vty, struct cmd_token *carg_prefix,
 	return CMD_WARNING_CONFIG_FAILED;
 
 fail:
-	vnc_zlog_debug_verbose("%s: fail, rc=%d", __func__, rc);
+	vnc_zlog_debug_verbose("fail, rc=%d", rc);
 	return rc;
 }
 
@@ -2999,7 +2997,7 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 	struct rfapi_next_hop_entry *tail = NULL;
 
 #if DEBUG_L2_EXTRA
-	vnc_zlog_debug_verbose("%s: entry", __func__);
+	vnc_zlog_debug_verbose("entry");
 #endif
 
 	pUn = (cda->un_address.addr_family ? &cda->un_address : NULL);
@@ -3022,7 +3020,7 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 		struct nve_addr *hap;
 
 #if DEBUG_L2_EXTRA
-		vnc_zlog_debug_verbose("%s: rfd=%p", __func__, rfd);
+		vnc_zlog_debug_verbose("rfd=%p", rfd);
 #endif
 
 		/*
@@ -3034,7 +3032,7 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 			break;
 
 #if DEBUG_L2_EXTRA
-		vnc_zlog_debug_verbose("%s: un, vn match", __func__);
+		vnc_zlog_debug_verbose("un, vn match");
 #endif
 
 		/*
@@ -3079,8 +3077,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 							 &adb->u.s.prefix_ip)) {
 #if DEBUG_L2_EXTRA
 						vnc_zlog_debug_verbose(
-							"%s: adb=%p, prefix doesn't match, skipping",
-							__func__, adb);
+							"adb=%p, prefix doesn't match, skipping",
+							adb);
 #endif
 						continue;
 					}
@@ -3091,8 +3089,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 					    != 0) {
 #if DEBUG_L2_EXTRA
 						vnc_zlog_debug_verbose(
-							"%s: adb=%p, RD doesn't match, skipping",
-							__func__, adb);
+							"adb=%p, RD doesn't match, skipping",
+							adb);
 #endif
 						continue;
 					}
@@ -3105,8 +3103,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 						   ETH_ALEN)) {
 #if DEBUG_L2_EXTRA
 						vnc_zlog_debug_verbose(
-							"%s: adb=%p, macaddr doesn't match, skipping",
-							__func__, adb);
+							"adb=%p, macaddr doesn't match, skipping",
+							adb);
 #endif
 						continue;
 					}
@@ -3117,8 +3115,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 					    != adb->l2o.logical_net_id) {
 #if DEBUG_L2_EXTRA
 						vnc_zlog_debug_verbose(
-							"%s: adb=%p, LNI doesn't match, skipping",
-							__func__, adb);
+							"adb=%p, LNI doesn't match, skipping",
+							adb);
 #endif
 						continue;
 					}
@@ -3126,8 +3124,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 
 #if DEBUG_L2_EXTRA
 				vnc_zlog_debug_verbose(
-					"%s: ipN adding adb %p to delete list",
-					__func__, adb);
+					"ipN adding adb %p to delete list",
+					adb);
 #endif
 
 				listnode_add(adb_delete_list, adb);
@@ -3172,8 +3170,7 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 
 #if DEBUG_L2_EXTRA
 				vnc_zlog_debug_verbose(
-					"%s: ipN killing reg from adb %p ",
-					__func__, adb);
+					"ipN killing reg from adb %p ", adb);
 #endif
 
 				rc = rfapi_register(rfd, &rp, 0, NULL,
@@ -3233,8 +3230,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 					}
 #if DEBUG_L2_EXTRA
 					vnc_zlog_debug_verbose(
-						"%s: ip0 adding adb %p to delete list",
-						__func__, adb);
+						"ip0 adding adb %p to delete list",
+						adb);
 #endif
 					listnode_add(adb_delete_list, adb);
 				}
@@ -3254,8 +3251,8 @@ static int rfapiDeleteLocalPrefixesByRFD(struct rfapi_local_reg_delete_arg *cda,
 
 #if DEBUG_L2_EXTRA
 					vnc_zlog_debug_verbose(
-						"%s: ip0 killing reg from adb %p ",
-						__func__, adb);
+						"ip0 killing reg from adb %p ",
+						adb);
 #endif
 
 					rc = rfapi_register(
@@ -3339,8 +3336,7 @@ static int rfapiDeleteLocalPrefixes(struct rfapi_local_reg_delete_arg *cda)
 		rfapi_cfg = bgp->rfapi_cfg;
 		if (!h || !rfapi_cfg)
 			return ENXIO;
-		vnc_zlog_debug_verbose("%s: starting descriptor loop",
-				       __func__);
+		vnc_zlog_debug_verbose("starting descriptor loop");
 		for (ALL_LIST_ELEMENTS_RO(&h->descriptors, node, rfd)) {
 			rc = rfapiDeleteLocalPrefixesByRFD(cda, rfd);
 		}
@@ -4664,8 +4660,7 @@ void vnc_add_vrf_opener(struct bgp *bgp, struct rfapi_nve_group_cfg *rfg)
 		}
 		rfd->un_addr = rfd->vn_addr; /* sigh, need something in UN for
 						lookups */
-		vnc_zlog_debug_verbose("%s: Opening RFD for VRF %s", __func__,
-				       rfg->name);
+		vnc_zlog_debug_verbose("Opening RFD for VRF %s", rfg->name);
 		rfapi_init_and_open(bgp, rfd, rfg);
 	}
 }
@@ -4768,8 +4763,7 @@ static int vnc_add_vrf_prefix(struct vty *vty, const char *arg_vrf,
 		struct rfapi_next_hop_entry *tail = NULL;
 		struct rfapi_vn_option *vn_opt_new;
 
-		vnc_zlog_debug_verbose("%s: rfapi_register succeeded",
-				       __func__);
+		vnc_zlog_debug_verbose("rfapi_register succeeded");
 
 		if (bgp->rfapi->rfp_methods.local_cb) {
 			struct rfapi_descriptor *r =
@@ -4789,13 +4783,13 @@ static int vnc_add_vrf_prefix(struct vty *vty, const char *arg_vrf,
 			head = tail = NULL;
 		}
 		vnc_zlog_debug_verbose(
-			"%s completed, count=%d/%d", __func__,
+			"completed, count=%d/%d",
 			rfg->rfapi_import_table->local_count[AFI_IP],
 			rfg->rfapi_import_table->local_count[AFI_IP6]);
 		return CMD_SUCCESS;
 	}
 
-	vnc_zlog_debug_verbose("%s: rfapi_register failed", __func__);
+	vnc_zlog_debug_verbose("rfapi_register failed");
 	vty_out(vty, "Add failed.\n");
 	return CMD_WARNING_CONFIG_FAILED;
 }
@@ -4877,13 +4871,12 @@ void clear_vnc_vrf_closer(struct rfapi_nve_group_cfg *rfg)
 		;
 
 	if (afi == AFI_MAX) {
-		vnc_zlog_debug_verbose("%s: closing RFD for VRF %s", __func__,
-				       rfg->name);
+		vnc_zlog_debug_verbose("closing RFD for VRF %s", rfg->name);
 		rfg->rfd = NULL;
 		rfapi_close(rfd);
 	} else {
 		vnc_zlog_debug_verbose(
-			"%s: VRF %s afi=%d count=%d", __func__, rfg->name, afi,
+			"VRF %s afi=%d count=%d", rfg->name, afi,
 			rfg->rfapi_import_table->local_count[afi]);
 	}
 }

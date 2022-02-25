@@ -886,8 +886,8 @@ static void lsp_schedule(struct hash_bucket *bucket, void *ctxt)
 		/* Skip LSPs with backups */
 		if (nhlfe_list_first(&lsp->backup_nhlfe_list) != NULL) {
 			if (IS_ZEBRA_DEBUG_MPLS_DETAIL)
-				zlog_debug("%s: skip LSP in-label %u",
-					   __func__, lsp->ile.in_label);
+				zlog_debug("skip LSP in-label %u",
+					   lsp->ile.in_label);
 			return;
 		}
 	}
@@ -1310,7 +1310,7 @@ nhlfe_alloc(struct zebra_lsp *lsp, enum lsp_types_t lsp_type,
 		break;
 	case NEXTHOP_TYPE_BLACKHOLE:
 		if (IS_ZEBRA_DEBUG_MPLS)
-			zlog_debug("%s: invalid: blackhole nexthop", __func__);
+			zlog_debug("invalid: blackhole nexthop");
 
 		nexthop_free(nexthop);
 		XFREE(MTYPE_NHLFE, nhlfe);
@@ -1340,7 +1340,7 @@ static struct zebra_nhlfe *nhlfe_add(struct zebra_lsp *lsp,
 	/* Must have labels */
 	if (num_labels == 0 || labels == NULL) {
 		if (IS_ZEBRA_DEBUG_MPLS)
-			zlog_debug("%s: invalid nexthop: no labels", __func__);
+			zlog_debug("invalid nexthop: no labels");
 
 		return NULL;
 	}
@@ -2001,16 +2001,18 @@ static int update_nhlfes_from_ctx(struct nhlfe_list_head *nhlfe_head,
 			if (CHECK_FLAG(ctx_nhlfe->flags,
 				       NHLFE_FLAG_INSTALLED)) {
 				if (is_debug)
-					zlog_debug("%s: matched lsp nhlfe %s (installed)",
-						   __func__, buf);
+					zlog_debug(
+						"matched lsp nhlfe %s (installed)",
+						buf);
 
 				SET_FLAG(nhlfe->flags, NHLFE_FLAG_INSTALLED);
 				SET_FLAG(nhlfe->flags, NHLFE_FLAG_SELECTED);
 
 			} else {
 				if (is_debug)
-					zlog_debug("%s: matched lsp nhlfe %s (not installed)",
-						   __func__, buf);
+					zlog_debug(
+						"matched lsp nhlfe %s (not installed)",
+						buf);
 
 				UNSET_FLAG(nhlfe->flags, NHLFE_FLAG_INSTALLED);
 				UNSET_FLAG(nhlfe->flags, NHLFE_FLAG_SELECTED);
@@ -2032,8 +2034,7 @@ static int update_nhlfes_from_ctx(struct nhlfe_list_head *nhlfe_head,
 		} else {
 			/* Not mentioned in lfib set -> uninstalled */
 			if (is_debug)
-				zlog_debug("%s: no match for lsp nhlfe %s",
-					   __func__, buf);
+				zlog_debug("no match for lsp nhlfe %s", buf);
 			UNSET_FLAG(nhlfe->flags, NHLFE_FLAG_INSTALLED);
 			UNSET_FLAG(nhlfe->flags, NHLFE_FLAG_SELECTED);
 			UNSET_FLAG(nexthop->flags, NEXTHOP_FLAG_FIB);
@@ -2963,8 +2964,8 @@ int mpls_zapi_labels_process(bool add_p, struct zebra_vrf *zvrf,
 			 */
 			if (IS_ZEBRA_DEBUG_RECV || IS_ZEBRA_DEBUG_MPLS)
 				zlog_debug(
-					"%s: FTN update requested: no route for prefix %pFX",
-					__func__, prefix);
+					"FTN update requested: no route for prefix %pFX",
+					prefix);
 		}
 	}
 
@@ -2988,9 +2989,10 @@ int mpls_zapi_labels_process(bool add_p, struct zebra_vrf *zvrf,
 		if (ret < 0) {
 			if (IS_ZEBRA_DEBUG_RECV || IS_ZEBRA_DEBUG_MPLS) {
 				zapi_nexthop2str(znh, buf, sizeof(buf));
-				zlog_debug("%s: Unable to %sinstall LSP: label %u, znh %s",
-					   __func__, (add_p ? "" : "un"),
-					   zl->local_label, buf);
+				zlog_debug(
+					"Unable to %sinstall LSP: label %u, znh %s",
+					(add_p ? "" : "un"), zl->local_label,
+					buf);
 			}
 			continue;
 		}
@@ -3007,8 +3009,8 @@ int mpls_zapi_labels_process(bool add_p, struct zebra_vrf *zvrf,
 		} else if (IS_ZEBRA_DEBUG_RECV | IS_ZEBRA_DEBUG_MPLS) {
 			zapi_nexthop2str(znh, buf, sizeof(buf));
 			zlog_debug(
-				"%s: Unable to update FEC: prefix %pFX, label %u, znh %s",
-				__func__, prefix, zl->local_label, buf);
+				"Unable to update FEC: prefix %pFX, label %u, znh %s",
+				prefix, zl->local_label, buf);
 		}
 	}
 
@@ -3035,9 +3037,10 @@ int mpls_zapi_labels_process(bool add_p, struct zebra_vrf *zvrf,
 			if (IS_ZEBRA_DEBUG_RECV ||
 			    IS_ZEBRA_DEBUG_MPLS) {
 				zapi_nexthop2str(znh, buf, sizeof(buf));
-				zlog_debug("%s: Unable to %sinstall backup LSP: label %u, znh %s",
-					   __func__, (add_p ? "" : "un"),
-					   zl->local_label, buf);
+				zlog_debug(
+					"Unable to %sinstall backup LSP: label %u, znh %s",
+					(add_p ? "" : "un"), zl->local_label,
+					buf);
 			}
 			continue;
 		}
@@ -3057,8 +3060,8 @@ int mpls_zapi_labels_process(bool add_p, struct zebra_vrf *zvrf,
 		} else if (IS_ZEBRA_DEBUG_RECV | IS_ZEBRA_DEBUG_MPLS) {
 			zapi_nexthop2str(znh, buf, sizeof(buf));
 			zlog_debug(
-				"%s: Unable to update backup FEC: prefix %pFX, label %u, znh %s",
-				__func__, prefix, zl->local_label, buf);
+				"Unable to update backup FEC: prefix %pFX, label %u, znh %s",
+				prefix, zl->local_label, buf);
 		}
 	}
 
@@ -3265,8 +3268,8 @@ static int lsp_backup_znh_install(struct zebra_lsp *lsp, enum lsp_types_t type,
 			      znh->ifindex, true /*backup*/);
 	if (nhlfe == NULL) {
 		if (IS_ZEBRA_DEBUG_MPLS)
-			zlog_debug("%s: unable to add backup nhlfe, label: %u",
-				   __func__, lsp->ile.in_label);
+			zlog_debug("unable to add backup nhlfe, label: %u",
+				   lsp->ile.in_label);
 		return -1;
 	}
 

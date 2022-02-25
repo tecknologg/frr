@@ -556,8 +556,8 @@ void ospf_intra_add_stub(struct route_table *rt, struct router_lsa_link *link,
 	if (parent_is_root && link->link_data.s_addr == 0xffffffff
 	    && ospf_if_lookup_by_local_addr(area->ospf, NULL, link->link_id)) {
 		if (IS_DEBUG_OSPF_EVENT)
-			zlog_debug("%s: ignoring host route %pI4/32 to self.",
-				   __func__, &link->link_id);
+			zlog_debug("ignoring host route %pI4/32 to self.",
+				   &link->link_id);
 		return;
 	}
 

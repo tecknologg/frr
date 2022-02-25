@@ -203,8 +203,8 @@ struct isis *isis_new(const char *vrf_name)
 
 	if (IS_DEBUG_EVENTS)
 		zlog_debug(
-			"%s: Create new isis instance with vrf_name %s vrf_id %u",
-			__func__, isis->name, isis->vrf_id);
+			"Create new isis instance with vrf_name %s vrf_id %u",
+			isis->name, isis->vrf_id);
 
 	/*
 	 * Default values
@@ -566,8 +566,7 @@ void isis_area_destroy(struct isis_area *area)
 static int isis_vrf_new(struct vrf *vrf)
 {
 	if (IS_DEBUG_EVENTS)
-		zlog_debug("%s: VRF Created: %s(%u)", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF Created: %s(%u)", vrf->name, vrf->vrf_id);
 
 	return 0;
 }
@@ -576,8 +575,7 @@ static int isis_vrf_new(struct vrf *vrf)
 static int isis_vrf_delete(struct vrf *vrf)
 {
 	if (IS_DEBUG_EVENTS)
-		zlog_debug("%s: VRF Deletion: %s(%u)", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF Deletion: %s(%u)", vrf->name, vrf->vrf_id);
 
 	return 0;
 }
@@ -650,8 +648,7 @@ static int isis_vrf_enable(struct vrf *vrf)
 	vrf_id_t old_vrf_id;
 
 	if (IS_DEBUG_EVENTS)
-		zlog_debug("%s: VRF %s id %u enabled", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF %s id %u enabled", vrf->name, vrf->vrf_id);
 
 	isis = isis_lookup_by_vrfname(vrf->name);
 	if (isis && isis->vrf_id != vrf->vrf_id) {
@@ -660,8 +657,8 @@ static int isis_vrf_enable(struct vrf *vrf)
 		isis_vrf_link(isis, vrf);
 		if (IS_DEBUG_EVENTS)
 			zlog_debug(
-				"%s: isis linked to vrf %s vrf_id %u (old id %u)",
-				__func__, vrf->name, isis->vrf_id, old_vrf_id);
+				"isis linked to vrf %s vrf_id %u (old id %u)",
+				vrf->name, isis->vrf_id, old_vrf_id);
 		/* start zebra redist to us for new vrf */
 		isis_set_redist_vrf_bitmaps(isis, true);
 
@@ -680,8 +677,7 @@ static int isis_vrf_disable(struct vrf *vrf)
 		return 0;
 
 	if (IS_DEBUG_EVENTS)
-		zlog_debug("%s: VRF %s id %d disabled.", __func__, vrf->name,
-			   vrf->vrf_id);
+		zlog_debug("VRF %s id %d disabled.", vrf->name, vrf->vrf_id);
 	isis = isis_lookup_by_vrfname(vrf->name);
 	if (isis) {
 		old_vrf_id = isis->vrf_id;
@@ -695,8 +691,7 @@ static int isis_vrf_disable(struct vrf *vrf)
 		 */
 		isis_vrf_unlink(isis, vrf);
 		if (IS_DEBUG_EVENTS)
-			zlog_debug("%s: isis old_vrf_id %d unlinked", __func__,
-				   old_vrf_id);
+			zlog_debug("isis old_vrf_id %d unlinked", old_vrf_id);
 	}
 
 	return 0;

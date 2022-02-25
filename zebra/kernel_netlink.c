@@ -242,8 +242,8 @@ int netlink_talk_filter(struct nlmsghdr *h, ns_id_t ns_id, int startup)
 	 * received some other message in an unexpected
 	 * way.
 	 */
-	zlog_debug("%s: ignoring message type 0x%04x(%s) NS %u", __func__,
-		   h->nlmsg_type, nl_msg_type_to_str(h->nlmsg_type), ns_id);
+	zlog_debug("ignoring message type 0x%04x(%s) NS %u", h->nlmsg_type,
+		   nl_msg_type_to_str(h->nlmsg_type), ns_id);
 	return 0;
 }
 
@@ -747,7 +747,7 @@ static void netlink_parse_extended_ack(struct nlmsghdr *h)
 			 * but noticing it for later.
 			 */
 			err_nlh = &err->msg;
-			zlog_debug("%s: Received %s extended Ack", __func__,
+			zlog_debug("Received %s extended Ack",
 				   nl_msg_type_to_str(err_nlh->nlmsg_type));
 		}
 	}
@@ -793,7 +793,7 @@ static ssize_t netlink_send_msg(const struct nlsock *nl, void *buf,
 	}
 
 	if (IS_ZEBRA_DEBUG_KERNEL_MSGDUMP_SEND) {
-		zlog_debug("%s: >> netlink message dump [sent]", __func__);
+		zlog_debug(">> netlink message dump [sent]");
 #ifdef NETLINK_DEBUG
 		nl_dump(buf, buflen);
 #else
@@ -865,7 +865,7 @@ static int netlink_recv_msg(struct nlsock *nl, struct msghdr *msg)
 	}
 
 	if (IS_ZEBRA_DEBUG_KERNEL_MSGDUMP_RECV) {
-		zlog_debug("%s: << netlink message dump [recv]", __func__);
+		zlog_debug("<< netlink message dump [recv]");
 #ifdef NETLINK_DEBUG
 		nl_dump(nl->buf, status);
 #else
@@ -905,8 +905,8 @@ static int netlink_parse_error(const struct nlsock *nl, struct nlmsghdr *h,
 	/* If the error field is zero, then this is an ACK. */
 	if (err->error == 0) {
 		if (IS_ZEBRA_DEBUG_KERNEL) {
-			zlog_debug("%s: %s ACK: type=%s(%u), seq=%u, pid=%u",
-				   __func__, nl->name,
+			zlog_debug("%s ACK: type=%s(%u), seq=%u, pid=%u",
+				   nl->name,
 				   nl_msg_type_to_str(err->msg.nlmsg_type),
 				   err->msg.nlmsg_type, err->msg.nlmsg_seq,
 				   err->msg.nlmsg_pid);
@@ -1031,8 +1031,8 @@ int netlink_parse_info(int (*filter)(struct nlmsghdr *, ns_id_t, int),
 			/* OK we got netlink message. */
 			if (IS_ZEBRA_DEBUG_KERNEL)
 				zlog_debug(
-					"%s: %s type %s(%u), len=%d, seq=%u, pid=%u",
-					__func__, nl->name,
+					"%s type %s(%u), len=%d, seq=%u, pid=%u",
+					nl->name,
 					nl_msg_type_to_str(h->nlmsg_type),
 					h->nlmsg_type, h->nlmsg_len,
 					h->nlmsg_seq, h->nlmsg_pid);
@@ -1259,8 +1259,8 @@ static int nl_batch_read_resp(struct nl_batch *bth)
 			int err = netlink_parse_error(nl, h, bth->zns->is_cmd,
 						      false);
 
-			zlog_debug("%s: netlink error message seq=%d %d",
-				   __func__, h->nlmsg_seq, err);
+			zlog_debug("netlink error message seq=%d %d",
+				   h->nlmsg_seq, err);
 			continue;
 		}
 
@@ -1271,9 +1271,8 @@ static int nl_batch_read_resp(struct nl_batch *bth)
 		if (ctx == NULL) {
 			if (IS_ZEBRA_DEBUG_KERNEL)
 				zlog_debug(
-					"%s: skipping unassociated response, seq number %d NS %u",
-					__func__, h->nlmsg_seq,
-					bth->zns->ns_id);
+					"skipping unassociated response, seq number %d NS %u",
+					h->nlmsg_seq, bth->zns->ns_id);
 			continue;
 		}
 
@@ -1286,8 +1285,8 @@ static int nl_batch_read_resp(struct nl_batch *bth)
 					ctx, ZEBRA_DPLANE_REQUEST_FAILURE);
 
 			if (IS_ZEBRA_DEBUG_KERNEL)
-				zlog_debug("%s: netlink error message seq=%d ",
-					   __func__, h->nlmsg_seq);
+				zlog_debug("netlink error message seq=%d ",
+					   h->nlmsg_seq);
 			continue;
 		}
 
@@ -1297,8 +1296,8 @@ static int nl_batch_read_resp(struct nl_batch *bth)
 		 * unexpected way.
 		 */
 		if (IS_ZEBRA_DEBUG_KERNEL)
-			zlog_debug("%s: ignoring message type 0x%04x(%s) NS %u",
-				   __func__, h->nlmsg_type,
+			zlog_debug("ignoring message type 0x%04x(%s) NS %u",
+				   h->nlmsg_type,
 				   nl_msg_type_to_str(h->nlmsg_type),
 				   bth->zns->ns_id);
 	}
@@ -1352,9 +1351,8 @@ static void nl_batch_send(struct nl_batch *bth)
 			kernel_netlink_nlsock_lookup(bth->zns->sock);
 
 		if (IS_ZEBRA_DEBUG_KERNEL)
-			zlog_debug("%s: %s, batch size=%zu, msg cnt=%zu",
-				   __func__, nl->name, bth->curlen,
-				   bth->msgcnt);
+			zlog_debug("%s, batch size=%zu, msg cnt=%zu", nl->name,
+				   bth->curlen, bth->msgcnt);
 
 		if (netlink_send_msg(nl, bth->buf, bth->curlen) == -1)
 			err = true;

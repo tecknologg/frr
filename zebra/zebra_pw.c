@@ -296,8 +296,7 @@ done:
 
 	if (fail_p || !found_p) {
 		if (IS_ZEBRA_DEBUG_PW)
-			zlog_debug("%s: unlabeled route for %s",
-				   __func__, pw->ifname);
+			zlog_debug("unlabeled route for %s", pw->ifname);
 		return -1;
 	}
 
@@ -318,8 +317,7 @@ static int zebra_pw_check_reachability(const struct zebra_pw *pw)
 		       &pw->nexthop, NULL);
 	if (!re) {
 		if (IS_ZEBRA_DEBUG_PW)
-			zlog_debug("%s: no route found for %s", __func__,
-				   pw->ifname);
+			zlog_debug("no route found for %s", pw->ifname);
 		return -1;
 	}
 
@@ -364,8 +362,7 @@ static int zebra_pw_check_reachability(const struct zebra_pw *pw)
 
 	if (!found_p) {
 		if (IS_ZEBRA_DEBUG_PW)
-			zlog_debug("%s: unlabeled route for %s",
-				   __func__, pw->ifname);
+			zlog_debug("unlabeled route for %s", pw->ifname);
 		return -1;
 	}
 

@@ -182,8 +182,8 @@ int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 
 		if (PIM_DEBUG_IGMP_PACKETS) {
 			zlog_debug(
-				"%s(%s): igmp kernel upcall on %s(%p) for %pI4 -> %pI4",
-				__func__, pim->vrf->name, ifp->name, igmp,
+				"(%s): igmp kernel upcall on %s(%p) for %pI4 -> %pI4",
+				pim->vrf->name, ifp->name, igmp,
 				&ip_hdr->ip_src, &ip_hdr->ip_dst);
 		}
 		if (igmp)
@@ -196,9 +196,9 @@ int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 	} else if (ip_hdr->ip_p) {
 		if (PIM_DEBUG_MROUTE_DETAIL) {
 			zlog_debug(
-				"%s: no kernel upcall proto=%d src: %pI4 dst: %pI4 msg_size=%ld",
-				__func__, ip_hdr->ip_p, &ip_hdr->ip_src,
-				&ip_hdr->ip_dst, (long int)buf_size);
+				"no kernel upcall proto=%d src: %pI4 dst: %pI4 msg_size=%ld",
+				ip_hdr->ip_p, &ip_hdr->ip_src, &ip_hdr->ip_dst,
+				(long int)buf_size);
 		}
 
 	} else {
@@ -210,8 +210,8 @@ int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 			return 0;
 		if (PIM_DEBUG_MROUTE) {
 			zlog_debug(
-				"%s: pim kernel upcall %s type=%d ip_p=%d from fd=%d for (S,G)=(%pI4,%pI4) on %s vifi=%d  size=%ld",
-				__func__, igmpmsgtype2str[msg->im_msgtype],
+				"pim kernel upcall %s type=%d ip_p=%d from fd=%d for (S,G)=(%pI4,%pI4) on %s vifi=%d  size=%ld",
+				igmpmsgtype2str[msg->im_msgtype],
 				msg->im_msgtype, ip_hdr->ip_p,
 				pim->mroute_socket, &msg->im_src, &msg->im_dst,
 				ifp->name, msg->im_vif, (long int)buf_size);

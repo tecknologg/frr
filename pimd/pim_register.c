@@ -96,15 +96,15 @@ void pim_register_stop_send(struct interface *ifp, pim_sgaddr *sg, pim_addr src,
 	pinfo = (struct pim_interface *)ifp->info;
 	if (!pinfo) {
 		if (PIM_DEBUG_PIM_TRACE)
-			zlog_debug("%s: No pinfo!", __func__);
+			zlog_debug("No pinfo!");
 		return;
 	}
 	if (pim_msg_send(pinfo->pim_sock_fd, src, originator, buffer,
 			 b1length + PIM_MSG_REGISTER_STOP_LEN, ifp->name)) {
 		if (PIM_DEBUG_PIM_TRACE) {
 			zlog_debug(
-				"%s: could not send PIM register stop message on interface %s",
-				__func__, ifp->name);
+				"could not send PIM register stop message on interface %s",
+				ifp->name);
 		}
 	}
 	++pinfo->pim_ifstat_reg_stop_send;
@@ -237,23 +237,22 @@ void pim_register_send(const uint8_t *buf, int buf_size, pim_addr src,
 	ifp = rpg->source_nexthop.interface;
 	if (!ifp) {
 		if (PIM_DEBUG_PIM_REG)
-			zlog_debug("%s: No interface to transmit register on",
-				   __func__);
+			zlog_debug("No interface to transmit register on");
 		return;
 	}
 	pinfo = (struct pim_interface *)ifp->info;
 	if (!pinfo) {
 		if (PIM_DEBUG_PIM_REG)
 			zlog_debug(
-				"%s: Interface: %s not configured for pim to transmit on!",
-				__func__, ifp->name);
+				"Interface: %s not configured for pim to transmit on!",
+				ifp->name);
 		return;
 	}
 
 	if (PIM_DEBUG_PIM_REG) {
-		zlog_debug("%s: Sending %s %sRegister Packet to %pPA on %s",
-			   __func__, up->sg_str, null_register ? "NULL " : "",
-			   &dst, ifp->name);
+		zlog_debug("Sending %s %sRegister Packet to %pPA on %s",
+			   up->sg_str, null_register ? "NULL " : "", &dst,
+			   ifp->name);
 	}
 
 	memset(buffer, 0, 10000);
@@ -272,8 +271,8 @@ void pim_register_send(const uint8_t *buf, int buf_size, pim_addr src,
 			 buf_size + PIM_MSG_REGISTER_LEN, ifp->name)) {
 		if (PIM_DEBUG_PIM_TRACE) {
 			zlog_debug(
-				"%s: could not send PIM register message on interface %s",
-				__func__, ifp->name);
+				"could not send PIM register message on interface %s",
+				ifp->name);
 		}
 		return;
 	}
@@ -291,8 +290,8 @@ void pim_null_register_send(struct pim_upstream *up)
 	if (!pim_ifp) {
 		if (PIM_DEBUG_PIM_TRACE)
 			zlog_debug(
-				"%s: Cannot send null-register for %s no valid iif",
-				__func__, up->sg_str);
+				"Cannot send null-register for %s no valid iif",
+				up->sg_str);
 		return;
 	}
 
@@ -300,8 +299,8 @@ void pim_null_register_send(struct pim_upstream *up)
 	if (!rpg) {
 		if (PIM_DEBUG_PIM_TRACE)
 			zlog_debug(
-				"%s: Cannot send null-register for %s no RPF to the RP",
-				__func__, up->sg_str);
+				"Cannot send null-register for %s no RPF to the RP",
+				up->sg_str);
 		return;
 	}
 
@@ -319,8 +318,8 @@ void pim_null_register_send(struct pim_upstream *up)
 		if (!pim_vxlan_get_register_src(pim_ifp->pim, up, &src)) {
 			if (PIM_DEBUG_PIM_TRACE)
 				zlog_debug(
-					"%s: Cannot send null-register for %s vxlan-aa PIP unavailable",
-					__func__, up->sg_str);
+					"Cannot send null-register for %s vxlan-aa PIP unavailable",
+					up->sg_str);
 			return;
 		}
 	}
@@ -452,8 +451,8 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 	if (!if_address_is_local(&dest_addr, PIM_AF, pim->vrf->vrf_id)) {
 		if (PIM_DEBUG_PIM_REG)
 			zlog_debug(
-				"%s: Received Register message for destination address: %pPA that I do not own",
-				__func__, &dest_addr);
+				"Received Register message for destination address: %pPA that I do not own",
+				&dest_addr);
 		return 0;
 	}
 
@@ -563,8 +562,8 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 						       src_addr);
 				if (PIM_DEBUG_PIM_PACKETS)
 					zlog_debug(
-						"%s: Sending register-stop to %pPA for %pSG due to prefix-list denial, dropping packet",
-						__func__, &src_addr, &sg);
+						"Sending register-stop to %pPA for %pSG due to prefix-list denial, dropping packet",
+						&src_addr, &sg);
 
 				return 0;
 			}
@@ -574,8 +573,7 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 			pim_addr pimbr = pim_br_get_pmbr(&sg);
 			if (PIM_DEBUG_PIM_PACKETS)
 				zlog_debug(
-					"%s: Received Register message with Border bit set",
-					__func__);
+					"Received Register message with Border bit set");
 
 			if (pim_addr_is_any(pimbr))
 				pim_br_set_pmbr(&sg, src_addr);
@@ -584,8 +582,8 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 						       src_addr);
 				if (PIM_DEBUG_PIM_PACKETS)
 					zlog_debug(
-						"%s: Sending register-Stop to %s and dropping mr. packet",
-						__func__, "Sender");
+						"Sending register-Stop to %s and dropping mr. packet",
+						"Sender");
 				/* Drop Packet Silently */
 				return 0;
 			}

@@ -504,22 +504,20 @@ void zebra_pbr_add_rule(struct zebra_pbr_rule *rule)
 	if (found) {
 		if (IS_ZEBRA_DEBUG_PBR)
 			zlog_debug(
-				"%s: seq: %d, prior: %d, unique: %d, ifname: %s -- update",
-				__func__, rule->rule.seq, rule->rule.priority,
+				"seq: %d, prior: %d, unique: %d, ifname: %s -- update",
+				rule->rule.seq, rule->rule.priority,
 				rule->rule.unique, rule->rule.ifname);
 
 		(void)dplane_pbr_rule_update(found, rule);
 
 		if (pbr_rule_release(found))
-			zlog_debug(
-				"%s: Rule being updated we know nothing about",
-				__func__);
+			zlog_debug("Rule being updated we know nothing about");
 
 	} else {
 		if (IS_ZEBRA_DEBUG_PBR)
 			zlog_debug(
-				"%s: seq: %d, prior: %d, unique: %d, ifname: %s -- new",
-				__func__, rule->rule.seq, rule->rule.priority,
+				"seq: %d, prior: %d, unique: %d, ifname: %s -- new",
+				rule->rule.seq, rule->rule.priority,
 				rule->rule.unique, rule->rule.ifname);
 
 		(void)dplane_pbr_rule_add(rule);
@@ -531,15 +529,14 @@ void zebra_pbr_add_rule(struct zebra_pbr_rule *rule)
 void zebra_pbr_del_rule(struct zebra_pbr_rule *rule)
 {
 	if (IS_ZEBRA_DEBUG_PBR)
-		zlog_debug("%s: seq: %d, prior: %d, unique: %d, ifname: %s",
-			   __func__, rule->rule.seq, rule->rule.priority,
+		zlog_debug("seq: %d, prior: %d, unique: %d, ifname: %s",
+			   rule->rule.seq, rule->rule.priority,
 			   rule->rule.unique, rule->rule.ifname);
 
 	(void)dplane_pbr_rule_delete(rule);
 
 	if (pbr_rule_release(rule))
-		zlog_debug("%s: Rule being deleted we know nothing about",
-			   __func__);
+		zlog_debug("Rule being deleted we know nothing about");
 }
 
 void zebra_pbr_process_iptable(struct zebra_dplane_ctx *ctx)
@@ -614,8 +611,8 @@ static void zebra_pbr_cleanup_rules(struct hash_bucket *b, void *data)
 			XFREE(MTYPE_TMP, rule);
 		else
 			zlog_debug(
-				"%s: Rule seq: %u is being cleaned but we can't find it in our tables",
-				__func__, rule->rule.seq);
+				"Rule seq: %u is being cleaned but we can't find it in our tables",
+				rule->rule.seq);
 	}
 }
 
@@ -707,9 +704,7 @@ void zebra_pbr_destroy_ipset(struct zebra_pbr_ipset *ipset)
 		hash_release(zrouter.ipset_hash, lookup);
 		XFREE(MTYPE_TMP, lookup);
 	} else
-		zlog_debug(
-			"%s: IPSet Entry being deleted we know nothing about",
-			__func__);
+		zlog_debug("IPSet Entry being deleted we know nothing about");
 }
 
 struct pbr_ipset_name_lookup {
@@ -782,8 +777,7 @@ void zebra_pbr_del_ipset_entry(struct zebra_pbr_ipset_entry *ipset)
 		hash_release(zrouter.ipset_entry_hash, lookup);
 		XFREE(MTYPE_TMP, lookup);
 	} else
-		zlog_debug("%s: IPSet being deleted we know nothing about",
-			   __func__);
+		zlog_debug("IPSet being deleted we know nothing about");
 }
 
 static void *pbr_iptable_alloc_intern(void *arg)
@@ -836,8 +830,7 @@ void zebra_pbr_del_iptable(struct zebra_pbr_iptable *iptable)
 		list_delete(&iptable->interface_name_list);
 		XFREE(MTYPE_TMP, lookup);
 	} else
-		zlog_debug("%s: IPTable being deleted we know nothing about",
-			   __func__);
+		zlog_debug("IPTable being deleted we know nothing about");
 }
 
 /*

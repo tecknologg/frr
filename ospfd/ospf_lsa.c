@@ -1965,8 +1965,8 @@ static struct ospf_lsa *ospf_lsa_translated_nssa_new(struct ospf *ospf,
 	    == NULL) {
 		if (IS_DEBUG_OSPF_NSSA)
 			zlog_debug(
-				"%s: Could not originate Translated Type-5 for %pI4",
-				__func__, &ei.p.prefix);
+				"Could not originate Translated Type-5 for %pI4",
+				&ei.p.prefix);
 		return NULL;
 	}
 
@@ -2014,8 +2014,8 @@ struct ospf_lsa *ospf_translated_nssa_originate(struct ospf *ospf,
 	if ((new = ospf_lsa_translated_nssa_new(ospf, type7)) == NULL) {
 		if (IS_DEBUG_OSPF_NSSA)
 			zlog_debug(
-				"%s: Could not translate Type-7, Id %pI4, to Type-5",
-				__func__, &type7->data->id);
+				"Could not translate Type-7, Id %pI4, to Type-5",
+				&type7->data->id);
 		return NULL;
 	}
 
@@ -2033,7 +2033,7 @@ struct ospf_lsa *ospf_translated_nssa_originate(struct ospf *ospf,
 	}
 
 	if (IS_DEBUG_OSPF_NSSA) {
-		zlog_debug("%s: translated Type 7, installed", __func__);
+		zlog_debug("translated Type 7, installed");
 		ospf_lsa_header_dump(new->data);
 		zlog_debug("   Network mask: %d", ip_masklen(extnew->mask));
 		zlog_debug("   Forward addr: %pI4",
@@ -2510,8 +2510,7 @@ void ospf_external_lsa_refresh_type(struct ospf *ospf, uint8_t type,
 							    lsa,
 							    EXTNL_LSA_AGGR))
 							zlog_debug(
-								"%s: Send Aggreate LSA (%pFX)",
-								__func__,
+								"Send Aggreate LSA (%pFX)",
 								&aggr->p);
 
 						ospf_originate_summary_lsa(
@@ -2896,16 +2895,14 @@ struct ospf_lsa *ospf_lsa_install(struct ospf *ospf, struct ospf_interface *oi,
 
 			if (IS_DEBUG_OSPF(lsa, LSA_REFRESH)) {
 				zlog_debug(
-					"%s() Premature Aging lsa %p, seqnum 0x%x",
-					__func__, lsa,
-					ntohl(lsa->data->ls_seqnum));
+					"() Premature Aging lsa %p, seqnum 0x%x",
+					lsa, ntohl(lsa->data->ls_seqnum));
 				ospf_lsa_header_dump(lsa->data);
 			}
 		} else {
 			if (IS_DEBUG_OSPF(lsa, LSA_GENERATE)) {
 				zlog_debug(
-					"%s() got an lsa with seq 0x80000000 that was not self originated. Ignoring",
-					__func__);
+					"() got an lsa with seq 0x80000000 that was not self originated. Ignoring");
 				ospf_lsa_header_dump(lsa->data);
 			}
 			return old;
@@ -3103,8 +3100,8 @@ static void ospf_maxage_lsa_remover(struct thread *thread)
 			} else {
 				if (IS_DEBUG_OSPF(lsa, LSA_FLOODING))
 					zlog_debug(
-						"%s: LSA[%s]: No associated LSDB!",
-						__func__, dump_lsa_key(lsa));
+						"LSA[%s]: No associated LSDB!",
+						dump_lsa_key(lsa));
 			}
 		}
 
@@ -3165,8 +3162,8 @@ void ospf_lsa_maxage_delete(struct ospf *ospf, struct ospf_lsa *lsa)
 		route_unlock_node(rn); /* route_node_lookup */
 	} else {
 		if (IS_DEBUG_OSPF_EVENT)
-			zlog_debug("%s: lsa %s is not found in maxage db.",
-				   __func__, dump_lsa_key(lsa));
+			zlog_debug("lsa %s is not found in maxage db.",
+				   dump_lsa_key(lsa));
 	}
 }
 
@@ -3696,9 +3693,8 @@ enum lsid_status ospf_lsa_unique_id(struct ospf *ospf, struct ospf_lsdb *lsdb,
 		 */
 		if (ip_masklen(al->mask) == p->prefixlen) {
 			if (IS_DEBUG_OSPF(lsa, LSA_GENERATE))
-				zlog_debug(
-					"%s: Can't get Link State ID for %pFX",
-					__func__, p);
+				zlog_debug("Can't get Link State ID for %pFX",
+					   p);
 			/*	  id.s_addr = 0; */
 			id->s_addr = 0xffffffff;
 			return LSID_NOT_AVAILABLE;
@@ -3720,8 +3716,8 @@ enum lsid_status ospf_lsa_unique_id(struct ospf *ospf, struct ospf_lsdb *lsdb,
 			if (lsa) {
 				if (IS_DEBUG_OSPF(lsa, LSA_GENERATE))
 					zlog_debug(
-						"%s: Can't get Link State ID for %pFX",
-						__func__, p);
+						"Can't get Link State ID for %pFX",
+						p);
 				id->s_addr = 0xffffffff;
 				return LSID_NOT_AVAILABLE;
 			}
@@ -3746,8 +3742,8 @@ enum lsid_status ospf_lsa_unique_id(struct ospf *ospf, struct ospf_lsdb *lsdb,
 			if (lsa && (ip_masklen(al->mask) != IPV4_MAX_BITLEN)) {
 				if (IS_DEBUG_OSPF(lsa, LSA_GENERATE))
 					zlog_debug(
-						"%s: Can't get Link State ID for %pFX",
-						__func__, p);
+						"Can't get Link State ID for %pFX",
+						p);
 				id->s_addr = 0xffffffff;
 				return LSID_NOT_AVAILABLE;
 			}
