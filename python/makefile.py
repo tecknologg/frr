@@ -32,7 +32,7 @@ for clippy_file in clippy_scan:
     assert clippy_file.endswith(".c")
 
 xref_targets = []
-for varname in ["bin_PROGRAMS", "sbin_PROGRAMS", "lib_LTLIBRARIES", "module_LTLIBRARIES"]:
+for varname in ["bin_PROGRAMS", "sbin_PROGRAMS", "noinst_PROGRAMS", "lib_LTLIBRARIES", "module_LTLIBRARIES"]:
     xref_targets.extend(mv[varname].strip().split())
 
 # check for files using clippy but not listed in clippy_scan
