@@ -461,9 +461,8 @@ static int pim_assert_do(struct pim_ifchannel *ch,
 	}
 	++pim_ifp->pim_ifstat_assert_send;
 
-	if (pim_msg_send(pim_ifp->pim_sock_fd, pim_ifp->primary_address,
-			 qpim_all_pim_routers_addr, pim_msg, pim_msg_size,
-			 ifp->name)) {
+	if (pim_msg_send(ifp, pim_ifp->primary_address,
+			 qpim_all_pim_routers_addr, pim_msg, pim_msg_size)) {
 		zlog_warn("%s: could not send PIM message on interface %s",
 			  __func__, ifp->name);
 		return -3;

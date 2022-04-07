@@ -592,9 +592,10 @@ static int pim_msg_send_frame(int fd, char *buf, size_t len,
 	return -1;
 }
 
-int pim_msg_send(int fd, pim_addr src, pim_addr dst, uint8_t *pim_msg,
-		 int pim_msg_size, const char *ifname)
+int pim_msg_send(struct interface *ifp, pim_addr src, pim_addr dst,
+		 uint8_t *pim_msg, int pim_msg_size)
 {
+	struct pim_interface *pim_ifp = ifp->info;
 	socklen_t tolen;
 	unsigned char buffer[10000];
 	unsigned char *msg_start;
@@ -664,6 +665,7 @@ int pim_msg_send(int fd, pim_addr src, pim_addr dst, uint8_t *pim_msg,
 
 	to.sin6_family = AF_INET6;
 	to.sin6_addr = dst;
+	to.sin6_scope_id = ifp->ifindex;
 	tolen = sizeof(to);
 #endif
 
@@ -672,15 +674,15 @@ int pim_msg_send(int fd, pim_addr src, pim_addr dst, uint8_t *pim_msg,
 
 	if (PIM_DEBUG_PIM_PACKETS)
 		zlog_debug("%s: to %pPA on %s: msg_size=%d checksum=%x",
-			   __func__, &dst, ifname, pim_msg_size,
+			   __func__, &dst, ifp->name, pim_msg_size,
 			   header->checksum);
 
 	if (PIM_DEBUG_PIM_PACKETDUMP_SEND) {
 		pim_pkt_dump(__func__, pim_msg, pim_msg_size);
 	}
 
-	pim_msg_send_frame(fd, (char *)buffer, sendlen, (struct sockaddr *)&to,
-			   tolen, ifname);
+	pim_msg_send_frame(pim_ifp->pim_sock_fd, (char *)buffer, sendlen,
+			   (struct sockaddr *)&to, tolen, ifp->name);
 	return 0;
 }
 
@@ -723,9 +725,8 @@ static int hello_send(struct interface *ifp, uint16_t holdtime)
 			     qpim_all_pim_routers_addr, pim_msg, pim_msg_size,
 			     PIM_MSG_TYPE_HELLO, false);
 
-	if (pim_msg_send(pim_ifp->pim_sock_fd, pim_ifp->primary_address,
-			 qpim_all_pim_routers_addr, pim_msg, pim_msg_size,
-			 ifp->name)) {
+	if (pim_msg_send(ifp, pim_ifp->primary_address,
+			 qpim_all_pim_routers_addr, pim_msg, pim_msg_size)) {
 		if (PIM_DEBUG_PIM_HELLO) {
 			zlog_debug(
 				"%s: could not send PIM message on interface %s",

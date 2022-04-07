@@ -408,6 +408,7 @@ int pim_joinprune_recv(struct interface *ifp, struct pim_neighbor *neigh,
 int pim_joinprune_send(struct pim_rpf *rpf, struct list *groups)
 {
 	struct pim_jp_agg_group *group;
+	struct interface *ifp = NULL;
 	struct pim_interface *pim_ifp = NULL;
 	struct pim_jp_groups *grp = NULL;
 	struct pim_jp *msg = NULL;
@@ -420,9 +421,10 @@ int pim_joinprune_send(struct pim_rpf *rpf, struct list *groups)
 	size_t group_size = 0;
 	pim_addr rpf_addr;
 
-	if (rpf->source_nexthop.interface)
-		pim_ifp = rpf->source_nexthop.interface->info;
-	else {
+	if (rpf->source_nexthop.interface) {
+		ifp = rpf->source_nexthop.interface;
+		pim_ifp = ifp->info;
+	} else {
 		zlog_warn("%s: RPF interface is not present", __func__);
 		return -1;
 	}
@@ -492,11 +494,9 @@ int pim_joinprune_send(struct pim_rpf *rpf, struct list *groups)
 					     qpim_all_pim_routers_addr, pim_msg,
 					     packet_size,
 					     PIM_MSG_TYPE_JOIN_PRUNE, false);
-			if (pim_msg_send(pim_ifp->pim_sock_fd,
-					 pim_ifp->primary_address,
+			if (pim_msg_send(ifp, pim_ifp->primary_address,
 					 qpim_all_pim_routers_addr, pim_msg,
-					 packet_size,
-					 rpf->source_nexthop.interface->name)) {
+					 packet_size)) {
 				zlog_warn(
 					"%s: could not send PIM message on interface %s",
 					__func__,
@@ -550,11 +550,9 @@ int pim_joinprune_send(struct pim_rpf *rpf, struct list *groups)
 					     qpim_all_pim_routers_addr, pim_msg,
 					     packet_size,
 					     PIM_MSG_TYPE_JOIN_PRUNE, false);
-			if (pim_msg_send(pim_ifp->pim_sock_fd,
-					 pim_ifp->primary_address,
+			if (pim_msg_send(ifp, pim_ifp->primary_address,
 					 qpim_all_pim_routers_addr, pim_msg,
-					 packet_size,
-					 rpf->source_nexthop.interface->name)) {
+					 packet_size)) {
 				zlog_warn(
 					"%s: could not send PIM message on interface %s",
 					__func__,
@@ -571,10 +569,9 @@ int pim_joinprune_send(struct pim_rpf *rpf, struct list *groups)
 		pim_msg_build_header(
 			pim_ifp->primary_address, qpim_all_pim_routers_addr,
 			pim_msg, packet_size, PIM_MSG_TYPE_JOIN_PRUNE, false);
-		if (pim_msg_send(pim_ifp->pim_sock_fd, pim_ifp->primary_address,
+		if (pim_msg_send(ifp, pim_ifp->primary_address,
 				 qpim_all_pim_routers_addr, pim_msg,
-				 packet_size,
-				 rpf->source_nexthop.interface->name)) {
+				 packet_size)) {
 			zlog_warn(
 				"%s: could not send PIM message on interface %s",
 				__func__, rpf->source_nexthop.interface->name);

@@ -99,8 +99,8 @@ void pim_register_stop_send(struct interface *ifp, pim_sgaddr *sg, pim_addr src,
 			zlog_debug("%s: No pinfo!", __func__);
 		return;
 	}
-	if (pim_msg_send(pinfo->pim_sock_fd, src, originator, buffer,
-			 b1length + PIM_MSG_REGISTER_STOP_LEN, ifp->name)) {
+	if (pim_msg_send(ifp, src, originator, buffer,
+			 b1length + PIM_MSG_REGISTER_STOP_LEN)) {
 		if (PIM_DEBUG_PIM_TRACE) {
 			zlog_debug(
 				"%s: could not send PIM register stop message on interface %s",
@@ -268,8 +268,8 @@ void pim_register_send(const uint8_t *buf, int buf_size, pim_addr src,
 
 	++pinfo->pim_ifstat_reg_send;
 
-	if (pim_msg_send(pinfo->pim_sock_fd, src, dst, buffer,
-			 buf_size + PIM_MSG_REGISTER_LEN, ifp->name)) {
+	if (pim_msg_send(ifp, src, dst, buffer,
+			 buf_size + PIM_MSG_REGISTER_LEN)) {
 		if (PIM_DEBUG_PIM_TRACE) {
 			zlog_debug(
 				"%s: could not send PIM register message on interface %s",
