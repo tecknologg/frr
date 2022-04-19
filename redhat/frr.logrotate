@@ -1,152 +1,27 @@
-/var/log/frr/frr.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -HUP `cat /var/run/*syslog*.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
+/var/log/frr/*.log {
+        size 500k
+        sharedscripts
+        missingok
+        compress
+        rotate 14
+        create 640 frr frrvty
 
-/var/log/frr/zebra.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/zebra.pid 2> /dev/null` 2> /dev/null || true
-    endscript
+        postrotate
+            pid=$(lsof -t -a -c /syslog/ /var/log/frr/* 2>/dev/null)
+            if [ -n "$pid" ]
+            then # using syslog
+                 kill -HUP $pid
+            fi
+            # in case using file logging; if switching back and forth
+            # between file and syslog, rsyslogd might still have file
+            # open, as well as the daemons, so always signal the daemons.
+            # It's safe, a NOP if (only) syslog is being used.
+            for i in babeld bgpd eigrpd isisd ldpd nhrpd ospf6d ospfd sharpd \
+                pimd ripd ripngd zebra pathd pbrd staticd bfdd fabricd vrrpd; do
+                if [ -e /var/run/frr/$i.pid ] ; then
+                    pids="$pids $(cat /var/run/frr/$i.pid)"
+                fi
+            done
+            [ -n "$pids" ] && kill -USR1 $pids || true
+        endscript
 }
-
-/var/log/frr/babeld.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/babeld.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/bgpd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/bgpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/isisd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/isisd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/ospfd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/ospfd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/ospf6d.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/ospf6d.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/ripd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/ripd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/ripngd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/ripngd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/ldpd.log {
-    notifempty
-    missingok
-    postrotate
-	/bin/kill -USR1 `cat /var/run/frr/ldpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/nhrpd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/nhrpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/eigrpd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/eigrpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/bfdd.log {
-    notifempty
-    missingok
-    postrotate
-    /bin/kill -USR1 `cat /var/run/frr/bfdd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/fabricd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/fabricd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/pbrd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/pbrd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/pimd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/pimd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/sharpd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/sharpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/staticd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/staticd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
-/var/log/frr/vrrpd.log {
-    notifempty
-    missingok
-    postrotate
-        /bin/kill -USR1 `cat /var/run/frr/vrrpd.pid 2> /dev/null` 2> /dev/null || true
-    endscript
-}
-
