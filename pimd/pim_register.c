@@ -498,7 +498,7 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 	 */
 	if ((*bits & PIM_REGISTER_NR_BIT) &&
 	    ((tlv_buf_size - PIM_MSG_REGISTER_BIT_RESERVED_LEN) >
-	     (int)sizeof(ip6_hdr))) {
+	     (int)sizeof(struct ip6_hdr))) {
 		uint16_t computed_checksum;
 		uint16_t received_checksum;
 		struct ipv6_ph ph;
@@ -507,7 +507,7 @@ int pim_register_recv(struct interface *ifp, pim_addr dest_addr,
 		header = (struct pim_msg_header
 				  *)(tlv_buf +
 				     PIM_MSG_REGISTER_BIT_RESERVED_LEN +
-				     sizeof(ip6_hdr));
+				     sizeof(struct ip6_hdr));
 		ph.src = sg.src;
 		ph.dst = sg.grp;
 		ph.ulpl = htonl(PIM_MSG_HEADER_LEN);
