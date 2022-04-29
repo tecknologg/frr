@@ -554,7 +554,16 @@ static int pim_msg_send_frame(int fd, char *buf, size_t len,
 			      struct sockaddr *dst, size_t salen,
 			      const char *ifname)
 {
-	if (sendto(fd, buf, len, MSG_DONTWAIT, dst, salen) >= 0)
+	ssize_t ret;
+
+	errno = 0;
+
+	ret = sendto(fd, buf, len, MSG_DONTWAIT, dst, salen);
+	zlog_debug(
+		"sendto(%pSU%%%s) fd=%d msg_size=%zu ret=%zd %m",
+		dst, ifname, fd, len, ret);
+
+	if (ret >= 0)
 		return 0;
 
 #if PIM_IPV == 4
