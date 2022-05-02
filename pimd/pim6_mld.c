@@ -2701,7 +2701,7 @@ static void gm_show_joins_one(struct vty *vty, struct gm_if *gm_ifp,
 		json_object_object_addf(js_group, js_src, "%pPA",
 					&sg->sgaddr.src);
 
-		json_object_string_addf(js_src, "state", gm_states[sg->state]);
+		json_object_string_add(js_src, "state", gm_states[sg->state]);
 		json_object_string_addf(js_src, "created", "%pTVMs",
 					&sg->created);
 		json_object_string_addf(js_src, "lastSeen", "%pTVMs", recent);
@@ -2986,7 +2986,7 @@ DEFPY(gm_debug_iface_cfg,
 		changed = true;
 	}
 	if (query_max_response_time_str &&
-	    gm_ifp->cur_max_resp != query_max_response_time) {
+	    gm_ifp->cur_max_resp != (unsigned)query_max_response_time) {
 		gm_ifp->cur_max_resp = query_max_response_time;
 		changed = true;
 	}
