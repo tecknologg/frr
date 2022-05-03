@@ -535,75 +535,33 @@ DEFPY (interface_no_ipv6_mld_join,
 
 DEFPY (interface_ipv6_mld,
        interface_ipv6_mld_cmd,
-       "ipv6 mld",
-       IPV6_STR
-       IFACE_MLD_STR)
-{
-	nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY, "true");
-
-	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
-				    "frr-routing:ipv6");
-}
-
-DEFPY (interface_no_ipv6_mld,
-       interface_no_ipv6_mld_cmd,
-       "no ipv6 mld",
+       "[no] ipv6 mld",
        NO_STR
        IPV6_STR
        IFACE_MLD_STR)
 {
-	const struct lyd_node *pim_enable_dnode;
-	char pim_if_xpath[XPATH_MAXLEN + 64];
+	const char *value = no ? "false" : "true";
 
-	snprintf(pim_if_xpath, sizeof(pim_if_xpath),
-		 "%s/frr-pim:pim/address-family[address-family='%s']",
-		 VTY_CURR_XPATH, "frr-routing:ipv6");
-
-	pim_enable_dnode = yang_dnode_getf(vty->candidate_config->dnode,
-					   FRR_PIM_ENABLE_XPATH, VTY_CURR_XPATH,
-					   "frr-routing:ipv6");
-	if (!pim_enable_dnode) {
-		nb_cli_enqueue_change(vty, pim_if_xpath, NB_OP_DESTROY, NULL);
-		nb_cli_enqueue_change(vty, ".", NB_OP_DESTROY, NULL);
-	} else {
-		if (!yang_dnode_get_bool(pim_enable_dnode, ".")) {
-			nb_cli_enqueue_change(vty, pim_if_xpath, NB_OP_DESTROY,
-					      NULL);
-			nb_cli_enqueue_change(vty, ".", NB_OP_DESTROY, NULL);
-		} else
-			nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY,
-					      "false");
-	}
-
+	nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY, value);
 	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
 				    "frr-routing:ipv6");
 }
 
 DEFPY (interface_ipv6_mld_version,
        interface_ipv6_mld_version_cmd,
-       "ipv6 mld version (1-2)$version",
-       IPV6_STR
-       IFACE_MLD_STR
-       "MLD version\n"
-       "MLD version number\n")
-{
-	nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY, "true");
-	nb_cli_enqueue_change(vty, "./mld-version", NB_OP_MODIFY, version_str);
-
-	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
-				    "frr-routing:ipv6");
-}
-
-DEFPY (interface_no_ipv6_mld_version,
-       interface_no_ipv6_mld_version_cmd,
-       "no ipv6 mld version [(1-2)]",
+       "[no] ipv6 mld version ![(1-2)$version]",
        NO_STR
        IPV6_STR
        IFACE_MLD_STR
        "MLD version\n"
        "MLD version number\n")
 {
-	nb_cli_enqueue_change(vty, "./mld-version", NB_OP_DESTROY, NULL);
+	if (no)
+		nb_cli_enqueue_change(vty, "./mld-version", NB_OP_DESTROY,
+				      NULL);
+	else
+		nb_cli_enqueue_change(vty, "./mld-version", NB_OP_MODIFY,
+				      version_str);
 
 	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
 				    "frr-routing:ipv6");
@@ -611,42 +569,19 @@ DEFPY (interface_no_ipv6_mld_version,
 
 DEFPY (interface_ipv6_mld_query_interval,
        interface_ipv6_mld_query_interval_cmd,
-       "ipv6 mld query-interval (1-65535)$q_interval",
+       "[no] ipv6 mld query-interval ![(1-65535)$q_interval]",
+       NO_STR
        IPV6_STR
        IFACE_MLD_STR
        IFACE_MLD_QUERY_INTERVAL_STR
        "Query interval in seconds\n")
 {
-	const struct lyd_node *pim_enable_dnode;
-
-	pim_enable_dnode = yang_dnode_getf(vty->candidate_config->dnode,
-					   FRR_PIM_ENABLE_XPATH, VTY_CURR_XPATH,
-					   "frr-routing:ipv6");
-	if (!pim_enable_dnode) {
-		nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY, "true");
-	} else {
-		if (!yang_dnode_get_bool(pim_enable_dnode, "."))
-			nb_cli_enqueue_change(vty, "./enable", NB_OP_MODIFY,
-					      "true");
-	}
-
-	nb_cli_enqueue_change(vty, "./query-interval", NB_OP_MODIFY,
-			      q_interval_str);
-
-	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
-				    "frr-routing:ipv6");
-}
-
-DEFPY (interface_no_ipv6_mld_query_interval,
-      interface_no_ipv6_mld_query_interval_cmd,
-      "no ipv6 mld query-interval [(1-65535)]",
-      NO_STR
-      IPV6_STR
-      IFACE_MLD_STR
-      IFACE_MLD_QUERY_INTERVAL_STR
-      IGNORED_IN_NO_STR)
-{
-	nb_cli_enqueue_change(vty, "./query-interval", NB_OP_DESTROY, NULL);
+	if (no)
+		nb_cli_enqueue_change(vty, "./query-interval", NB_OP_DESTROY,
+				      NULL);
+	else
+		nb_cli_enqueue_change(vty, "./query-interval", NB_OP_MODIFY,
+				      q_interval_str);
 
 	return nb_cli_apply_changes(vty, FRR_GMP_INTERFACE_XPATH,
 				    "frr-routing:ipv6");
@@ -660,8 +595,11 @@ DEFPY (ipv6_mld_group_watermark,
        "Configure group limit for watermark warning\n"
        "Group count to generate watermark warning\n")
 {
-	PIM_DECLVAR_CONTEXT(vrf, pim);
+	PIM_DECLVAR_CONTEXT_VRF(vrf, pim);
+
 	/* TBD Depends on MLD data structure changes */
+	(void)pim;
+
 	return CMD_SUCCESS;
 }
 
@@ -674,78 +612,54 @@ DEFPY (no_ipv6_mld_group_watermark,
        "Unconfigure group limit for watermark warning\n"
        IGNORED_IN_NO_STR)
 {
-	PIM_DECLVAR_CONTEXT(vrf, pim);
+	PIM_DECLVAR_CONTEXT_VRF(vrf, pim);
+
 	/* TBD Depends on MLD data structure changes */
+	(void)pim;
+
 	return CMD_SUCCESS;
 }
 
 DEFPY (interface_ipv6_mld_query_max_response_time,
        interface_ipv6_mld_query_max_response_time_cmd,
-       "ipv6 mld query-max-response-time (1-65535)$qmrt",
+       "[no] ipv6 mld query-max-response-time ![(1-65535)$qmrt]",
+       NO_STR
        IPV6_STR
        IFACE_MLD_STR
        IFACE_MLD_QUERY_MAX_RESPONSE_TIME_STR
-       "Query response value in deci-seconds\n")
+       "Query response value in milliseconds\n")
 {
+	if (no)
+		return gm_process_no_query_max_response_time_cmd(vty);
 	return gm_process_query_max_response_time_cmd(vty, qmrt_str);
 }
 
-DEFPY (interface_no_ipv6_mld_query_max_response_time,
-       interface_no_ipv6_mld_query_max_response_time_cmd,
-       "no ipv6 mld query-max-response-time [(1-65535)]",
+DEFPY (interface_ipv6_mld_robustness,
+       interface_ipv6_mld_robustness_cmd,
+       "[no] ipv6 mld robustness ![(1-7)]",
        NO_STR
        IPV6_STR
        IFACE_MLD_STR
-       IFACE_MLD_QUERY_MAX_RESPONSE_TIME_STR
-       IGNORED_IN_NO_STR)
+       "MLD Robustness variable\n"
+       "MLD Robustness variable\n")
 {
-	return gm_process_no_query_max_response_time_cmd(vty);
-}
-
-DEFPY (interface_ipv6_mld_last_member_query_count,
-       interface_ipv6_mld_last_member_query_count_cmd,
-       "ipv6 mld last-member-query-count (1-255)$lmqc",
-       IPV6_STR
-       IFACE_MLD_STR
-       IFACE_MLD_LAST_MEMBER_QUERY_COUNT_STR
-       "Last member query count\n")
-{
-	return gm_process_last_member_query_count_cmd(vty, lmqc_str);
-}
-
-DEFPY (interface_no_ipv6_mld_last_member_query_count,
-       interface_no_ipv6_mld_last_member_query_count_cmd,
-       "no ipv6 mld last-member-query-count [(1-255)]",
-       NO_STR
-       IPV6_STR
-       IFACE_MLD_STR
-       IFACE_MLD_LAST_MEMBER_QUERY_COUNT_STR
-       IGNORED_IN_NO_STR)
-{
-	return gm_process_no_last_member_query_count_cmd(vty);
+	if (no)
+		return gm_process_no_last_member_query_count_cmd(vty);
+	return gm_process_last_member_query_count_cmd(vty, robustness_str);
 }
 
 DEFPY (interface_ipv6_mld_last_member_query_interval,
        interface_ipv6_mld_last_member_query_interval_cmd,
-       "ipv6 mld last-member-query-interval (1-65535)$lmqi",
-       IPV6_STR
-       IFACE_MLD_STR
-       IFACE_MLD_LAST_MEMBER_QUERY_INTERVAL_STR
-       "Last member query interval in deciseconds\n")
-{
-	return gm_process_last_member_query_interval_cmd(vty, lmqi_str);
-}
-
-DEFPY (interface_no_ipv6_mld_last_member_query_interval,
-       interface_no_ipv6_mld_last_member_query_interval_cmd,
-       "no ipv6 mld last-member-query-interval [(1-65535)]",
+       "[no] ipv6 mld last-member-query-interval ![(1-65535)$lmqi]",
        NO_STR
        IPV6_STR
        IFACE_MLD_STR
        IFACE_MLD_LAST_MEMBER_QUERY_INTERVAL_STR
-       IGNORED_IN_NO_STR)
+       "Last member query interval in milliseconds\n")
 {
-	return gm_process_no_last_member_query_interval_cmd(vty);
+	if (no)
+		return gm_process_no_last_member_query_interval_cmd(vty);
+	return gm_process_last_member_query_interval_cmd(vty, lmqi_str);
 }
 
 DEFPY (show_ipv6_pim_rp,
@@ -1569,6 +1483,350 @@ DEFPY (show_ipv6_pim_nexthop_lookup,
 	return CMD_SUCCESS;
 }
 
+DEFPY (show_ipv6_multicast,
+       show_ipv6_multicast_cmd,
+       "show ipv6 multicast [vrf NAME]",
+       SHOW_STR
+       IPV6_STR
+       "Multicast global information\n"
+       VRF_CMD_HELP_STR)
+{
+	struct vrf *v;
+	struct pim_instance *pim;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+
+	if (!v)
+		return CMD_WARNING;
+
+	pim = pim_get_pim_instance(v->vrf_id);
+
+	if (!pim) {
+		vty_out(vty, "%% Unable to find pim instance\n");
+		return CMD_WARNING;
+	}
+
+	pim_cmd_show_ip_multicast_helper(pim, vty);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_multicast_vrf_all,
+       show_ipv6_multicast_vrf_all_cmd,
+       "show ipv6 multicast vrf all",
+       SHOW_STR
+       IPV6_STR
+       "Multicast global information\n"
+       VRF_CMD_HELP_STR)
+{
+	struct vrf *vrf;
+
+	RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name) {
+		vty_out(vty, "VRF: %s\n", vrf->name);
+		pim_cmd_show_ip_multicast_helper(vrf->info, vty);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_multicast_count,
+       show_ipv6_multicast_count_cmd,
+       "show ipv6 multicast count [vrf NAME] [json$json]",
+       SHOW_STR
+       IPV6_STR
+       "Multicast global information\n"
+       "Data packet count\n"
+       VRF_CMD_HELP_STR
+       JSON_STR)
+{
+	struct pim_instance *pim;
+	struct vrf *v;
+	json_object *json_parent = NULL;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+
+	if (!v)
+		return CMD_WARNING;
+
+	pim = pim_get_pim_instance(v->vrf_id);
+
+	if (!pim) {
+		vty_out(vty, "%% Unable to find pim instance\n");
+		return CMD_WARNING;
+	}
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	show_multicast_interfaces(pim, vty, json_parent);
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_multicast_count_vrf_all,
+       show_ipv6_multicast_count_vrf_all_cmd,
+       "show ipv6 multicast count vrf all [json$json]",
+       SHOW_STR
+       IPV6_STR
+       "Multicast global information\n"
+       "Data packet count\n"
+       VRF_CMD_HELP_STR
+       JSON_STR)
+{
+	struct vrf *vrf;
+	json_object *json_parent = NULL;
+	json_object *json_vrf = NULL;
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name) {
+		if (!json)
+			vty_out(vty, "VRF: %s\n", vrf->name);
+		else
+			json_vrf = json_object_new_object();
+
+		show_multicast_interfaces(vrf->info, vty, json_vrf);
+		if (json)
+			json_object_object_add(json_parent, vrf->name,
+					       json_vrf);
+	}
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute,
+       show_ipv6_mroute_cmd,
+       "show ipv6 mroute [vrf NAME] [X:X::X:X$s_or_g [X:X::X:X$g]] [fill$fill] [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "The Source or Group\n"
+       "The Group\n"
+       "Fill in Assumed data\n"
+       JSON_STR)
+{
+	pim_sgaddr sg = {0};
+	struct pim_instance *pim;
+	struct vrf *v;
+	json_object *json_parent = NULL;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+
+	if (!v)
+		return CMD_WARNING;
+
+	pim = pim_get_pim_instance(v->vrf_id);
+
+	if (!pim) {
+		vty_out(vty, "%% Unable to find pim instance\n");
+		return CMD_WARNING;
+	}
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	if (!pim_addr_is_any(s_or_g)) {
+		if (!pim_addr_is_any(g)) {
+			sg.src = s_or_g;
+			sg.grp = g;
+		} else
+			sg.grp = s_or_g;
+	}
+
+	show_mroute(pim, vty, &sg, !!fill, json_parent);
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute_vrf_all,
+       show_ipv6_mroute_vrf_all_cmd,
+       "show ipv6 mroute vrf all [fill$fill] [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "Fill in Assumed data\n"
+       JSON_STR)
+{
+	pim_sgaddr sg = {0};
+	struct vrf *vrf;
+	json_object *json_parent = NULL;
+	json_object *json_vrf = NULL;
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name) {
+		if (!json)
+			vty_out(vty, "VRF: %s\n", vrf->name);
+		else
+			json_vrf = json_object_new_object();
+		show_mroute(vrf->info, vty, &sg, !!fill, json_vrf);
+		if (json)
+			json_object_object_add(json_parent, vrf->name,
+					       json_vrf);
+	}
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute_count,
+       show_ipv6_mroute_count_cmd,
+       "show ipv6 mroute [vrf NAME] count [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "Route and packet count data\n"
+       JSON_STR)
+{
+	struct pim_instance *pim;
+	struct vrf *v;
+	json_object *json_parent = NULL;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+
+	if (!v)
+		return CMD_WARNING;
+
+	pim = pim_get_pim_instance(v->vrf_id);
+
+	if (!pim) {
+		vty_out(vty, "%% Unable to find pim instance\n");
+		return CMD_WARNING;
+	}
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	show_mroute_count(pim, vty, json_parent);
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute_count_vrf_all,
+       show_ipv6_mroute_count_vrf_all_cmd,
+       "show ipv6 mroute vrf all count [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "Route and packet count data\n"
+       JSON_STR)
+{
+	struct vrf *vrf;
+	json_object *json_parent = NULL;
+	json_object *json_vrf = NULL;
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name) {
+		if (!json)
+			vty_out(vty, "VRF: %s\n", vrf->name);
+		else
+			json_vrf = json_object_new_object();
+		show_mroute_count(vrf->info, vty, json_vrf);
+
+		if (json)
+			json_object_object_add(json_parent, vrf->name,
+					       json_vrf);
+	}
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute_summary,
+       show_ipv6_mroute_summary_cmd,
+       "show ipv6 mroute [vrf NAME] summary [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "Summary of all mroutes\n"
+       JSON_STR)
+{
+	struct pim_instance *pim;
+	struct vrf *v;
+	json_object *json_parent = NULL;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+
+	if (!v)
+		return CMD_WARNING;
+
+	pim = pim_get_pim_instance(v->vrf_id);
+
+	if (!pim) {
+		vty_out(vty, "%% Unable to find pim instance\n");
+		return CMD_WARNING;
+	}
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	show_mroute_summary(pim, vty, json_parent);
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
+DEFPY (show_ipv6_mroute_summary_vrf_all,
+       show_ipv6_mroute_summary_vrf_all_cmd,
+       "show ipv6 mroute vrf all summary [json$json]",
+       SHOW_STR
+       IPV6_STR
+       MROUTE_STR
+       VRF_CMD_HELP_STR
+       "Summary of all mroutes\n"
+       JSON_STR)
+{
+	struct vrf *vrf;
+	json_object *json_parent = NULL;
+	json_object *json_vrf = NULL;
+
+	if (json)
+		json_parent = json_object_new_object();
+
+	RB_FOREACH (vrf, vrf_name_head, &vrfs_by_name) {
+		if (!json)
+			vty_out(vty, "VRF: %s\n", vrf->name);
+		else
+			json_vrf = json_object_new_object();
+
+		show_mroute_summary(vrf->info, vty, json_vrf);
+
+		if (json)
+			json_object_object_add(json_parent, vrf->name,
+					       json_vrf);
+	}
+
+	if (json)
+		vty_json(vty, json_parent);
+
+	return CMD_SUCCESS;
+}
+
 void pim_cmd_init(void)
 {
 	if_cmd_init(pim_interface_config_write);
@@ -1616,31 +1874,23 @@ void pim_cmd_init(void)
 	install_element(VRF_NODE, &ipv6_ssmpingd_cmd);
 	install_element(CONFIG_NODE, &no_ipv6_ssmpingd_cmd);
 	install_element(VRF_NODE, &no_ipv6_ssmpingd_cmd);
+
 	install_element(INTERFACE_NODE, &interface_ipv6_mld_cmd);
-	install_element(INTERFACE_NODE, &interface_no_ipv6_mld_cmd);
 	install_element(INTERFACE_NODE, &interface_ipv6_mld_join_cmd);
 	install_element(INTERFACE_NODE, &interface_no_ipv6_mld_join_cmd);
 	install_element(INTERFACE_NODE, &interface_ipv6_mld_version_cmd);
-	install_element(INTERFACE_NODE, &interface_no_ipv6_mld_version_cmd);
 	install_element(INTERFACE_NODE, &interface_ipv6_mld_query_interval_cmd);
-	install_element(INTERFACE_NODE,
-			&interface_no_ipv6_mld_query_interval_cmd);
 	install_element(CONFIG_NODE, &ipv6_mld_group_watermark_cmd);
 	install_element(VRF_NODE, &ipv6_mld_group_watermark_cmd);
 	install_element(CONFIG_NODE, &no_ipv6_mld_group_watermark_cmd);
 	install_element(VRF_NODE, &no_ipv6_mld_group_watermark_cmd);
+
 	install_element(INTERFACE_NODE,
 			&interface_ipv6_mld_query_max_response_time_cmd);
 	install_element(INTERFACE_NODE,
-			&interface_no_ipv6_mld_query_max_response_time_cmd);
-	install_element(INTERFACE_NODE,
-			&interface_ipv6_mld_last_member_query_count_cmd);
-	install_element(INTERFACE_NODE,
-			&interface_no_ipv6_mld_last_member_query_count_cmd);
+			&interface_ipv6_mld_robustness_cmd);
 	install_element(INTERFACE_NODE,
 			&interface_ipv6_mld_last_member_query_interval_cmd);
-	install_element(INTERFACE_NODE,
-			&interface_no_ipv6_mld_last_member_query_interval_cmd);
 
 	install_element(VIEW_NODE, &show_ipv6_pim_rp_cmd);
 	install_element(VIEW_NODE, &show_ipv6_pim_rp_vrf_all_cmd);
@@ -1665,4 +1915,14 @@ void pim_cmd_init(void)
 	install_element(VIEW_NODE, &show_ipv6_pim_neighbor_vrf_all_cmd);
 	install_element(VIEW_NODE, &show_ipv6_pim_nexthop_cmd);
 	install_element(VIEW_NODE, &show_ipv6_pim_nexthop_lookup_cmd);
+	install_element(VIEW_NODE, &show_ipv6_multicast_cmd);
+	install_element(VIEW_NODE, &show_ipv6_multicast_vrf_all_cmd);
+	install_element(VIEW_NODE, &show_ipv6_multicast_count_cmd);
+	install_element(VIEW_NODE, &show_ipv6_multicast_count_vrf_all_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_vrf_all_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_count_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_count_vrf_all_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_summary_cmd);
+	install_element(VIEW_NODE, &show_ipv6_mroute_summary_vrf_all_cmd);
 }

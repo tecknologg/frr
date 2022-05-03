@@ -162,21 +162,16 @@ int pim_find_or_track_nexthop(struct pim_instance *pim, struct prefix *addr,
 	return 0;
 }
 
-#if PIM_IPV == 4
-void pim_nht_bsr_add(struct pim_instance *pim, struct in_addr addr)
+void pim_nht_bsr_add(struct pim_instance *pim, pim_addr addr)
 {
 	struct pim_nexthop_cache *pnc;
 	struct prefix pfx;
 
-	pfx.family = AF_INET;
-	pfx.prefixlen = IPV4_MAX_BITLEN;
-	pfx.u.prefix4 = addr;
-
+	pim_addr_to_prefix(&pfx, addr);
 	pnc = pim_nht_get(pim, &pfx);
 
 	pnc->bsr_count++;
 }
-#endif /* PIM_IPV == 4 */
 
 static void pim_nht_drop_maybe(struct pim_instance *pim,
 			       struct pim_nexthop_cache *pnc)
@@ -246,8 +241,7 @@ void pim_delete_tracked_nexthop(struct pim_instance *pim, struct prefix *addr,
 	pim_nht_drop_maybe(pim, pnc);
 }
 
-#if PIM_IPV == 4
-void pim_nht_bsr_del(struct pim_instance *pim, struct in_addr addr)
+void pim_nht_bsr_del(struct pim_instance *pim, pim_addr addr)
 {
 	struct pim_nexthop_cache *pnc = NULL;
 	struct pim_nexthop_cache lookup;
@@ -257,28 +251,26 @@ void pim_nht_bsr_del(struct pim_instance *pim, struct in_addr addr)
 	 * is 0.0.0.0 as that the BSR has not been registered
 	 * for tracking yet.
 	 */
-	if (addr.s_addr == INADDR_ANY)
+	if (pim_addr_is_any(addr))
 		return;
 
-	lookup.rpf.rpf_addr.family = AF_INET;
-	lookup.rpf.rpf_addr.prefixlen = IPV4_MAX_BITLEN;
-	lookup.rpf.rpf_addr.u.prefix4 = addr;
+	pim_addr_to_prefix(&lookup.rpf.rpf_addr, addr);
 
 	pnc = hash_lookup(pim->rpf_hash, &lookup);
 
 	if (!pnc) {
-		zlog_warn("attempting to delete nonexistent NHT BSR entry %pI4",
+		zlog_warn("attempting to delete nonexistent NHT BSR entry %pPA",
 			  &addr);
 		return;
 	}
 
-	assertf(pnc->bsr_count > 0, "addr=%pI4", &addr);
+	assertf(pnc->bsr_count > 0, "addr=%pPA", &addr);
 	pnc->bsr_count--;
 
 	pim_nht_drop_maybe(pim, pnc);
 }
 
-bool pim_nht_bsr_rpf_check(struct pim_instance *pim, struct in_addr bsr_addr,
+bool pim_nht_bsr_rpf_check(struct pim_instance *pim, pim_addr bsr_addr,
 			   struct interface *src_ifp, pim_addr src_ip)
 {
 	struct pim_nexthop_cache *pnc = NULL;
@@ -287,9 +279,7 @@ bool pim_nht_bsr_rpf_check(struct pim_instance *pim, struct in_addr bsr_addr,
 	struct nexthop *nh;
 	struct interface *ifp;
 
-	lookup.rpf.rpf_addr.family = AF_INET;
-	lookup.rpf.rpf_addr.prefixlen = IPV4_MAX_BITLEN;
-	lookup.rpf.rpf_addr.u.prefix4 = bsr_addr;
+	pim_addr_to_prefix(&lookup.rpf.rpf_addr, bsr_addr);
 
 	pnc = hash_lookup(pim->rpf_hash, &lookup);
 	if (!pnc || !CHECK_FLAG(pnc->flags, PIM_NEXTHOP_ANSWER_RECEIVED)) {
@@ -394,13 +384,11 @@ bool pim_nht_bsr_rpf_check(struct pim_instance *pim, struct in_addr bsr_addr,
 		nbr = pim_neighbor_find(ifp, nhaddr);
 		if (!nbr)
 			continue;
-
-		return nh->ifindex == src_ifp->ifindex
-		       && nhaddr.s_addr == src_ip.s_addr;
+		return nh->ifindex == src_ifp->ifindex &&
+		       (!pim_addr_cmp(nhaddr, src_ip));
 	}
 	return false;
 }
-#endif /* PIM_IPV == 4 */
 
 void pim_rp_nexthop_del(struct rp_info *rp_info)
 {
@@ -481,6 +469,37 @@ static int pim_update_upstream_nh(struct pim_instance *pim,
 	return 0;
 }
 
+static int pim_upstream_nh_if_update_helper(struct hash_bucket *bucket,
+					    void *arg)
+{
+	struct pim_nexthop_cache *pnc = bucket->data;
+	struct pnc_hash_walk_data *pwd = arg;
+	struct pim_instance *pim = pwd->pim;
+	struct interface *ifp = pwd->ifp;
+	struct nexthop *nh_node = NULL;
+	ifindex_t first_ifindex;
+
+	for (nh_node = pnc->nexthop; nh_node; nh_node = nh_node->next) {
+		first_ifindex = nh_node->ifindex;
+		if (ifp != if_lookup_by_index(first_ifindex, pim->vrf->vrf_id))
+			return HASHWALK_CONTINUE;
+
+		if (pnc->upstream_hash->count)
+			pim_update_upstream_nh(pim, pnc);
+	}
+	return HASHWALK_CONTINUE;
+}
+
+void pim_upstream_nh_if_update(struct pim_instance *pim, struct interface *ifp)
+{
+	struct pnc_hash_walk_data pwd;
+
+	pwd.pim = pim;
+	pwd.ifp = ifp;
+
+	hash_walk(pim->rpf_hash, pim_upstream_nh_if_update_helper, &pwd);
+}
+
 uint32_t pim_compute_ecmp_hash(struct prefix *src, struct prefix *grp)
 {
 	uint32_t hash_val;
@@ -521,6 +540,8 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 
 	// Current Nexthop is VALID, check to stay on the current path.
 	if (nexthop->interface && nexthop->interface->info &&
+	    (((struct pim_interface *)nexthop->interface->info)->pim_enable ||
+	     ((struct pim_interface *)nexthop->interface->info)->igmp_enable) &&
 	    (!pim_addr_is_any(nh_addr))) {
 		/* User configured knob to explicitly switch
 		   to new path is disabled or current path
@@ -635,6 +656,18 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 			continue;
 		}
 
+		if (!((struct pim_interface *)ifp->info)->pim_enable) {
+			if (PIM_DEBUG_PIM_NHT)
+				zlog_debug(
+					"%s: pim not enabled on input interface %s(%s) (ifindex=%d, RPF for source %pI4)",
+					__func__, ifp->name, pim->vrf->name,
+					first_ifindex, &src->u.prefix4);
+			if (nh_iter == mod_val)
+				mod_val++; // Select nexthpath
+			nh_iter++;
+			continue;
+		}
+
 		if (neighbor_needed &&
 		    !pim_if_connected_to_source(ifp, src_addr)) {
 			nbr = nbrs[nh_iter];
@@ -645,7 +678,8 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 						__func__, ifp->name,
 						pim->vrf->name);
 				if (nh_iter == mod_val)
-					mod_val++; // Select nexthpath
+					/* Select nexthpath */
+					mod_val++;
 				nh_iter++;
 				continue;
 			}
@@ -989,6 +1023,20 @@ int pim_ecmp_nexthop_lookup(struct pim_instance *pim,
 			i++;
 			continue;
 		}
+
+
+		if (!((struct pim_interface *)ifp->info)->pim_enable) {
+			if (PIM_DEBUG_PIM_NHT)
+				zlog_debug(
+					"%s: pim not enabled on input interface %s(%s) (ifindex=%d, RPF for source %pI4)",
+					__func__, ifp->name, pim->vrf->name,
+					first_ifindex, &src->u.prefix4);
+			if (i == mod_val)
+				mod_val++;
+			i++;
+			continue;
+		}
+
 		if (neighbor_needed &&
 		    !pim_if_connected_to_source(ifp, src_addr)) {
 			nbr = nbrs[i];
