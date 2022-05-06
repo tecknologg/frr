@@ -1153,7 +1153,7 @@ static void peer_free(struct peer *peer)
 
 	XFREE(MTYPE_PEER_UPDATE_SOURCE, peer->update_if);
 
-	XFREE(MTYPE_TMP, peer->notify.data);
+	XFREE(MTYPE_BGP_NOTIFICATION, peer->notify.data);
 	memset(&peer->notify, 0, sizeof(struct bgp_notify));
 
 	if (peer->clear_node_queue)
@@ -1650,7 +1650,7 @@ void bgp_peer_conf_if_to_su_update(struct peer *peer)
 	/*
 	 * Since our su changed we need to del/add peer to the peerhash
 	 */
-	hash_get(peer->bgp->peerhash, peer, hash_alloc_intern);
+	(void)hash_get(peer->bgp->peerhash, peer, hash_alloc_intern);
 }
 
 void bgp_recalculate_afi_safi_bestpaths(struct bgp *bgp, afi_t afi, safi_t safi)
@@ -1737,7 +1737,7 @@ struct peer *peer_create(union sockunion *su, const char *conf_if,
 	peer = peer_lock(peer); /* bgp peer list reference */
 	peer->group = group;
 	listnode_add_sort(bgp->peer, peer);
-	hash_get(bgp->peerhash, peer, hash_alloc_intern);
+	(void)hash_get(bgp->peerhash, peer, hash_alloc_intern);
 
 	/* Adjust update-group coalesce timer heuristics for # peers. */
 	if (bgp->heuristic_coalesce) {
@@ -4487,7 +4487,9 @@ static int peer_flag_modify(struct peer *peer, uint32_t flag, int set)
 			if (set) {
 				bgp_zebra_initiate_radv(peer->bgp, peer);
 			} else if (peer_group_active(peer)) {
-				if (!CHECK_FLAG(peer->group->conf->flags, flag))
+				if (!CHECK_FLAG(peer->group->conf->flags,
+						flag) &&
+				    !peer->conf_if)
 					bgp_zebra_terminate_radv(peer->bgp,
 								 peer);
 			} else
@@ -4525,7 +4527,7 @@ static int peer_flag_modify(struct peer *peer, uint32_t flag, int set)
 		/* Update flag on peer-group member. */
 		COND_FLAG(member->flags, flag, set != member_invert);
 
-		if (flag == PEER_FLAG_CAPABILITY_ENHE)
+		if (flag == PEER_FLAG_CAPABILITY_ENHE && !member->conf_if)
 			set ? bgp_zebra_initiate_radv(member->bgp, member)
 			    : bgp_zebra_terminate_radv(member->bgp, member);
 

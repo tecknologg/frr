@@ -1217,7 +1217,7 @@ static void bgp_update_delay_process_status_change(struct peer *peer)
 				"Begin read-only mode - update-delay timer %d seconds",
 				peer->bgp->v_update_delay);
 		}
-		if (CHECK_FLAG(peer->cap, PEER_CAP_RESTART_BIT_RCV))
+		if (CHECK_FLAG(peer->cap, PEER_CAP_GRACEFUL_RESTART_R_BIT_RCV))
 			bgp_update_restarted_peers(peer);
 	}
 	if (peer->ostatus == Established
@@ -2160,7 +2160,8 @@ static int bgp_establish(struct peer *peer)
 	} else {
 		/* Peer sends R-bit. In this case, we need to send
 		 * ZEBRA_CLIENT_ROUTE_UPDATE_COMPLETE to Zebra. */
-		if (CHECK_FLAG(peer->cap, PEER_CAP_RESTART_BIT_RCV)) {
+		if (CHECK_FLAG(peer->cap,
+			       PEER_CAP_GRACEFUL_RESTART_R_BIT_RCV)) {
 			FOREACH_AFI_SAFI (afi, safi)
 				/* Send route processing complete
 				   message to RIB */
@@ -2271,7 +2272,7 @@ static int bgp_establish(struct peer *peer)
 	 * so the hash_release is the same for either.
 	 */
 	hash_release(peer->bgp->peerhash, peer);
-	hash_get(peer->bgp->peerhash, peer, hash_alloc_intern);
+	(void)hash_get(peer->bgp->peerhash, peer, hash_alloc_intern);
 
 	/* Start BFD peer if not already running. */
 	if (peer->bfd_config)

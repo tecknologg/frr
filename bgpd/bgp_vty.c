@@ -5273,6 +5273,12 @@ DEFUN (neighbor_capability_enhe,
        "Advertise extended next-hop capability to the peer\n")
 {
 	int idx_peer = 1;
+	struct peer *peer;
+
+	peer = peer_and_group_lookup_vty(vty, argv[idx_peer]->arg);
+	if (peer && peer->conf_if)
+		return CMD_SUCCESS;
+
 	return peer_flag_set_vty(vty, argv[idx_peer]->arg,
 				 PEER_FLAG_CAPABILITY_ENHE);
 }
@@ -5287,6 +5293,16 @@ DEFUN (no_neighbor_capability_enhe,
        "Advertise extended next-hop capability to the peer\n")
 {
 	int idx_peer = 2;
+	struct peer *peer;
+
+	peer = peer_and_group_lookup_vty(vty, argv[idx_peer]->arg);
+	if (peer && peer->conf_if) {
+		vty_out(vty,
+			"Peer %s cannot have capability extended-nexthop turned off\n",
+			argv[idx_peer]->arg);
+		return CMD_WARNING_CONFIG_FAILED;
+	}
+
 	return peer_flag_unset_vty(vty, argv[idx_peer]->arg,
 				   PEER_FLAG_CAPABILITY_ENHE);
 }
@@ -10052,6 +10068,9 @@ static void bgp_show_peer_reset(struct vty * vty, struct peer *peer,
 			json_object_string_add(json_peer,
 					       "lastNotificationReason",
 					       errorcodesubcode_str);
+			json_object_boolean_add(json_peer,
+						"lastNotificationHardReset",
+						peer->notify.hard_reset);
 			if (peer->last_reset == PEER_DOWN_NOTIFY_RECEIVED
 			    && peer->notify.code == BGP_NOTIFY_CEASE
 			    && (peer->notify.subcode
@@ -10085,11 +10104,16 @@ static void bgp_show_peer_reset(struct vty * vty, struct peer *peer,
 			subcode_str =
 				bgp_notify_subcode_str(peer->notify.code,
 						       peer->notify.subcode);
-			vty_out(vty, "  Notification %s (%s%s)\n",
+			vty_out(vty, " Notification %s (%s%s%s)\n",
 				peer->last_reset == PEER_DOWN_NOTIFY_SEND
-				? "sent"
-				: "received",
-				code_str, subcode_str);
+					? "sent"
+					: "received",
+				code_str, subcode_str,
+				peer->notify.hard_reset
+					? bgp_notify_subcode_str(
+						  BGP_NOTIFY_CEASE,
+						  BGP_NOTIFY_CEASE_HARD_RESET)
+					: "");
 		} else {
 			vty_out(vty, " %s\n",
 				peer_down_str[(int)peer->last_reset]);
@@ -11246,36 +11270,27 @@ static void bgp_show_peer_afi_orf_cap(struct vty *vty, struct peer *p,
 	}
 }
 
-static void bgp_show_neighnor_graceful_restart_rbit(struct vty *vty,
-						    struct peer *p,
-						    bool use_json,
-						    json_object *json)
+static void bgp_show_neighnor_graceful_restart_flags(struct vty *vty,
+						     struct peer *p,
+						     bool use_json,
+						     json_object *json)
 {
-	bool rbit_status = false;
-
-	if (!use_json)
-		vty_out(vty, "\n    R bit: ");
+	bool rbit = false;
+	bool nbit = false;
 
 	if (CHECK_FLAG(p->cap, PEER_CAP_RESTART_ADV)
 	    && (CHECK_FLAG(p->cap, PEER_CAP_RESTART_RCV))
 	    && (peer_established(p))) {
-
-		if (CHECK_FLAG(p->cap, PEER_CAP_RESTART_BIT_RCV))
-			rbit_status = true;
-		else
-			rbit_status = false;
+		rbit = CHECK_FLAG(p->cap, PEER_CAP_GRACEFUL_RESTART_R_BIT_RCV);
+		nbit = CHECK_FLAG(p->cap, PEER_CAP_GRACEFUL_RESTART_N_BIT_RCV);
 	}
 
-	if (rbit_status) {
-		if (use_json)
-			json_object_boolean_true_add(json, "rBit");
-		else
-			vty_out(vty, "True\n");
+	if (use_json) {
+		json_object_boolean_add(json, "rBit", rbit);
+		json_object_boolean_add(json, "nBit", nbit);
 	} else {
-		if (use_json)
-			json_object_boolean_false_add(json, "rBit");
-		else
-			vty_out(vty, "False\n");
+		vty_out(vty, "\n    R bit: %s", rbit ? "True" : "False");
+		vty_out(vty, "\n    N bit: %s\n", nbit ? "True" : "False");
 	}
 }
 
@@ -16615,7 +16630,8 @@ static void bgp_config_write_peer_global(struct vty *vty, struct bgp *bgp,
 
 	/* capability extended-nexthop */
 	if (peergroup_flag_check(peer, PEER_FLAG_CAPABILITY_ENHE)) {
-		if (CHECK_FLAG(peer->flags_invert, PEER_FLAG_CAPABILITY_ENHE))
+		if (CHECK_FLAG(peer->flags_invert, PEER_FLAG_CAPABILITY_ENHE) &&
+		    !peer->conf_if)
 			vty_out(vty,
 				" no neighbor %s capability extended-nexthop\n",
 				addr);
