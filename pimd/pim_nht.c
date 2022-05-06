@@ -320,6 +320,8 @@ bool pim_nht_bsr_rpf_check(struct pim_instance *pim, pim_addr bsr_addr,
 
 			if (if_is_loopback(ifp) && if_is_loopback(src_ifp))
 				return true;
+			if (!pim_addr_cmp(znh->nexthop_addr, bsr_addr))
+				return true;
 
 			nbr = pim_neighbor_find(ifp, znh->nexthop_addr);
 			if (!nbr)
@@ -378,6 +380,8 @@ bool pim_nht_bsr_rpf_check(struct pim_instance *pim, pim_addr bsr_addr,
 			continue;
 
 		if (if_is_loopback(ifp) && if_is_loopback(src_ifp))
+			return true;
+		if (!pim_addr_cmp(nhaddr, bsr_addr))
 			return true;
 
 		/* MRIB (IGP) may be pointing at a router where PIM is down */
