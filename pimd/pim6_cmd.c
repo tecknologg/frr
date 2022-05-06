@@ -1828,6 +1828,28 @@ DEFPY (show_ipv6_mroute_summary_vrf_all,
 	return CMD_SUCCESS;
 }
 
+#define CLEAR_IP_PIMV6_STR                          "PIMv6 clear commands\n"
+
+DEFPY (clear_ipv6_pim_bsr_db,
+       clear_ipv6_pim_bsr_db_cmd,
+       "clear ipv6 pim [vrf NAME] bsr-data",
+       CLEAR_STR
+       IPV6_STR
+       CLEAR_IP_PIMV6_STR
+       VRF_CMD_HELP_STR
+       "Reset pim bsr data\n")
+{
+	struct vrf *v;
+
+	v = vrf_lookup_by_name(vrf ? vrf : VRF_DEFAULT_NAME);
+	if (!v)
+		return CMD_WARNING;
+
+	pim_bsm_clear(v->info);
+
+	return CMD_SUCCESS;
+}
+
 void pim_cmd_init(void)
 {
 	if_cmd_init(pim_interface_config_write);
@@ -1892,6 +1914,8 @@ void pim_cmd_init(void)
 			&interface_ipv6_mld_robustness_cmd);
 	install_element(INTERFACE_NODE,
 			&interface_ipv6_mld_last_member_query_interval_cmd);
+
+	install_element(ENABLE_NODE, &clear_ipv6_pim_bsr_db_cmd);
 
 	install_element(VIEW_NODE, &show_ipv6_pim_rp_cmd);
 	install_element(VIEW_NODE, &show_ipv6_pim_rp_vrf_all_cmd);
