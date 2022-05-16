@@ -125,7 +125,10 @@ static int pim_mroute_set(struct pim_instance *pim, int enable)
 
 	if (enable) {
 #if defined linux
+		bool failed = false;
 		int upcalls = IGMPMSG_WRVIFWHOLE;
+		int one = 1;
+
 		opt = MRT_PIM;
 
 		err = setsockopt(pim->mroute_socket, IPPROTO_IP, opt, &upcalls,
@@ -134,8 +137,16 @@ static int pim_mroute_set(struct pim_instance *pim, int enable)
 			zlog_warn(
 				"Failure to register for VIFWHOLE and WRONGVIF upcalls %d %s",
 				errno, safe_strerror(errno));
-			return -1;
+			failed = true;
 		}
+
+		err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_ASSERT,
+				 &one, sizeof(one));
+		if (err)
+			zlog_warn("failed to set MRT_ASSERT: %m");
+
+		if (failed)
+			return -1;
 #else
 		zlog_warn(
 			"PIM-SM will not work properly on this platform, until the ability to receive the WRVIFWHOLE upcall");
