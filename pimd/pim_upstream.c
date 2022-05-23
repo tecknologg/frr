@@ -1186,6 +1186,103 @@ static inline bool pim_upstream_is_msdp_peer_sa(struct pim_upstream *up)
 	return PIM_UPSTREAM_FLAG_TEST_SRC_MSDP(up->flags);
 }
 
+#include "printfrr.h"
+
+#ifdef _FRR_ATTRIBUTE_PRINTFRR
+#pragma FRR printfrr_ext "%pPUS" (struct pim_upstream *)
+#endif
+
+#define P_FLAG(prefix, flag)                                                   \
+	if (val & (prefix ## flag)) {                                          \
+		if (!first)                                                    \
+			len += bputch(buf, '|');                               \
+		first = false;                                                 \
+		len += bputs(buf, #flag);                                      \
+	}
+
+printfrr_ext_autoreg_i("PUSF", printfrr_pusf);
+static ssize_t printfrr_pusf(struct fbuf *buf, struct printfrr_eargs *ea,
+			     uintmax_t val)
+{
+	bool first = true;
+	ssize_t len = 0;
+
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, DR_JOIN_DESIRED)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, DR_JOIN_DESIRED_UPDATED)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, FHR)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_IGMP)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_PIM)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_STREAM)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_MSDP)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SEND_SG_RPT_PRUNE)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_LHR)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, DISABLE_KAT_EXPIRY)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, STATIC_IIF)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, ALLOW_IIF_IN_OIL)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, NO_PIMREG_DATA)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, FORCE_PIMREG)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_VXLAN_ORIG)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_VXLAN_TERM)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, MLAG_VXLAN)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, MLAG_NON_DF)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, MLAG_PEER)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, SRC_NOCACHE)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, USE_RPT)
+	P_FLAG(PIM_UPSTREAM_FLAG_MASK_, MLAG_INTERFACE)
+	return len;
+}
+
+printfrr_ext_autoreg_i("PICF", printfrr_picf);
+static ssize_t printfrr_picf(struct fbuf *buf, struct printfrr_eargs *ea,
+			     uintmax_t val)
+{
+	bool first = true;
+	ssize_t len = 0;
+
+	P_FLAG(PIM_IF_FLAG_MASK_, COULD_ASSERT)
+	P_FLAG(PIM_IF_FLAG_MASK_, ASSERT_TRACKING_DESIRED)
+	P_FLAG(PIM_IF_FLAG_MASK_, S_G_RPT)
+	P_FLAG(PIM_IF_FLAG_MASK_, PROTO_PIM)
+	P_FLAG(PIM_IF_FLAG_MASK_, PROTO_IGMP)
+	return len;
+}
+
+printfrr_ext_autoreg_p("PUS", printfrr_pim_upstream);
+static ssize_t printfrr_pim_upstream(struct fbuf *buf,
+				     struct printfrr_eargs *ea,
+				     const void *vptr)
+{
+	struct pim_upstream *up = (struct pim_upstream *)vptr;
+	struct pim_instance *pim = up->pim;
+	struct interface *ifp;
+	struct pim_ifchannel *ch;
+	ssize_t len = 0;
+	bool first = true;
+
+	if (!up)
+		return bputs(buf, "{NULL pim_upstream}");
+
+	len += bprintfrr(buf, "%pSG,[%dPUSF],oil={", &up->sg, up->flags);
+
+	FOR_ALL_INTERFACES (pim->vrf, ifp) {
+		if (!ifp->info)
+			continue;
+
+		ch = pim_ifchannel_find(ifp, &up->sg);
+		if (!ch)
+			continue;
+
+		if (pim_upstream_evaluate_join_desired_interface(up, ch,
+								 NULL)) {
+			len += bprintfrr(buf, "%s%s[%dPICF]", first ? "" : ",",
+					 ifp->name, ch->flags);
+		}
+	}
+
+	len += bputch(buf, '}');
+	return len;
+}
+
 /*
  *   bool JoinDesired(*,G) {
  *       if (immediate_olist(*,G) != NULL)
@@ -1209,18 +1306,30 @@ bool pim_upstream_evaluate_join_desired(struct pim_instance *pim,
 	empty_imm_oil = pim_upstream_empty_immediate_olist(pim, up);
 
 	/* (*,G) */
-	if (pim_addr_is_any(up->sg.src))
+	if (pim_addr_is_any(up->sg.src)) {
+		zlog_debug("join_desired: %pPUS => !empty_imm_oil=%d (*,G)", up,
+			   !empty_imm_oil);
 		return !empty_imm_oil;
+	}
 
 	/* (S,G) */
-	if (!empty_imm_oil)
+	if (!empty_imm_oil) {
+		zlog_debug("join_desired: %pPUS => !empty_imm_oil", up);
 		return true;
+	}
 	empty_inh_oil = pim_upstream_empty_inherited_olist(up);
-	if (!empty_inh_oil &&
-			(pim_upstream_is_kat_running(up) ||
-			 pim_upstream_is_msdp_peer_sa(up)))
-		return true;
+	if (!empty_inh_oil) {
+		if (pim_upstream_is_kat_running(up)) {
+			zlog_debug("join_desired: %pPUS => !empty_inh_oil && kat_running %pTHD", up, up->t_ka_timer);
+			return true;
+		}
+		if (pim_upstream_is_msdp_peer_sa(up)) {
+			zlog_debug("join_desired: %pPUS => !empty_inh_oil && msdp_peer_sa", up);
+			return true;
+		}
+	}
 
+	zlog_debug("join_desired: %pPUS => false", up);
 	return false;
 }
 
