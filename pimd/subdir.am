@@ -5,7 +5,10 @@
 if PIMD
 sbin_PROGRAMS += pimd/pimd
 bin_PROGRAMS += pimd/mtracebis
-noinst_PROGRAMS += pimd/test_igmpv3_join
+noinst_PROGRAMS += \
+	pimd/test_igmpv3_join \
+	pimd/test_mrt4 \
+	# end
 vtysh_scan += \
 	pimd/pim_cmd.c \
 	pimd/pim6_cmd.c \
@@ -168,6 +171,8 @@ clippy_scan += \
 	pimd/pim_cmd.c \
 	pimd/pim6_cmd.c \
 	pimd/pim6_mld.c \
+	\
+	pimd/test_mrt.c \
 	# end
 
 pimd_pimd_CFLAGS = $(AM_CFLAGS) -DPIM_IPV=4
@@ -187,6 +192,12 @@ endif
 
 pimd_test_igmpv3_join_LDADD = lib/libfrr.la
 pimd_test_igmpv3_join_SOURCES = pimd/test_igmpv3_join.c
+
+pimd_test_mrt4_LDADD = lib/libfrr.la
+pimd_test_mrt4_SOURCES = \
+	pimd/test_mrt.c \
+	tests/lib/cli/common_cli.c \
+	# end
 
 pimd_mtracebis_LDADD =  lib/libfrr.la
 pimd_mtracebis_CFLAGS = $(AM_CFLAGS) -DPIM_IPV=4
