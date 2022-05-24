@@ -238,15 +238,21 @@ int pim_macro_ch_could_assert_eval(const struct pim_ifchannel *ch)
 	}
 
 	/* SPTbit(S,G) == true */
-	if (ch->upstream->sptbit == PIM_UPSTREAM_SPTBIT_FALSE)
+	if (ch->upstream->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) {
+		zlog_debug("%s: cannot assert (USE_RPT==true)", ch->sg_str);
 		return 0; /* false */
+	}
 
 	/* RPF_interface(S) != I ? */
-	if (ch->upstream->rpf.source_nexthop.interface == ifp)
+	if (ch->upstream->rpf.source_nexthop.interface == ifp) {
+		zlog_debug("%s: cannot assert (rpf==ifp)", ch->sg_str);
 		return 0; /* false */
+	}
 
 	/* I in joins(S,G) (+) pim_include(S,G) ? */
-	return pim_macro_chisin_joins_or_include(ch);
+	int rv = pim_macro_chisin_joins_or_include(ch);
+	zlog_debug("%s: could_assert=%d)", ch->sg_str, rv);
+	return rv;
 }
 
 /*
