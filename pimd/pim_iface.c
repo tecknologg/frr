@@ -1002,9 +1002,9 @@ int pim_if_add_vif(struct interface *ifp, bool ispimreg, bool is_vxlan_term)
 		return -1;
 	}
 
-	if (ifp->ifindex < 0) {
-		zlog_warn("%s: ifindex=%d < 1 on interface %s", __func__,
-			  ifp->ifindex, ifp->name);
+	if (ifp->ifindex == IFINDEX_INTERNAL) {
+		zlog_info("%s: interface %s not in system", __func__,
+			  ifp->name);
 		return -2;
 	}
 
