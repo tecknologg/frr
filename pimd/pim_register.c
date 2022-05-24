@@ -476,11 +476,14 @@ int pim_register_recv(struct interface *ifp, struct in_addr dest_addr,
 				 * Have we seen packets?
 				 */
 				if (upstream->channel_oil->cc.oldpktcnt
-				    < upstream->channel_oil->cc.pktcnt)
+				    < upstream->channel_oil->cc.pktcnt) {
 					pim_upstream_set_sptbit(
 						upstream,
 						upstream->rpf.source_nexthop
 							.interface);
+					pim_upstream_mroute_add(upstream->channel_oil,
+								__func__);
+				}
 			}
 		}
 

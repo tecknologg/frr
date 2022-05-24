@@ -407,6 +407,15 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 		}
 	}
 
+	if (ch->upstream->sptbit != PIM_UPSTREAM_SPTBIT_TRUE) {
+		struct pim_upstream *up = ch->upstream;
+
+		pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
+		pim_upstream_mroute_add(up->channel_oil, __func__);
+		pim_ifchannel_update_could_assert(ch);
+		pim_ifchannel_update_assert_tracking_desired(ch);
+	}
+
 	/*
 	  RFC 4601: 4.6.1.  (S,G) Assert Message State Machine
 
@@ -540,9 +549,7 @@ static int pim_mroute_msg_wrvifwhole(int fd, struct interface *ifp,
 			}
 
 			pim_upstream_inherited_olist(pim_ifp->pim, up);
-			if (!up->channel_oil->installed)
-				pim_upstream_mroute_add(up->channel_oil,
-							__func__);
+			pim_upstream_mroute_add(up->channel_oil, __func__);
 		} else {
 			if (I_am_RP(pim_ifp->pim, up->sg.grp)) {
 				if (pim_nexthop_lookup(pim_ifp->pim, &source,
@@ -579,6 +586,7 @@ static int pim_mroute_msg_wrvifwhole(int fd, struct interface *ifp,
 			pim_upstream_keep_alive_timer_start(
 				up, pim_ifp->pim->keep_alive_time);
 			pim_upstream_inherited_olist(pim_ifp->pim, up);
+			pim_upstream_mroute_add(up->channel_oil, __func__);
 			pim_mroute_msg_wholepkt(fd, ifp, buf);
 		}
 		return 0;
@@ -997,6 +1005,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	struct pim_instance *pim = c_oil->pim;
 	struct mfcctl tmp_oil = { {0} };
 	int err;
+	bool in_spt_switch;
 
 	pim->mroute_add_last = pim_time_monotonic_sec();
 	++pim->mroute_add_events;
@@ -1014,6 +1023,9 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 		tmp_oil.mfcc_ttls[c_oil->oil.mfcc_parent] = 1;
 	}
 
+	in_spt_switch = PIM_UPSTREAM_FLAG_TEST_USE_RPT(c_oil->up->flags) &&
+			(c_oil->up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE);
+
 	/*
 	 * If we have an unresolved cache entry for the S,G
 	 * it is owned by the pimreg for the incoming IIF
@@ -1025,10 +1037,13 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	    && c_oil->oil.mfcc_parent != 0) {
 		tmp_oil.mfcc_parent = 0;
 	}
+	if (in_spt_switch)
+		tmp_oil.mfcc_parent = 0;
+
 	err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_ADD_MFC,
 			 &tmp_oil, sizeof(tmp_oil));
 
-	if (!err && !c_oil->installed
+	if (!err && !c_oil->installed && !in_spt_switch
 	    && c_oil->oil.mfcc_origin.s_addr != INADDR_ANY
 	    && c_oil->oil.mfcc_parent != 0) {
 		tmp_oil.mfcc_parent = c_oil->oil.mfcc_parent;
