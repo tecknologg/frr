@@ -689,16 +689,17 @@ static int pim_mroute_msg(struct pim_instance *pim, const char *buf,
 
 		ifp = pim_if_find_by_vif_index(pim, msg->im_vif);
 
-		if (!ifp)
-			return 0;
 		if (PIM_DEBUG_MROUTE) {
 			zlog_debug(
 				"%s: pim kernel upcall %s type=%d ip_p=%d from fd=%d for (S,G)=(%pI4,%pI4) on %s vifi=%d  size=%d",
 				__func__, igmpmsgtype2str[msg->im_msgtype],
 				msg->im_msgtype, ip_hdr->ip_p,
-				pim->mroute_socket, &msg->im_src, &msg->im_dst, ifp->name,
+				pim->mroute_socket, &msg->im_src, &msg->im_dst,
+				ifp ? ifp->name : "???",
 				msg->im_vif, buf_size);
 		}
+		if (!ifp)
+			return 0;
 
 		switch (msg->im_msgtype) {
 		case IGMPMSG_WRONGVIF:
