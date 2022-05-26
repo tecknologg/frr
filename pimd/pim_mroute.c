@@ -398,7 +398,10 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 					"SPT switchover on %pSG: WRONGVIF(%s) signalling complete",
 					&up->sg, ifp->name);
 
-			pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
+			up->sptbit = PIM_UPSTREAM_SPTBIT_TRUE;
+			pim_upstream_keep_alive_timer_start(up,
+					pim_ifp->pim->keep_alive_time);
+			pim_upstream_inherited_olist(pim_ifp->pim, up);
 			pim_upstream_mroute_add(up->channel_oil, __func__);
 
 			ch = pim_ifchannel_find(ifp, &sg);
