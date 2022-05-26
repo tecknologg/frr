@@ -351,10 +351,10 @@ static int pim_mroute_msg_wholepkt(int fd, struct interface *ifp,
 static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 				   const struct igmpmsg *msg)
 {
+	struct pim_upstream *up;
 	struct pim_ifchannel *ch;
 	struct pim_interface *pim_ifp;
 	pim_sgaddr sg;
-	bool in_spt_switch;
 
 	memset(&sg, 0, sizeof(sg));
 	sg.src = msg->im_src;
@@ -388,13 +388,36 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 		return -2;
 	}
 
+	up = pim_upstream_find(pim_ifp->pim, &sg);
+	if (up && (up->sg.src.s_addr != INADDR_ANY) &&
+	    !PIM_UPSTREAM_FLAG_TEST_USE_RPT(up->flags) &&
+	    (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) &&
+	    (up->rpf.source_nexthop.interface == ifp)) {
+		if (PIM_DEBUG_MROUTE)
+			zlog_debug(
+				"WRONGVIF signaling SPT switchover to %s complete for %pSG",
+				ifp->name, &up->sg);
+
+		pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
+		pim_upstream_mroute_add(up->channel_oil, __func__);
+
+		ch = pim_ifchannel_find(ifp, &sg);
+		if (ch) {
+			pim_ifchannel_update_could_assert(ch);
+			pim_ifchannel_update_assert_tracking_desired(ch);
+		} else
+			zlog_debug(
+				"WRONGVIF SPT switchover without ifchannel?!");
+	}
+
 	ch = pim_ifchannel_find(ifp, &sg);
 	if (!ch) {
 		pim_sgaddr star_g = sg;
 		if (PIM_DEBUG_MROUTE)
 			zlog_debug(
-				"%s: WRONGVIF (S,G)=%s could not find channel on interface %s",
-				__func__, pim_str_sg_dump(&sg), ifp->name);
+				"%s: WRONGVIF (S,G)=%s could not find channel on interface %s, up=%s",
+				__func__, pim_str_sg_dump(&sg), ifp->name,
+				up ? up->sg_str : "NULL");
 
 		star_g.src.s_addr = INADDR_ANY;
 		ch = pim_ifchannel_find(ifp, &star_g);
@@ -406,27 +429,6 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 					ifp->name);
 			return -3;
 		}
-
-		in_spt_switch = false;
-	} else {
-		in_spt_switch = (ch->upstream->sg.src.s_addr != INADDR_ANY) &&
-			!PIM_UPSTREAM_FLAG_TEST_USE_RPT(ch->upstream->flags) &&
-			(ch->upstream->sptbit == PIM_UPSTREAM_SPTBIT_FALSE);
-	}
-
-	if (in_spt_switch &&
-	    ifp == ch->upstream->rpf.source_nexthop.interface) {
-		struct pim_upstream *up = ch->upstream;
-
-		if (PIM_DEBUG_MROUTE)
-			zlog_debug(
-				"WRONGVIF signaling SPT switchover to %s complete for %pSG",
-				ifp->name, &up->sg);
-
-		pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
-		pim_upstream_mroute_add(up->channel_oil, __func__);
-		pim_ifchannel_update_could_assert(ch);
-		pim_ifchannel_update_assert_tracking_desired(ch);
 	}
 
 	/*
