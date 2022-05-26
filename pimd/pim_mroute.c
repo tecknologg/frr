@@ -419,11 +419,18 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 	ch = pim_ifchannel_find(ifp, &sg);
 	if (!ch) {
 		pim_sgaddr star_g = sg;
-		if (PIM_DEBUG_MROUTE)
+		if (PIM_DEBUG_MROUTE) {
 			zlog_debug(
 				"%s: WRONGVIF (S,G)=%s could not find channel on interface %s, up=%s",
 				__func__, pim_str_sg_dump(&sg), ifp->name,
 				up ? up->sg_str : "NULL");
+			if (up)
+				zlog_debug("^ WRONGVIF upstream USE_RPT=%s SPTbit=%s RPF=%s",
+					   PIM_UPSTREAM_FLAG_TEST_USE_RPT(up->flags) ? "true" : "false",
+					   (up->sptbit == PIM_UPSTREAM_SPTBIT_TRUE) ? "true" : "false",
+					   up->rpf.source_nexthop.interface ?
+					   up->rpf.source_nexthop.interface->name : "NULL");
+		}
 
 		star_g.src.s_addr = INADDR_ANY;
 		ch = pim_ifchannel_find(ifp, &star_g);
