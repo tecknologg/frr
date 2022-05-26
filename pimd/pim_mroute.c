@@ -402,12 +402,12 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 		pim_upstream_mroute_add(up->channel_oil, __func__);
 
 		ch = pim_ifchannel_find(ifp, &sg);
-		if (ch) {
-			pim_ifchannel_update_could_assert(ch);
-			pim_ifchannel_update_assert_tracking_desired(ch);
-		} else
+		if (ch && PIM_DEBUG_MROUTE)
 			zlog_debug(
-				"WRONGVIF SPT switchover without ifchannel?!");
+				"WRONGVIF SPT switchover IIF is also OIF");
+
+		/* this is not a case for assert handling */
+		return 0;
 	}
 
 	ch = pim_ifchannel_find(ifp, &sg);
@@ -1034,6 +1034,41 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 		!PIM_UPSTREAM_FLAG_TEST_USE_RPT(c_oil->up->flags) &&
 		(c_oil->up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE);
 
+	if (in_spt_switch && !c_oil->up->parent) {
+		if (PIM_DEBUG_MROUTE)
+			zlog_debug("SPT switchover on %pSG without RPT continuity (no *,G)",
+				   &c_oil->up->sg);
+	} else if (in_spt_switch) {
+		struct interface *star_ifp;
+		int star_vifi = -1;
+
+		star_ifp = c_oil->up->parent->rpf.source_nexthop.interface;
+		if (star_ifp && star_ifp->info) {
+			struct pim_interface *star_pim = star_ifp->info;
+
+			star_vifi = star_pim->mroute_vif_index;
+		}
+
+		if (star_vifi == c_oil->oil.mfcc_parent) {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug("SPT switchover on %pSG: SPT == RPT, but SPT bit not set?!",
+					   &c_oil->up->sg);
+		} else {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug("SPT switchover on %pSG: RPT continuity relying on *,G entry",
+					   &c_oil->up->sg);
+
+			err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
+					 &tmp_oil, sizeof(tmp_oil));
+			if (err && errno != ENOENT)
+				zlog_warn("SPT switchover on %pSG: error removing entry: %m",
+					  &c_oil->up->sg);
+
+			c_oil->installed = 0;
+			return 0;
+		}
+	}
+
 	/* The linux kernel *expects* the incoming
 	 * vif to be part of the outgoing list
 	 * in the case of a (*,G).
@@ -1052,27 +1087,6 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	if (!c_oil->installed && c_oil->oil.mfcc_origin.s_addr != INADDR_ANY
 	    && c_oil->oil.mfcc_parent != 0) {
 		tmp_oil.mfcc_parent = 0;
-	}
-	if (in_spt_switch && c_oil->up->parent) {
-		struct pim_upstream *star_g = c_oil->up->parent;
-		struct interface *star_ifp;
-
-		star_ifp = star_g->rpf.source_nexthop.interface;
-		if (star_ifp) {
-			struct pim_interface *star_pim_ifp = star_ifp->info;
-
-			tmp_oil.mfcc_parent = star_pim_ifp->mroute_vif_index;
-		} else {
-			tmp_oil.mfcc_parent = 0;
-		}
-		if (PIM_DEBUG_MROUTE)
-			zlog_debug("SPT switch using *,G iif=%d (final=%d) for %pSG",
-				   tmp_oil.mfcc_parent, c_oil->oil.mfcc_parent,
-				   &c_oil->up->sg);
-	} else if (in_spt_switch) {
-		if (PIM_DEBUG_MROUTE)
-			zlog_debug("SPT switch but no *,G while installing %pSG",
-				   &c_oil->up->sg);
 	}
 
 	err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_ADD_MFC,
