@@ -391,23 +391,29 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 	up = pim_upstream_find(pim_ifp->pim, &sg);
 	if (up && (up->sg.src.s_addr != INADDR_ANY) &&
 	    !PIM_UPSTREAM_FLAG_TEST_USE_RPT(up->flags) &&
-	    (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) &&
-	    (up->rpf.source_nexthop.interface == ifp)) {
+	    (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE)) {
+		if (up->rpf.source_nexthop.interface == ifp) {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug(
+					"SPT switchover on %pSG: WRONGVIF(%s) signalling complete",
+					&up->sg, ifp->name);
+
+			pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
+			pim_upstream_mroute_add(up->channel_oil, __func__);
+
+			ch = pim_ifchannel_find(ifp, &sg);
+			if (ch && PIM_DEBUG_MROUTE)
+				zlog_debug(
+					"SPT switchover on %pSG: IIF %s is also OIF",
+					&up->sg, ifp->name);
+
+			/* this is not a case for assert handling */
+			return 0;
+		}
+
 		if (PIM_DEBUG_MROUTE)
-			zlog_debug(
-				"WRONGVIF signaling SPT switchover to %s complete for %pSG",
-				ifp->name, &up->sg);
-
-		pim_upstream_set_sptbit(up, up->rpf.source_nexthop.interface);
-		pim_upstream_mroute_add(up->channel_oil, __func__);
-
-		ch = pim_ifchannel_find(ifp, &sg);
-		if (ch && PIM_DEBUG_MROUTE)
-			zlog_debug(
-				"WRONGVIF SPT switchover IIF is also OIF");
-
-		/* this is not a case for assert handling */
-		return 0;
+			zlog_debug("SPT switchover on %pSG: WRONGVIF with unexpected IIF %s",
+				   &up->sg, ifp->name);
 	}
 
 	ch = pim_ifchannel_find(ifp, &sg);
@@ -1055,8 +1061,9 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 					   &c_oil->up->sg);
 		} else {
 			if (PIM_DEBUG_MROUTE)
-				zlog_debug("SPT switchover on %pSG: RPT continuity relying on *,G entry",
-					   &c_oil->up->sg);
+				zlog_debug("SPT switchover on %pSG: waiting on vif=%d, RPT continuity relying on *,G entry (vif=%d)",
+					   &c_oil->up->sg,
+					   c_oil->oil.mfcc_parent, star_vifi);
 
 			err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
 					 &tmp_oil, sizeof(tmp_oil));
@@ -1092,7 +1099,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_ADD_MFC,
 			 &tmp_oil, sizeof(tmp_oil));
 
-	if (!err && !c_oil->installed && !in_spt_switch
+	if (!err && !c_oil->installed
 	    && c_oil->oil.mfcc_origin.s_addr != INADDR_ANY
 	    && c_oil->oil.mfcc_parent != 0) {
 		tmp_oil.mfcc_parent = c_oil->oil.mfcc_parent;
