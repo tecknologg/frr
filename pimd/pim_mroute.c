@@ -1066,6 +1066,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 			if (PIM_DEBUG_MROUTE)
 				zlog_debug("SPT switchover on %pSG without RPT continuity (no *,G)",
 					   &c_oil->up->sg);
+			real_parent = 0;
 			break;
 		}
 
@@ -1074,6 +1075,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 			if (PIM_DEBUG_MROUTE)
 				zlog_debug("SPT switchover on %pSG without RPT continuity (*,G RPF not valid)",
 					   &c_oil->up->sg);
+			real_parent = 0;
 			break;
 		}
 
