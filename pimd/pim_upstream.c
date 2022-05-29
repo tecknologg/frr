@@ -745,6 +745,8 @@ void pim_upstream_switch(struct pim_instance *pim, struct pim_upstream *up,
 
 	if (new_state == PIM_UPSTREAM_JOINED) {
 		pim_upstream_inherited_olist_decide(pim, up);
+		if (old_state != new_state)
+			pim_upstream_update_use_rpt(up, true /*update_mroute*/);
 		if (old_state != PIM_UPSTREAM_JOINED) {
 			int old_fhr = PIM_UPSTREAM_FLAG_TEST_FHR(up->flags);
 
@@ -763,8 +765,6 @@ void pim_upstream_switch(struct pim_instance *pim, struct pim_upstream *up,
 				join_timer_start(up);
 			}
 		}
-		if (old_state != new_state)
-			pim_upstream_update_use_rpt(up, true /*update_mroute*/);
 	} else {
 		bool old_use_rpt;
 		bool new_use_rpt;
