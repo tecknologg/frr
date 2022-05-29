@@ -239,7 +239,7 @@ int pim_macro_ch_could_assert_eval(const struct pim_ifchannel *ch)
 
 	/* SPTbit(S,G) == true */
 	if (ch->upstream->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) {
-		zlog_debug("%s: cannot assert (USE_RPT==true)", ch->sg_str);
+		zlog_debug("%s: cannot assert (SPT_BIT==false)", ch->sg_str);
 		return 0; /* false */
 	}
 
