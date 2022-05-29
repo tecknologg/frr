@@ -1095,13 +1095,13 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 				   star_vifi);
 
 		real_parent = star_vifi;
-#if 0
 		err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
 				 &tmp_oil, sizeof(tmp_oil));
 		if (err && errno != ENOENT)
 			zlog_warn("SPT switchover on %pSG: error removing entry: %m",
 				  &c_oil->up->sg);
 
+#if 0
 		/* need to treat this as installed, unfortunately */
 		c_oil->installed = 1;
 		return 0;
@@ -1149,8 +1149,8 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 
 	if (PIM_DEBUG_MROUTE) {
 		char buf[1000];
-		zlog_debug("%s(%s), vrf %s Added Route: %s", __func__, name,
-			   pim->vrf->name,
+		zlog_debug("%s(%s), vrf %s Added Route: vifi=%d %s", __func__, name,
+			   pim->vrf->name, real_parent,
 			   pim_channel_oil_dump(c_oil, buf, sizeof(buf)));
 	}
 
