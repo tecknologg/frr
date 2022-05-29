@@ -1040,6 +1040,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	struct mfcctl tmp_oil = { {0} };
 	int err;
 	bool in_spt_switch;
+	int real_parent;
 
 	pim->mroute_add_last = pim_time_monotonic_sec();
 	++pim->mroute_add_events;
@@ -1048,6 +1049,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	 * later restore) before sending the mroute add to the dataplane
 	 */
 	pim_mroute_copy(&tmp_oil, c_oil);
+	real_parent = c_oil->oil.mfcc_parent;
 
 	in_spt_switch = (c_oil->up->sg.src.s_addr != INADDR_ANY) &&
 		!PIM_UPSTREAM_FLAG_TEST_USE_RPT(c_oil->up->flags) &&
@@ -1090,6 +1092,8 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 				   &c_oil->up->sg, c_oil->oil.mfcc_parent,
 				   star_vifi);
 
+		real_parent = star_vifi;
+#if 0
 		err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
 				 &tmp_oil, sizeof(tmp_oil));
 		if (err && errno != ENOENT)
@@ -1099,6 +1103,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 		/* need to treat this as installed, unfortunately */
 		c_oil->installed = 1;
 		return 0;
+#endif
 	} while (0);
 
 	/* The linux kernel *expects* the incoming
@@ -1117,7 +1122,7 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 	 * to the correct IIF afterwords.
 	 */
 	if (!c_oil->installed && c_oil->oil.mfcc_origin.s_addr != INADDR_ANY
-	    && c_oil->oil.mfcc_parent != 0) {
+	    && real_parent != 0) {
 		tmp_oil.mfcc_parent = 0;
 	}
 
@@ -1126,8 +1131,8 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 
 	if (!err && !c_oil->installed
 	    && c_oil->oil.mfcc_origin.s_addr != INADDR_ANY
-	    && c_oil->oil.mfcc_parent != 0) {
-		tmp_oil.mfcc_parent = c_oil->oil.mfcc_parent;
+	    && real_parent != 0) {
+		tmp_oil.mfcc_parent = real_parent;
 		err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_ADD_MFC,
 				 &tmp_oil, sizeof(tmp_oil));
 	}
