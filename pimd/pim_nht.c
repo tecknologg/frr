@@ -564,7 +564,7 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 			}
 
 			if (curr_route_valid &&
-			    !pim_if_connected_to_source(nexthop->interface,
+			    !pim_if_connected_or_assume(nexthop->interface,
 							src_addr)) {
 				nbr = pim_neighbor_find(
 					nexthop->interface,
@@ -612,7 +612,7 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 #endif
 			nbrs[i] = pim_neighbor_find(ifps[i], nhaddr);
 			if (nbrs[i] ||
-			    pim_if_connected_to_source(ifps[i], src_addr))
+			    pim_if_connected_or_assume(ifps[i], src_addr))
 				num_nbrs++;
 		}
 	}
@@ -670,7 +670,7 @@ static int pim_ecmp_nexthop_search(struct pim_instance *pim,
 		}
 
 		if (neighbor_needed &&
-		    !pim_if_connected_to_source(ifp, src_addr)) {
+		    !pim_if_connected_or_assume(ifp, src_addr)) {
 			nbr = nbrs[nh_iter];
 			if (!nbr && !if_is_loopback(ifp)) {
 				if (PIM_DEBUG_PIM_NHT)
@@ -974,7 +974,7 @@ int pim_ecmp_nexthop_lookup(struct pim_instance *pim,
 			nbrs[i] = pim_neighbor_find(
 				ifps[i], nexthop_tab[i].nexthop_addr);
 			if (nbrs[i] ||
-			    pim_if_connected_to_source(ifps[i], src_addr))
+			    pim_if_connected_or_assume(ifps[i], src_addr))
 				num_nbrs++;
 		}
 	}
@@ -1039,7 +1039,7 @@ int pim_ecmp_nexthop_lookup(struct pim_instance *pim,
 		}
 
 		if (neighbor_needed &&
-		    !pim_if_connected_to_source(ifp, src_addr)) {
+		    !pim_if_connected_or_assume(ifp, src_addr)) {
 			nbr = nbrs[i];
 			if (PIM_DEBUG_PIM_NHT_DETAIL)
 				zlog_debug("ifp name: %s(%s), pim nbr: %p",
