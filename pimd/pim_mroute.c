@@ -390,33 +390,36 @@ static int pim_mroute_msg_wrongvif(int fd, struct interface *ifp,
 
 	up = pim_upstream_find(pim_ifp->pim, &sg);
 	if (up && (up->sg.src.s_addr != INADDR_ANY) &&
-	    !PIM_UPSTREAM_FLAG_TEST_USE_RPT(up->flags) &&
-	    (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE)) {
+	    !PIM_UPSTREAM_FLAG_TEST_USE_RPT(up->flags)) {
 		if (up->rpf.source_nexthop.interface == ifp) {
 			if (PIM_DEBUG_MROUTE)
 				zlog_debug(
 					"SPT switchover on %pSG: WRONGVIF(%s) signalling complete",
 					&up->sg, ifp->name);
 
-			up->sptbit = PIM_UPSTREAM_SPTBIT_TRUE;
-			pim_upstream_keep_alive_timer_start(up,
-					pim_ifp->pim->keep_alive_time);
-			pim_upstream_inherited_olist(pim_ifp->pim, up);
-			pim_upstream_mroute_add(up->channel_oil, __func__);
+			if (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) {
+				up->sptbit = PIM_UPSTREAM_SPTBIT_TRUE;
+				pim_upstream_keep_alive_timer_start(up,
+						pim_ifp->pim->keep_alive_time);
+				pim_upstream_inherited_olist(pim_ifp->pim, up);
+				pim_upstream_mroute_add(up->channel_oil, __func__);
 
-			ch = pim_ifchannel_find(ifp, &sg);
-			if (ch && PIM_DEBUG_MROUTE)
-				zlog_debug(
-					"SPT switchover on %pSG: IIF %s is also OIF",
-					&up->sg, ifp->name);
+				ch = pim_ifchannel_find(ifp, &sg);
+				if (ch && PIM_DEBUG_MROUTE)
+					zlog_debug(
+						"SPT switchover on %pSG: IIF %s is also OIF",
+						&up->sg, ifp->name);
+			}
 
 			/* this is not a case for assert handling */
 			return 0;
 		}
 
-		if (PIM_DEBUG_MROUTE)
-			zlog_debug("SPT switchover on %pSG: WRONGVIF with unexpected IIF %s",
-				   &up->sg, ifp->name);
+		if (up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE) {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug("SPT switchover on %pSG: WRONGVIF with unexpected IIF %s",
+					   &up->sg, ifp->name);
+		}
 	}
 
 	ch = pim_ifchannel_find(ifp, &sg);
@@ -1050,41 +1053,53 @@ static int pim_mroute_add(struct channel_oil *c_oil, const char *name)
 		!PIM_UPSTREAM_FLAG_TEST_USE_RPT(c_oil->up->flags) &&
 		(c_oil->up->sptbit == PIM_UPSTREAM_SPTBIT_FALSE);
 
-	if (in_spt_switch && !c_oil->up->parent) {
-		if (PIM_DEBUG_MROUTE)
-			zlog_debug("SPT switchover on %pSG without RPT continuity (no *,G)",
-				   &c_oil->up->sg);
-	} else if (in_spt_switch) {
+	do {
 		struct interface *star_ifp;
+		struct pim_interface *star_pim;
 		int star_vifi = -1;
 
-		star_ifp = c_oil->up->parent->rpf.source_nexthop.interface;
-		if (star_ifp && star_ifp->info) {
-			struct pim_interface *star_pim = star_ifp->info;
-
-			star_vifi = star_pim->mroute_vif_index;
+		if (!in_spt_switch)
+			break;
+		if (!c_oil->up->parent) {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug("SPT switchover on %pSG without RPT continuity (no *,G)",
+					   &c_oil->up->sg);
+			break;
 		}
+
+		star_ifp = c_oil->up->parent->rpf.source_nexthop.interface;
+		if (!star_ifp || !star_ifp->info) {
+			if (PIM_DEBUG_MROUTE)
+				zlog_debug("SPT switchover on %pSG without RPT continuity (*,G RPF not valid)",
+					   &c_oil->up->sg);
+			break;
+		}
+
+		star_pim = star_ifp->info;
+		star_vifi = star_pim->mroute_vif_index;
 
 		if (star_vifi == c_oil->oil.mfcc_parent) {
 			if (PIM_DEBUG_MROUTE)
 				zlog_debug("SPT switchover on %pSG: SPT == RPT, but SPT bit not set?!",
 					   &c_oil->up->sg);
-		} else {
-			if (PIM_DEBUG_MROUTE)
-				zlog_debug("SPT switchover on %pSG: waiting on vif=%d, RPT continuity relying on *,G entry (vif=%d)",
-					   &c_oil->up->sg,
-					   c_oil->oil.mfcc_parent, star_vifi);
-
-			err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
-					 &tmp_oil, sizeof(tmp_oil));
-			if (err && errno != ENOENT)
-				zlog_warn("SPT switchover on %pSG: error removing entry: %m",
-					  &c_oil->up->sg);
-
-			c_oil->installed = 0;
-			return 0;
+			break;
 		}
-	}
+
+		if (PIM_DEBUG_MROUTE)
+			zlog_debug("SPT switchover on %pSG: waiting on vif=%d, RPT continuity relying on *,G entry (vif=%d)",
+				   &c_oil->up->sg, c_oil->oil.mfcc_parent,
+				   star_vifi);
+
+		err = setsockopt(pim->mroute_socket, IPPROTO_IP, MRT_DEL_MFC,
+				 &tmp_oil, sizeof(tmp_oil));
+		if (err && errno != ENOENT)
+			zlog_warn("SPT switchover on %pSG: error removing entry: %m",
+				  &c_oil->up->sg);
+
+		/* need to treat this as installed, unfortunately */
+		c_oil->installed = 1;
+		return 0;
+	} while (0);
 
 	/* The linux kernel *expects* the incoming
 	 * vif to be part of the outgoing list
