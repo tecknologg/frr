@@ -724,6 +724,8 @@ void subgroup_announce_table(struct update_subgroup *subgrp,
 						bgp_addpath_id_for_peer(
 							peer, afi, safi,
 							&ri->tx_addpath));
+
+					bgp_attr_extra_free(&attr);
 				}
 			}
 	}
@@ -957,6 +959,7 @@ void subgroup_default_originate(struct update_subgroup *subgrp, int withdraw)
 	}
 
 	aspath_unintern(&attr.aspath);
+	bgp_attr_extra_free(&attr);
 }
 
 /*

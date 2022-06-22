@@ -44,6 +44,7 @@
 #include "lib/northbound_cli.h"
 
 #include "bgpd/bgpd.h"
+#include "bgpd/bgp_routemap.h"
 #include "bgpd/bgp_table.h"
 #include "bgpd/bgp_attr.h"
 #include "bgpd/bgp_aspath.h"
@@ -136,6 +137,31 @@ o Local extensions
 #define RMAP_VALUE_SET 0
 #define RMAP_VALUE_ADD 1
 #define RMAP_VALUE_SUB 2
+
+void prep_for_rmap_apply(struct bgp_path_info *dst_pi,
+			 struct bgp_path_info_extra *dst_pie,
+			 struct bgp_dest *dest, struct bgp_path_info *src_pi,
+			 struct peer *peer, struct attr *attr,
+			 struct attr_extra *attr_extra)
+{
+	memset(dst_pi, 0, sizeof(struct bgp_path_info));
+	dst_pi->peer = peer;
+	dst_pi->attr = attr;
+	if (attr->extra) {
+		memcpy(attr_extra, attr->extra, sizeof(struct attr_extra));
+		dst_pi->attr->extra = attr_extra;
+	}
+	dst_pi->net = dest;
+	dst_pi->flags = src_pi->flags;
+	dst_pi->type = src_pi->type;
+	dst_pi->sub_type = src_pi->sub_type;
+	dst_pi->mpath = src_pi->mpath;
+	if (src_pi->extra) {
+		memcpy(dst_pie, src_pi->extra,
+		       sizeof(struct bgp_path_info_extra));
+		dst_pi->extra = dst_pie;
+	}
+}
 
 struct rmap_value {
 	uint8_t action;

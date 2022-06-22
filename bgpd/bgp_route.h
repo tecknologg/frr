@@ -561,27 +561,6 @@ static inline bool is_pi_family_matching(struct bgp_path_info *pi,
 	return false;
 }
 
-static inline void prep_for_rmap_apply(struct bgp_path_info *dst_pi,
-				       struct bgp_path_info_extra *dst_pie,
-				       struct bgp_dest *dest,
-				       struct bgp_path_info *src_pi,
-				       struct peer *peer, struct attr *attr)
-{
-	memset(dst_pi, 0, sizeof(struct bgp_path_info));
-	dst_pi->peer = peer;
-	dst_pi->attr = attr;
-	dst_pi->net = dest;
-	dst_pi->flags = src_pi->flags;
-	dst_pi->type = src_pi->type;
-	dst_pi->sub_type = src_pi->sub_type;
-	dst_pi->mpath = src_pi->mpath;
-	if (src_pi->extra) {
-		memcpy(dst_pie, src_pi->extra,
-		       sizeof(struct bgp_path_info_extra));
-		dst_pi->extra = dst_pie;
-	}
-}
-
 static inline bool bgp_check_advertise(struct bgp *bgp, struct bgp_dest *dest)
 {
 	return (!(BGP_SUPPRESS_FIB_ENABLED(bgp) &&

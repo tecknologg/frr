@@ -46,6 +46,7 @@
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_table.h"
 #include "bgpd/bgp_route.h"
+#include "bgpd/bgp_routemap.h"
 #include "bgpd/bgp_attr.h"
 #include "bgpd/bgp_debug.h"
 #include "bgpd/bgp_errors.h"
@@ -2073,9 +2074,9 @@ bool subgroup_announce_check(struct bgp_dest *dest, struct bgp_path_info *pi,
 	 * path attributes.
 	 */
 	if (post_attr)
-		*attr = *post_attr;
+		bgp_attr_dup(attr, post_attr);
 	else
-		*attr = *piattr;
+		bgp_attr_dup(attr, piattr);
 
 	/* If local-preference is not set. */
 	if ((peer->sort == BGP_PEER_IBGP || peer->sort == BGP_PEER_CONFED)
@@ -2174,10 +2175,11 @@ bool subgroup_announce_check(struct bgp_dest *dest, struct bgp_path_info *pi,
 		struct bgp_path_info rmap_path = {0};
 		struct bgp_path_info_extra dummy_rmap_path_extra = {0};
 		struct attr dummy_attr = {0};
+		struct attr_extra attr_extra = {0};
 
 		/* Fill temp path_info */
 		prep_for_rmap_apply(&rmap_path, &dummy_rmap_path_extra, dest,
-				    pi, peer, attr);
+				    pi, peer, attr, &attr_extra);
 
 		/* don't confuse inbound and outbound setting */
 		RESET_FLAG(attr->rmap_change_flags);
@@ -2189,7 +2191,7 @@ bool subgroup_announce_check(struct bgp_dest *dest, struct bgp_path_info *pi,
 		if ((from->sort == BGP_PEER_IBGP && peer->sort == BGP_PEER_IBGP)
 		    && !CHECK_FLAG(bgp->flags,
 				   BGP_FLAG_RR_ALLOW_OUTBOUND_POLICY)) {
-			dummy_attr = *attr;
+			bgp_attr_dup(&dummy_attr, attr);
 			rmap_path.attr = &dummy_attr;
 		}
 
@@ -2806,14 +2808,15 @@ static void bgp_process_evpn_route_injection(struct bgp *bgp, afi_t afi,
 			route_map_result_t ret;
 			struct bgp_path_info rmap_path;
 			struct bgp_path_info_extra rmap_path_extra;
-			struct attr dummy_attr;
+			struct attr dummy_attr = {0};
+			struct attr_extra attr_extra = {0};
 
 			dummy_attr = *new_select->attr;
 
 			/* Fill temp path_info */
 			prep_for_rmap_apply(&rmap_path, &rmap_path_extra, dest,
 					    new_select, new_select->peer,
-					    &dummy_attr);
+					    &dummy_attr, &attr_extra);
 
 			RESET_FLAG(dummy_attr.rmap_change_flags);
 
@@ -3886,7 +3889,7 @@ int bgp_update(struct peer *peer, const struct prefix *p, uint32_t addpath_id,
 			goto filtered;
 		}
 
-	new_attr = *attr;
+	bgp_attr_dup(&new_attr, attr);
 
 	/* Apply incoming route-map.
 	 * NB: new_attr may now contain newly allocated values from route-map
@@ -3983,6 +3986,7 @@ int bgp_update(struct peer *peer, const struct prefix *p, uint32_t addpath_id,
 	}
 
 	attr_new = bgp_attr_intern(&new_attr);
+	bgp_attr_extra_free(&new_attr);
 
 	/* If the update is implicit withdraw. */
 	if (pi) {
@@ -4050,6 +4054,7 @@ int bgp_update(struct peer *peer, const struct prefix *p, uint32_t addpath_id,
 
 			bgp_dest_unlock_node(dest);
 			bgp_attr_unintern(&attr_new);
+			bgp_attr_extra_free(attr_new);
 
 			return 0;
 		}
@@ -5848,6 +5853,7 @@ void bgp_static_update(struct bgp *bgp, const struct prefix *p,
 
 			/* Unintern original. */
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			bgp_static_withdraw(bgp, p, afi, safi);
 			return;
 		}
@@ -5876,6 +5882,7 @@ void bgp_static_update(struct bgp *bgp, const struct prefix *p,
 			bgp_dest_unlock_node(dest);
 			bgp_attr_unintern(&attr_new);
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			return;
 		} else {
 			/* The attribute is changed. */
@@ -5970,6 +5977,7 @@ void bgp_static_update(struct bgp *bgp, const struct prefix *p,
 
 			bgp_dest_unlock_node(dest);
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			return;
 		}
 	}
@@ -6024,6 +6032,7 @@ void bgp_static_update(struct bgp *bgp, const struct prefix *p,
 
 	/* Unintern original. */
 	aspath_unintern(&attr.aspath);
+	bgp_attr_extra_free(&attr);
 }
 
 void bgp_static_withdraw(struct bgp *bgp, const struct prefix *p, afi_t afi,
@@ -6173,6 +6182,7 @@ static void bgp_static_update_safi(struct bgp *bgp, const struct prefix *p,
 
 			/* Unintern original. */
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			bgp_static_withdraw_safi(bgp, p, afi, safi,
 						 &bgp_static->prd);
 			return;
@@ -6194,6 +6204,7 @@ static void bgp_static_update_safi(struct bgp *bgp, const struct prefix *p,
 			bgp_dest_unlock_node(dest);
 			bgp_attr_unintern(&attr_new);
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			return;
 		} else {
 			/* The attribute is changed. */
@@ -6227,6 +6238,7 @@ static void bgp_static_update_safi(struct bgp *bgp, const struct prefix *p,
 #endif
 			bgp_dest_unlock_node(dest);
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			return;
 		}
 	}
@@ -6267,6 +6279,7 @@ static void bgp_static_update_safi(struct bgp *bgp, const struct prefix *p,
 
 	/* Unintern original. */
 	aspath_unintern(&attr.aspath);
+	bgp_attr_extra_free(&attr);
 }
 
 /* Configure static BGP network.  When user don't run zebra, static
@@ -8364,7 +8377,7 @@ void bgp_redistribute_add(struct bgp *bgp, struct prefix *p,
 		struct attr attr_new;
 
 		/* Copy attribute for modification. */
-		attr_new = attr;
+		bgp_attr_dup(&attr_new, &attr);
 
 		if (red->redist_metric_flag)
 			attr_new.med = red->redist_metric;
@@ -8388,6 +8401,7 @@ void bgp_redistribute_add(struct bgp *bgp, struct prefix *p,
 
 				/* Unintern original. */
 				aspath_unintern(&attr.aspath);
+				bgp_attr_extra_free(&attr);
 				bgp_redistribute_delete(bgp, p, type, instance);
 				return;
 			}
@@ -8413,6 +8427,7 @@ void bgp_redistribute_add(struct bgp *bgp, struct prefix *p,
 			    && !CHECK_FLAG(bpi->flags, BGP_PATH_REMOVED)) {
 				bgp_attr_unintern(&new_attr);
 				aspath_unintern(&attr.aspath);
+				bgp_attr_extra_free(&attr);
 				bgp_dest_unlock_node(bn);
 				return;
 			} else {
@@ -8436,6 +8451,7 @@ void bgp_redistribute_add(struct bgp *bgp, struct prefix *p,
 				bgp_process(bgp, bn, afi, SAFI_UNICAST);
 				bgp_dest_unlock_node(bn);
 				aspath_unintern(&attr.aspath);
+				bgp_attr_extra_free(&attr);
 
 				if ((bgp->inst_type == BGP_INSTANCE_TYPE_VRF)
 				    || (bgp->inst_type
@@ -8467,6 +8483,7 @@ void bgp_redistribute_add(struct bgp *bgp, struct prefix *p,
 
 	/* Unintern original. */
 	aspath_unintern(&attr.aspath);
+	bgp_attr_extra_free(&attr);
 }
 
 void bgp_redistribute_delete(struct bgp *bgp, struct prefix *p, uint8_t type,

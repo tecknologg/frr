@@ -28,6 +28,7 @@ bgp_check_rmap_prefixes_in_bgp_table(struct bgp_table *table,
 				     struct route_map *rmap)
 {
 	struct attr dummy_attr = {0};
+	struct attr_extra dummy_attr_extra = {0};
 	struct bgp_dest *dest;
 	struct bgp_path_info *pi;
 	struct bgp_path_info path = {0};
@@ -44,7 +45,8 @@ bgp_check_rmap_prefixes_in_bgp_table(struct bgp_table *table,
 
 			/* Fill temp path_info */
 			prep_for_rmap_apply(&path, &path_extra, dest, pi,
-					    pi->peer, &dummy_attr);
+					    pi->peer, &dummy_attr,
+					    &dummy_attr_extra);
 
 			RESET_FLAG(dummy_attr.rmap_change_flags);
 
@@ -83,6 +85,7 @@ static void bgp_conditional_adv_routes(struct peer *peer, afi_t afi,
 	const struct prefix *dest_p;
 	struct update_subgroup *subgrp;
 	struct attr advmap_attr = {0}, attr = {0};
+	struct attr_extra advmap_attr_extra = {0};
 	struct bgp_path_info_extra path_extra = {0};
 	route_map_result_t ret;
 
@@ -114,7 +117,8 @@ static void bgp_conditional_adv_routes(struct peer *peer, afi_t afi,
 
 			/* Fill temp path_info */
 			prep_for_rmap_apply(&path, &path_extra, dest, pi,
-					    pi->peer, &advmap_attr);
+					    pi->peer, &advmap_attr,
+					    &advmap_attr_extra);
 
 			RESET_FLAG(advmap_attr.rmap_change_flags);
 
@@ -157,6 +161,7 @@ static void bgp_conditional_adv_routes(struct peer *peer, afi_t afi,
 						&pi->tx_addpath));
 			}
 			bgp_attr_flush(&advmap_attr);
+			bgp_attr_extra_free(&advmap_attr);
 		}
 	}
 	UNSET_FLAG(subgrp->sflags, SUBGRP_STATUS_TABLE_REPARSING);

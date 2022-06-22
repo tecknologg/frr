@@ -27,6 +27,7 @@
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_debug.h"
 #include "bgpd/bgp_route.h"
+#include "bgpd/bgp_routemap.h"
 #include "bgpd/bgp_updgrp.h"
 
 #ifdef __cplusplus

@@ -37,6 +37,7 @@
 #include "bgpd/bgpd.h"
 #include "bgpd/bgp_table.h"
 #include "bgpd/bgp_route.h"
+#include "bgpd/bgp_routemap.h"
 #include "bgpd/bgp_attr.h"
 #include "bgpd/bgp_mplsvpn.h"
 #include "bgpd/bgp_label.h"
@@ -4488,14 +4489,16 @@ void bgp_evpn_advertise_type5_routes(struct bgp *bgp_vrf, afi_t afi,
 					route_map_result_t ret;
 					struct bgp_path_info tmp_pi;
 					struct bgp_path_info_extra tmp_pie;
-					struct attr tmp_attr;
+					struct attr tmp_attr = {0};
+					struct attr_extra tmp_attr_extra = {0};
 
 					tmp_attr = *pi->attr;
 
 					/* Fill temp path_info */
 					prep_for_rmap_apply(&tmp_pi, &tmp_pie,
 							    dest, pi, pi->peer,
-							    &tmp_attr);
+							    &tmp_attr,
+							    &tmp_attr_extra);
 
 					RESET_FLAG(tmp_attr.rmap_change_flags);
 

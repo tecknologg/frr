@@ -884,7 +884,9 @@ bgp_evpn_type1_es_route_extcomm_build(struct bgp_evpn_es_frag *es_frag,
 		for (ALL_LIST_ELEMENTS_RO(bgp_mh_info->ead_es_export_rtl,
 					  rt_node, ecom))
 			bgp_attr_set_ecommunity(
-				attr, ecommunity_merge(attr->ecommunity, ecom));
+				attr,
+				ecommunity_merge(bgp_attr_get_ecommunity(attr),
+						 ecom));
 	} else {
 		for (ALL_LIST_ELEMENTS_RO(es_frag->es_evi_frag_list, evi_node,
 					  es_evi)) {
@@ -893,8 +895,10 @@ bgp_evpn_type1_es_route_extcomm_build(struct bgp_evpn_es_frag *es_frag,
 			for (ALL_LIST_ELEMENTS_RO(es_evi->vpn->export_rtl,
 						  rt_node, ecom))
 				bgp_attr_set_ecommunity(
-					attr, ecommunity_merge(attr->ecommunity,
-							       ecom));
+					attr,
+					ecommunity_merge(
+						bgp_attr_get_ecommunity(attr),
+						ecom));
 		}
 	}
 }

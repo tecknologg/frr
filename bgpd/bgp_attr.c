@@ -93,6 +93,25 @@ static const struct message attr_flag_str[] = {
 	{BGP_ATTR_FLAG_EXTLEN, "Extended Length"},
 	{0}};
 
+struct attr_extra *bgp_attr_extra_alloc(void)
+{
+	return XCALLOC(MTYPE_ATTR_EXTRA, sizeof(struct attr_extra));
+}
+
+void bgp_attr_extra_free(struct attr *attr)
+{
+	XFREE(MTYPE_ATTR_EXTRA, attr->extra);
+}
+
+void bgp_attr_dup(struct attr *new, struct attr *orig)
+{
+	*new = *orig;
+	if (orig->extra) {
+		new->extra = bgp_attr_extra_alloc();
+		*new->extra = *orig->extra;
+	}
+}
+
 static struct hash *cluster_hash;
 
 static void *cluster_hash_alloc(void *p)
@@ -780,6 +799,7 @@ static void attrhash_init(void)
  */
 static void attr_vfree(void *attr)
 {
+	bgp_attr_extra_free(attr);
 	XFREE(MTYPE_ATTR, attr);
 }
 
@@ -822,7 +842,7 @@ static void *bgp_attr_hash_alloc(void *p)
 	struct attr *attr;
 
 	attr = XMALLOC(MTYPE_ATTR, sizeof(struct attr));
-	*attr = *val;
+	bgp_attr_dup(attr, val);
 	if (val->encap_subtlvs) {
 		val->encap_subtlvs = NULL;
 	}
@@ -1059,6 +1079,7 @@ struct attr *bgp_attr_aggregate_intern(
 
 			/* Unintern original. */
 			aspath_unintern(&attr.aspath);
+			bgp_attr_extra_free(&attr);
 			return NULL;
 		}
 
@@ -1076,6 +1097,7 @@ struct attr *bgp_attr_aggregate_intern(
 
 	/* Always release the 'intern()'ed AS Path. */
 	aspath_unintern(&attr.aspath);
+	bgp_attr_extra_free(&attr);
 
 	return new;
 }
@@ -1153,12 +1175,13 @@ void bgp_attr_unintern(struct attr **pattr)
 	/* Decrement attribute reference. */
 	attr->refcnt--;
 
-	tmp = *attr;
+	bgp_attr_dup(&tmp, attr);
 
 	/* If reference becomes zero then free attribute object. */
 	if (attr->refcnt == 0) {
 		ret = hash_release(attrhash, attr);
 		assert(ret != NULL);
+		bgp_attr_extra_free(attr);
 		XFREE(MTYPE_ATTR, attr);
 		*pattr = NULL;
 	}
@@ -1231,6 +1254,7 @@ void bgp_attr_flush(struct attr *attr)
 		bgp_attr_set_vnc_subtlvs(attr, NULL);
 	}
 #endif
+	bgp_attr_extra_free(attr);
 }
 
 /* Implement draft-scudder-idr-optional-transitive behaviour and

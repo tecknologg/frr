@@ -159,13 +159,31 @@ struct bgp_attr_srv6_l3vpn {
 	uint8_t transposition_offset;
 };
 
+struct attr_extra {
+	/* Community structure */
+	struct community *community;
+
+	/* Extended Communities attribute. */
+	struct ecommunity *ecommunity;
+	struct ecommunity *ipv6_ecommunity;
+
+	/* Large Communities attribute. */
+	struct lcommunity *lcommunity;
+
+	/* Route-Reflector Cluster attribute */
+	struct cluster_list *cluster1;
+
+	/* Unknown transitive attribute. */
+	struct transit *transit;
+
+	/* PMSI tunnel type (RFC 6514). */
+	enum pta_type pmsi_tnl_type;
+};
+
 /* BGP core attribute structure. */
 struct attr {
 	/* AS Path structure */
 	struct aspath *aspath;
-
-	/* Community structure */
-	struct community *community;
 
 	/* Reference count of this attribute. */
 	unsigned long refcnt;
@@ -182,9 +200,6 @@ struct attr {
 	/* Path origin attribute */
 	uint8_t origin;
 
-	/* PMSI tunnel type (RFC 6514). */
-	enum pta_type pmsi_tnl_type;
-
 	/* has the route-map changed any attribute?
 	   Used on the peer outbound side. */
 	uint32_t rmap_change_flags;
@@ -195,21 +210,6 @@ struct attr {
 
 	/* ifIndex corresponding to mp_nexthop_local. */
 	ifindex_t nh_lla_ifindex;
-
-	/* Extended Communities attribute. */
-	struct ecommunity *ecommunity;
-
-	/* Extended Communities attribute. */
-	struct ecommunity *ipv6_ecommunity;
-
-	/* Large Communities attribute. */
-	struct lcommunity *lcommunity;
-
-	/* Route-Reflector Cluster attribute */
-	struct cluster_list *cluster1;
-
-	/* Unknown transitive attribute. */
-	struct transit *transit;
 
 	struct in_addr mp_nexthop_global_in;
 
@@ -334,6 +334,9 @@ struct attr {
 
 	/* If NEXTHOP_TYPE_BLACKHOLE, then blackhole type */
 	enum blackhole_type bh_type;
+
+	/* Extra attributes */
+	struct attr_extra *extra;
 };
 
 /* rmap_change_flags definition */
@@ -415,6 +418,9 @@ extern unsigned int attrhash_key_make(const void *p);
 extern void attr_show_all(struct vty *vty);
 extern unsigned long int attr_count(void);
 extern unsigned long int attr_unknown_count(void);
+extern struct attr_extra *bgp_attr_extra_alloc(void);
+extern void bgp_attr_extra_free(struct attr *attr);
+extern void bgp_attr_dup(struct attr *new, struct attr *orig);
 
 /* Cluster list prototypes. */
 extern bool cluster_loop_check(struct cluster_list *cluster,
@@ -499,25 +505,40 @@ static inline uint32_t mac_mobility_seqnum(struct attr *attr)
 
 static inline enum pta_type bgp_attr_get_pmsi_tnl_type(struct attr *attr)
 {
-	return attr->pmsi_tnl_type;
+	if (attr->extra)
+		return attr->extra->pmsi_tnl_type;
+
+	return PMSI_TNLTYPE_NO_INFO;
 }
 
 static inline void bgp_attr_set_pmsi_tnl_type(struct attr *attr,
 					      enum pta_type pmsi_tnl_type)
 {
-	attr->pmsi_tnl_type = pmsi_tnl_type;
+	if (!attr->extra)
+		attr->extra = bgp_attr_extra_alloc();
+
+	attr->extra->pmsi_tnl_type = pmsi_tnl_type;
 }
 
 static inline struct ecommunity *
 bgp_attr_get_ecommunity(const struct attr *attr)
 {
-	return attr->ecommunity;
+	if (attr->extra)
+		return attr->extra->ecommunity;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_ecommunity(struct attr *attr,
 					   struct ecommunity *ecomm)
 {
-	attr->ecommunity = ecomm;
+	if (!attr->extra) {
+		if (!ecomm)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->ecommunity = ecomm;
 
 	if (ecomm)
 		SET_FLAG(attr->flag, ATTR_FLAG_BIT(BGP_ATTR_EXT_COMMUNITIES));
@@ -528,13 +549,22 @@ static inline void bgp_attr_set_ecommunity(struct attr *attr,
 static inline struct lcommunity *
 bgp_attr_get_lcommunity(const struct attr *attr)
 {
-	return attr->lcommunity;
+	if (attr->extra)
+		return attr->extra->lcommunity;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_lcommunity(struct attr *attr,
 					   struct lcommunity *lcomm)
 {
-	attr->lcommunity = lcomm;
+	if (!attr->extra) {
+		if (!lcomm)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->lcommunity = lcomm;
 
 	if (lcomm)
 		SET_FLAG(attr->flag, ATTR_FLAG_BIT(BGP_ATTR_LARGE_COMMUNITIES));
@@ -545,13 +575,22 @@ static inline void bgp_attr_set_lcommunity(struct attr *attr,
 
 static inline struct community *bgp_attr_get_community(const struct attr *attr)
 {
-	return attr->community;
+	if (attr->extra)
+		return attr->extra->community;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_community(struct attr *attr,
 					  struct community *comm)
 {
-	attr->community = comm;
+	if (!attr->extra) {
+		if (!comm)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->community = comm;
 
 	if (comm)
 		SET_FLAG(attr->flag, ATTR_FLAG_BIT(BGP_ATTR_COMMUNITIES));
@@ -562,13 +601,22 @@ static inline void bgp_attr_set_community(struct attr *attr,
 static inline struct ecommunity *
 bgp_attr_get_ipv6_ecommunity(const struct attr *attr)
 {
-	return attr->ipv6_ecommunity;
+	if (attr->extra)
+		return attr->extra->ipv6_ecommunity;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_ipv6_ecommunity(struct attr *attr,
 						struct ecommunity *ipv6_ecomm)
 {
-	attr->ipv6_ecommunity = ipv6_ecomm;
+	if (!attr->extra) {
+		if (!ipv6_ecomm)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->ipv6_ecommunity = ipv6_ecomm;
 
 	if (ipv6_ecomm)
 		SET_FLAG(attr->flag,
@@ -580,24 +628,42 @@ static inline void bgp_attr_set_ipv6_ecommunity(struct attr *attr,
 
 static inline struct transit *bgp_attr_get_transit(const struct attr *attr)
 {
-	return attr->transit;
+	if (attr->extra)
+		return attr->extra->transit;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_transit(struct attr *attr,
 					struct transit *transit)
 {
-	attr->transit = transit;
+	if (!attr->extra) {
+		if (!transit)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->transit = transit;
 }
 
 static inline struct cluster_list *bgp_attr_get_cluster(const struct attr *attr)
 {
-	return attr->cluster1;
+	if (attr->extra)
+		return attr->extra->cluster1;
+
+	return NULL;
 }
 
 static inline void bgp_attr_set_cluster(struct attr *attr,
 					struct cluster_list *cl)
 {
-	attr->cluster1 = cl;
+	if (!attr->extra) {
+		if (!cl)
+			return;
+
+		attr->extra = bgp_attr_extra_alloc();
+	}
+	attr->extra->cluster1 = cl;
 }
 
 static inline const struct bgp_route_evpn *
