@@ -116,13 +116,14 @@ static void *cluster_hash_alloc(void *p)
 }
 
 /* Cluster list related functions. */
-static struct cluster_list *cluster_parse(struct in_addr *pnt, int length)
+static struct cluster_list *cluster_parse(uint32_t caddr, int length)
 {
 	struct cluster_list tmp = {};
 	struct cluster_list *cluster;
+	struct in_addr list = {.s_addr = caddr};
 
 	tmp.length = length;
-	tmp.list = length == 0 ? NULL : pnt;
+	tmp.list = length == 0 ? NULL : &list;
 
 	cluster = hash_get(cluster_hash, &tmp, cluster_hash_alloc);
 	cluster->refcnt++;
@@ -2013,11 +2014,7 @@ bgp_attr_cluster_list(struct bgp_attr_parser_args *args)
 	}
 
 	bgp_attr_set_cluster(
-		attr, cluster_parse((struct in_addr *)stream_pnt(peer->curr),
-				    length));
-
-	/* XXX: Fix cluster_parse to use stream API and then remove this */
-	stream_forward_getp(peer->curr, length);
+		attr, cluster_parse(stream_get_ipv4(peer->curr), length));
 
 	return BGP_ATTR_PARSE_PROCEED;
 }
