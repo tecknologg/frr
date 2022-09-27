@@ -2374,8 +2374,10 @@ void peer_nsf_stop(struct peer *peer)
 	UNSET_FLAG(peer->sflags, PEER_STATUS_NSF_WAIT);
 	UNSET_FLAG(peer->sflags, PEER_STATUS_NSF_MODE);
 
-	FOREACH_AFI_SAFI_NSF (afi, safi)
+	FOREACH_AFI_SAFI_NSF (afi, safi) {
 		peer->nsf[afi][safi] = 0;
+		THREAD_OFF(peer->t_llgr_stale[afi][safi]);
+	}
 
 	if (peer->t_gr_restart) {
 		THREAD_OFF(peer->t_gr_restart);
@@ -3615,6 +3617,7 @@ int bgp_delete(struct bgp *bgp)
 
 	hook_call(bgp_inst_delete, bgp);
 
+	THREAD_OFF(bgp->t_condition_check);
 	THREAD_OFF(bgp->t_startup);
 	THREAD_OFF(bgp->t_maxmed_onstartup);
 	THREAD_OFF(bgp->t_update_delay);
@@ -3630,7 +3633,12 @@ int bgp_delete(struct bgp *bgp)
 		gr_info = &bgp->gr_info[afi][safi];
 		if (!gr_info)
 			continue;
+		t = gr_info->t_select_deferral;
+		if (t) {
+			void *info = THREAD_ARG(t);
 
+			XFREE(MTYPE_TMP, info);
+		}
 		THREAD_OFF(gr_info->t_select_deferral);
 
 		t = gr_info->t_route_select;
@@ -3711,6 +3719,17 @@ int bgp_delete(struct bgp *bgp)
 				&bgp->vpn_policy[afi]
 				.import_redirect_rtlist);
 		bgp->vpn_policy[afi].import_redirect_rtlist = NULL;
+	}
+
+	/* Free any memory allocated to holding routemap references */
+	for (afi = 0; afi < AFI_MAX; ++afi) {
+		for (enum vpn_policy_direction dir = 0;
+		     dir < BGP_VPN_POLICY_DIR_MAX; ++dir) {
+			if (bgp->vpn_policy[afi].rmap_name[dir])
+				XFREE(MTYPE_ROUTE_MAP_NAME,
+				      bgp->vpn_policy[afi].rmap_name[dir]);
+			bgp->vpn_policy[afi].rmap[dir] = NULL;
+		}
 	}
 
 	/* Deregister from Zebra, if needed */
@@ -7230,6 +7249,9 @@ static void peer_advertise_map_filter_update(struct peer *peer, afi_t afi,
 		 */
 		if (filter_exists)
 			bgp_conditional_adv_disable(peer, afi, safi);
+
+		/* Process peer route updates. */
+		peer_on_policy_change(peer, afi, safi, 1);
 
 		return;
 	}
