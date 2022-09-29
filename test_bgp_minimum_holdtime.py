@@ -69,7 +69,7 @@ class Configs(FRRConfigs):
   """
 
 
-class test_bgp_minimum_holdtime(TestBase):
+class TestBGPMinimumHoldtime(TestBase, AutoFixture, topo=topology, configs=Configs):
     @topotatofunc
     def bgp_neighbor_check_if_notification_sent(self, _, r1):
         expected = {
