@@ -92,12 +92,12 @@ class BGPDefaultOriginate(TestBase, AutoFixture, topo=topology, configs=Configs)
     def bgp_check_if_originated(self, _, r1):
         expected = {"ipv4Unicast": {"peers": {"192.168.255.2": {"pfxSnt": 1}}}}
         yield from AssertVtysh.make(
-            r1, "bgpd", f"show ip bgp summary json", maxwait=1.0, compare=expected
+            r1, "bgpd", f"show ip bgp summary json", maxwait=0.5, compare=expected
         )
 
     @topotatofunc
     def bgp_default_route_is_valid(self, _, r2):
         expected = {"paths": [{"valid": True}]}
         yield from AssertVtysh.make(
-            r2, "bgpd", f"show ip bgp 0.0.0.0/0 json", maxwait=1.0, compare=expected
+            r2, "bgpd", f"show ip bgp 0.0.0.0/0 json", maxwait=0.5, compare=expected
         )
