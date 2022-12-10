@@ -103,7 +103,7 @@ class BGPEbgpCommonSubnetNexthopUnchanged(
             r3,
             "bgpd",
             f"show ip bgp summary json",
-            maxwait=3.0,
+            maxwait=2.0,
             compare=expected,
         )
 
