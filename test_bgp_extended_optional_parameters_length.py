@@ -51,7 +51,7 @@ class Configs(FRRConfigs):
     bgpd = """
     #% block main
     #%  if router.name == 'r2'
-    router bgp 65001
+    router bgp 65002
       no bgp ebgp-requires-policy
       neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as external
       neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} extended-optional-parameters
@@ -59,7 +59,7 @@ class Configs(FRRConfigs):
         redistribute connected
       exit-address-family
     #%   elif router.name == 'r1'
-    router bgp 65000
+    router bgp 65001
       no bgp ebgp-requires-policy
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as external
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} extended-optional-parameters
