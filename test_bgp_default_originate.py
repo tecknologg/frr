@@ -22,9 +22,6 @@ def topology(topo):
       |
     [ r2 ]
     """
-    topo.router("r1").lo_ip4.append("172.16.255.254/32")
-    topo.router("r1").iface_to("s1").ip4.append("192.168.255.1/24")
-    topo.router("r2").iface_to("s1").ip4.append("192.168.255.2/24")
 
 
 class Configs(FRRConfigs):
@@ -63,7 +60,7 @@ class Configs(FRRConfigs):
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as 65001
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
       address-family ipv4 unicast
-        neighbor 192.168.255.2 default-originate
+        neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} default-originate
       exit-address-family
     !
     #%   endif
@@ -75,7 +72,7 @@ class BGPDefaultOriginate(TestBase, AutoFixture, topo=topology, configs=Configs)
     @topotatofunc
     def bgp_check_if_received(self, _, r1, r2):
         expected = {
-            str(r1.ifaces[0].ip4[0].ip): {
+            f"{r1.ifaces[0].ip4[0].ip}": {
                 "bgpState": "Established",
                 "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 1}},
             }
@@ -89,8 +86,10 @@ class BGPDefaultOriginate(TestBase, AutoFixture, topo=topology, configs=Configs)
         )
 
     @topotatofunc
-    def bgp_check_if_originated(self, _, r1):
-        expected = {"ipv4Unicast": {"peers": {"192.168.255.2": {"pfxSnt": 1}}}}
+    def bgp_check_if_originated(self, _, r1, r2):
+        expected = {
+            "ipv4Unicast": {"peers": {f"{r2.ifaces[0].ip4[0].ip}": {"pfxSnt": 1}}}
+        }
         yield from AssertVtysh.make(
             r1, "bgpd", f"show ip bgp summary json", maxwait=0.5, compare=expected
         )
