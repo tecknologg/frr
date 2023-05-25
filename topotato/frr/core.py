@@ -17,26 +17,20 @@ import socket
 import struct
 import sys
 import time
-from dataclasses import dataclass
 import typing
 from typing import (
     Any,
-    Callable,
     ClassVar,
     Dict,
+    FrozenSet,
     Generator,
     List,
-    Literal,
     Mapping,
     Optional,
-    Set,
     Tuple,
-    Union,
-    cast,
 )
 
 import pytest
-from .. import jinlinja
 
 from ..defer import subprocess
 from ..utils import deindent, get_dir, EnvcheckResult
@@ -44,7 +38,9 @@ from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog
 from ..exceptions import TopotatoDaemonCrash
 from ..pcapng import Context
-from ..osdep import NetworkInstance
+from ..network import TopotatoNetwork
+from ..topobase import CallableNS
+from .templating import TemplateUtils, jenv
 
 if typing.TYPE_CHECKING:
     from .. import toponom
@@ -52,62 +48,83 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger("topotato")
 
-jenv = jinlinja.InlineEnv()
-
-# TBD: might be more accessible to just put these in a templates/ dir
-_templates = {
-    "boilerplate.conf": """
-        log record-priority
-        log timestamp precision 6
-        !
-        hostname {{ router.name }}
-        service advanced-vty
-        !
-        #% block main
-        #% endblock
-        !
-        line vty
-        !
-        """.replace(
-        "\n        ", "\n"
-    ).lstrip(
-        "\n"
-    ),
-}
-
-jenv.register_templates(_templates.items())
-
 
 class FRRSetupError(EnvironmentError):
     pass
 
 
-class FRRConfigs(dict):
+class FRRSetup:
     """
-    set of config files for an FRR setup
+    Encapsulation of an FRR build.
 
-    this is a subclass of dict, keyed by router name, and has another level
-    of dicts for the daemons, i.e.  frrconfig['r1']['zebra']
+    This grabs all the necessary information about the FRR build to use,
+    generally given with ``--frr-builddir`` on the pytest command line.  In
+    theory multiple instances of this can exist, but for the time being there
+    is only one, and you can find it in pytest's session object as
+    ``session.frr``.
     """
 
-    daemons: ClassVar[List[str]]
-    binmap: ClassVar[Dict[str, str]]
-    makevars: ClassVar[Mapping[str, str]]
-    frrcred: ClassVar[Any]
-    xrefs: ClassVar[Optional[Dict[Any, Any]]] = None
+    daemons_all: ClassVar[List[str]] = []
+    """
+    List of FRR daemons topotato knows about.  The daemons available are a
+    subset of this, determined by reading ``Makefile`` from the FRR build.
+    """
+    daemons_all.extend("zebra staticd mgmtd".split())
+    daemons_all.extend("bgpd ripd ripngd ospfd ospf6d isisd fabricd babeld".split())
+    daemons_all.extend("eigrpd pimd pim6d ldpd nhrpd sharpd pathd pbrd".split())
+    daemons_all.extend("bfdd vrrpd".split())
 
-    frrpath: ClassVar[str]
-    srcpath: ClassVar[str]
+    daemons_integrated_only: ClassVar[FrozenSet[str]] = frozenset(
+        "pim6d staticd mgmtd".split()
+    )
+    """
+    Daemons that don't have their config loaded with ``-f`` on startup
+    """
+
+    daemons_mgmtd: ClassVar[FrozenSet[str]] = frozenset("staticd".split())
+    """
+    Daemons that get their config through mgmtd.
+    """
+
+    frrpath: str
+    """
+    Path to the build directory (note this is not an install in e.g. /usr)
+    """
+    srcpath: str
+    """
+    Path to sources, same as :py:attr:`frrpath` except for out-of-tree builds.
+    """
+
+    daemons: List[str]
+    """
+    Which daemons are available in this build, in order of startup.
+    """
+    binmap: Dict[str, str]
+    """
+    Daemon name to executable mapping
+    """
+    makevars: Mapping[str, str]
+    """
+    All the variables defined in ``Makefile``, to look up how the build was
+    configured.
+    """
+    frrcred: pwd.struct_passwd
+    """
+    UID/GID that FRR was configured at build time to run under.
+    """
+    xrefs: Optional[Dict[Any, Any]] = None
+    """
+    xrefs (Log message / CLI / ...) for this FRR build.
+    """
+
     confpath = "/etc/frr"
+    """
+    Configuration path FRR was configured at build time for.
 
-    # will be overridden by init, but necessary when running separate tests
-    # directly outside of pytest, e.g. to just dump the configs
-    daemons = []
-    daemons.extend("zebra staticd".split())
-    daemons.extend("bgpd ripd ripngd ospfd ospf6d isisd fabricd babeld eigrpd".split())
-    daemons.extend("pimd pim6d ldpd nhrpd sharpd pathd pbrd bfdd vrrpd".split())
-
-    daemons_integrated_only = frozenset("pim6d staticd".split())
+    Note while daemon config paths can be overridden at daemon start,
+    ``vtysh.conf`` is always in this location (since it has PAM config, which
+    is mildly security relevant.)
+    """
 
     @staticmethod
     @pytest.hookimpl()
@@ -125,156 +142,131 @@ class FRRConfigs(dict):
             default="../frr",
         )
 
-    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     @classmethod
     @pytest.hookimpl()
     def pytest_topotato_envcheck(cls, session, result: EnvcheckResult):
-        """
-        grab some setup information about a FRR build from frrpath
-
-        among other things, this figures out which daemons are even available
-        """
         frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
-        cls.frrpath = frrpath = os.path.abspath(frrpath)
+
+        session.frr = cls(frrpath, result)
+
+    def __init__(self, frrpath: str, result: EnvcheckResult):
+        """
+        Grab setup information about a FRR build from frrpath.
+
+        Fills in all the fields on this instance.
+        """
+        self.frrpath = os.path.abspath(frrpath)
 
         logger.debug("FRR build directory: %r", frrpath)
+
+        self._source_locate()
+        self._env_check(result)
+        self._daemons_setup(result)
+        self._xrefs_load()
+
+    def _source_locate(self):
         try:
-            with open(os.path.join(frrpath, "Makefile"), encoding="utf-8") as fd:
+            with open(os.path.join(self.frrpath, "Makefile"), encoding="utf-8") as fd:
                 makefile = fd.read()
         except FileNotFoundError as exc:
             raise FRRSetupError(
                 "%r does not seem to be a FRR build directory, did you run ./configure && make?"
-                % frrpath
+                % self.frrpath
             ) from exc
 
         srcdirm = re.search(r"^top_srcdir\s*=\s*(.*)$", makefile, re.M)
         if srcdirm is None:
             raise FRRSetupError("cannot identify source directory for %r")
 
-        cls.srcpath = srcdir = os.path.abspath(os.path.join(frrpath, srcdirm.group(1)))
-        logger.debug("FRR source directory: %r", srcdir)
+        self.srcpath = os.path.abspath(os.path.join(self.frrpath, srcdirm.group(1)))
+        logger.debug("FRR source directory: %r", self.srcpath)
 
         oldpath = sys.path[:]
-        sys.path.append(os.path.join(srcdir, "python"))
+        sys.path.append(os.path.join(self.srcpath, "python"))
         makevarmod = importlib.import_module("makevars")
         sys.path = oldpath
 
-        cls.makevars = makevarmod.MakeReVars(makefile)  # type: ignore
+        self.makevars = makevarmod.MakeReVars(makefile)  # type: ignore
 
+    def _env_check(self, result: EnvcheckResult):
         try:
-            cls.frrcred = pwd.getpwnam(cls.makevars["enable_user"])
+            self.frrcred = pwd.getpwnam(self.makevars["enable_user"])
         except KeyError as e:
             result.error("FRR configured to use a non-existing user (%r)" % e)
 
-        if cls.makevars["sysconfdir"] != cls.confpath:
+        if self.makevars["sysconfdir"] != self.confpath:
             result.error(
                 "FRR configured with --sysconfdir=%r, must be %r for topotato"
-                % (cls.makevars["sysconfdir"], cls.confpath)
+                % (self.makevars["sysconfdir"], self.confpath)
             )
-        if not os.path.isdir(cls.confpath):
+        if not os.path.isdir(self.confpath):
             result.error(
                 "FRR config directory %r does not exist or is not a directory"
-                % cls.confpath
+                % self.confpath
             )
 
-        in_topotato = set(cls.daemons)
-        cls.daemons = list(sorted(cls.makevars["vtysh_daemons"].split()))
-        missing = set(cls.daemons) - in_topotato
+    def _daemons_setup(self, result: EnvcheckResult):
+        in_topotato = set(self.daemons_all)
+        self.daemons = list(sorted(self.makevars["vtysh_daemons"].split()))
+        missing = set(self.daemons) - in_topotato
         for daemon in missing:
             logger.warning(
                 "daemon %s missing from FRRConfigs.daemons, please add!", daemon
             )
 
         # this determines startup order
-        cls.daemons.remove("zebra")
-        cls.daemons.remove("staticd")
-        cls.daemons.insert(0, "zebra")
-        cls.daemons.insert(1, "staticd")
+        self.daemons.remove("zebra")
+        self.daemons.remove("staticd")
+        self.daemons.insert(0, "zebra")
+        self.daemons.insert(1, "staticd")
+        if "mgmtd" in self.daemons:
+            self.daemons.remove("mgmtd")
+            self.daemons.insert(1, "mgmtd")
 
-        logger.info("FRR daemons: %s", ", ".join(cls.daemons))
+        logger.info("FRR daemons: %s", ", ".join(self.daemons))
 
         notbuilt = set()
-        cls.binmap = {}
+        self.binmap = {}
         buildprogs = []
-        buildprogs.extend(cls.makevars["sbin_PROGRAMS"].split())
-        buildprogs.extend(cls.makevars["noinst_PROGRAMS"].split())
+        buildprogs.extend(self.makevars["sbin_PROGRAMS"].split())
+        buildprogs.extend(self.makevars["noinst_PROGRAMS"].split())
         for name in buildprogs:
             _, daemon = name.rsplit("/", 1)
-            if daemon not in cls.daemons:
+            if daemon not in self.daemons:
                 logger.debug("ignoring target %r", name)
             else:
                 logger.debug("%s => %s", daemon, name)
-                if not os.path.exists(os.path.join(frrpath, name)):
+                if not os.path.exists(os.path.join(self.frrpath, name)):
                     result.warning("daemon %r enabled but not built?" % daemon)
                     notbuilt.add(daemon)
                 else:
-                    cls.binmap[daemon] = name
+                    self.binmap[daemon] = name
 
-        disabled = set(cls.daemons) - set(cls.binmap.keys()) - notbuilt
+        disabled = set(self.daemons) - set(self.binmap.keys()) - notbuilt
         for daemon in sorted(disabled):
             result.warning("daemon %r not enabled in configure, skipping" % daemon)
 
-        xrefpath = os.path.join(frrpath, "frr.xref")
+    def _xrefs_load(self):
+        xrefpath = os.path.join(self.frrpath, "frr.xref")
         if os.path.exists(xrefpath):
             with open(xrefpath, "r", encoding="utf-8") as fd:
-                cls.xrefs = json.load(fd)
+                self.xrefs = json.load(fd)
 
-    def __init__(self, topology: "toponom.Network"):
+
+class FRRConfigs(dict):
+    """
+    set of config files for an FRR setup
+
+    this is a subclass of dict, keyed by router name, and has another level
+    of dicts for the daemons, i.e.  frrconfig['r1']['zebra']
+    """
+
+    def __init__(self, topology: "toponom.Network", frr: FRRSetup):
         super().__init__()
         self.topology = topology
 
-    @dataclass
-    class TemplateUtils:
-        configs: "FRRConfigs"
-        router: "toponom.Router"
-        daemon: str
-
-        def static_route_for(
-            self,
-            dst: "toponom.AnyNetwork",
-            *,
-            rtr_filter: Callable[["toponom.Router"], bool] = lambda nbr: True,
-        ):
-            """
-            Calculate and output a staticd route for given destination.
-
-            Current router is used as starting point.  Uses a simple
-            breath-first search, only one route will be output (no ECMP.)
-            If the destination is directly connected, output is a comment.
-            """
-            visited: Set["toponom.Router"] = set()
-            queue: List[
-                Tuple[
-                    "toponom.Router",
-                    List[Tuple["toponom.LinkIface", "toponom.LinkIface"]],
-                ]
-            ] = [(self.router, [])]
-
-            assert dst.version in [4, 6]
-            ipv = cast(Union[Literal[4], Literal[6]], dst.version)
-
-            while queue:
-                rtr, path = queue.pop(0)
-                if rtr in visited:
-                    continue
-                visited.add(rtr)
-                for addr in rtr.addrs(ipv):
-                    if dst == addr.network:
-                        if not path:
-                            return f"! {dst!s} is directly connected"
-                        if_self, if_other = path[0]
-                        if dst.version == 6:
-                            return (
-                                f"ipv6 route {dst!s} {if_other.ll6!s} {if_self.ifname}"
-                            )
-                        return (
-                            f"ip route {dst!s} {if_other.ip4[0].ip!s} {if_self.ifname}"
-                        )
-                for iface, nbr_iface, nbr in rtr.neighbors(rtr_filter=rtr_filter):
-                    nbr_path = path + [(iface, nbr_iface)]
-                    queue.append((nbr, nbr_path))
-
-            raise RuntimeError(f"no route for {dst!r} on {self.router!r}")
+        self.frr = frr
+        self.daemons = frr.daemons
 
     def generate(self):
         """
@@ -299,7 +291,7 @@ class FRRConfigs(dict):
                         router=router,
                         routers=rtrmap,
                         topo=topo,
-                        frr=self.TemplateUtils(self, router, daemon),
+                        frr=TemplateUtils(router, daemon),
                     )
         return self
 
@@ -326,11 +318,20 @@ class FRRConfigs(dict):
         """
         cls.templates = {}
         cls.daemon_rtrs = {}
+        cls.daemons = FRRSetup.daemons_all
 
-        for daemon in cls.daemons:
-            if not hasattr(cls, daemon):
-                continue
-            text = deindent(getattr(cls, daemon))
+        empty_cfg = """
+        #% extends "boilerplate.conf"
+        #% block main
+        #% endblock
+        """
+
+        daemons = set(daemon for daemon in FRRSetup.daemons_all if hasattr(cls, daemon))
+        if daemons & FRRSetup.daemons_mgmtd and "mgmtd" not in daemons:
+            daemons.add("mgmtd")
+
+        for daemon in daemons:
+            text = deindent(getattr(cls, daemon, empty_cfg))
 
             cls.templates[daemon] = jenv.from_string(text)
             cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, None)
@@ -476,210 +477,252 @@ class VtyshPoll(MiniPollee):
                 self.send_cmd()
 
 
-class FRRNetworkInstance(NetworkInstance):
+class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     """
-    Main network representation & interface, adding the FRR bits to NetworkInstance
-
-    SwitchNS is not specialized here, nothing FRR in there.
+    Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
     """
 
-    # pylint: disable=too-many-ancestors
-    class RouterNS(NetworkInstance.RouterNS):
-        """
-        Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
-        """
+    instance: TopotatoNetwork
+    frr: FRRSetup
+    logfiles: Dict[str, str]
+    pids: Dict[str, int]
+    rundir: Optional[str]
+    rtrcfg: Dict[str, str]
+    livelogs: Dict[str, LiveLog]
 
-        instance: "FRRNetworkInstance"
-        logfiles: Dict[str, str]
-        pids: Dict[str, int]
-        rundir: Optional[str]
-        rtrcfg: Dict[str, str]
-        livelogs: Dict[str, LiveLog]
+    def __init__(self, instance: TopotatoNetwork, name: str, configs: FRRConfigs):
+        super().__init__(instance, name)
+        self.configs = configs
+        self.frr = configs.frr
+        self.logfiles = {}
+        self.livelogs = {}
+        self.pids = {}
+        self.rundir = None
+        self.rtrcfg = {}
 
-        def __init__(self, instance: "FRRNetworkInstance", name: str):
-            super().__init__(instance, name)
-            self.logfiles = {}
-            self.livelogs = {}
-            self.pids = {}
-            self.rundir = None
-            self.rtrcfg = {}
+    def _getlogfd(self, daemon):
+        if daemon not in self.livelogs:
+            self.livelogs[daemon] = LiveLog(self, daemon)
+            self.instance.timeline.install(self.livelogs[daemon])
+        return self.livelogs[daemon].wrfd
 
-        def _getlogfd(self, daemon):
-            if daemon not in self.livelogs:
-                self.livelogs[daemon] = LiveLog(self, daemon)
-                self.instance.timeline.install(self.livelogs[daemon])
-            return self.livelogs[daemon].wrfd
+    def interactive_state(self) -> Dict[str, Any]:
+        return {
+            "rundir": self.rundir,
+            "frrpath": self.frr.frrpath,
+        }
 
-        def xrefs(self):
-            return FRRConfigs.xrefs
+    def report_state(self) -> Dict[str, Any]:
+        # TODO: merge interactive_state / report_state?
+        return self.rtrcfg
 
-        def start(self):
-            super().start()
+    def xrefs(self):
+        return self.frr.xrefs
 
-            frrcred = self.instance.configs.frrcred
+    def start(self):
+        super().start()
 
-            self.rundir = rundir = self.tempfile("run")
-            os.mkdir(rundir)
-            os.chown(rundir, frrcred.pw_uid, frrcred.pw_gid)
-            self.rundir = rundir
-            # bit of a hack
-            self.check_call(["mount", "--bind", rundir, "/var/run"])
+        frrcred = self.frr.frrcred
 
-            self.rtrcfg = self.instance.configs.get(self.name, {})
+        self.rundir = rundir = self.tempfile("run")
+        os.mkdir(rundir)
+        os.chown(rundir, frrcred.pw_uid, frrcred.pw_gid)
+        self.rundir = rundir
+        # bit of a hack
+        self.check_call(["mount", "--bind", rundir, "/var/run"])
 
-            for daemon in FRRConfigs.daemons:
-                if daemon not in self.rtrcfg:
-                    continue
-                self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
-                self.start_daemon(daemon)
+        self.rtrcfg = self.configs.get(self.name, {})
 
-        def start_daemon(self, daemon: str):
-            frrpath = self.instance.configs.frrpath
-            binmap = self.instance.configs.binmap
-
-            use_integrated = daemon in FRRConfigs.daemons_integrated_only
-
-            if use_integrated:
-                cfgpath = self.tempfile("integrated-" + daemon + ".conf")
-            else:
-                cfgpath = self.tempfile(daemon + ".conf")
-            with open(cfgpath, "w", encoding="utf-8") as fd:
-                fd.write(self.rtrcfg[daemon])
-
-            assert self.rundir is not None
-
-            logfd = self._getlogfd(daemon)
-
-            execpath = os.path.join(frrpath, binmap[daemon])
-            cmdline = []
-
-            cmdline.extend(
-                [
-                    execpath,
-                    "-d",
-                ]
-            )
-            if not use_integrated:
-                cmdline.extend(
-                    [
-                        "-f",
-                        cfgpath,
-                    ]
-                )
-            cmdline.extend(
-                [
-                    "--log",
-                    "file:%s" % self.logfiles[daemon],
-                    "--log",
-                    "monitor:%d" % logfd.fileno(),
-                    "--log-level",
-                    "debug",
-                    "--vty_socket",
-                    self.rundir,
-                    "-i",
-                    "%s/%s.pid" % (self.rundir, daemon),
-                ]
-            )
-            try:
-                self.check_call(cmdline, pass_fds=[logfd.fileno()])
-            except subprocess.CalledProcessError as e:
-                raise TopotatoDaemonCrash(
-                    daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
-                ) from e
-
-            # want record-priority & timestamp precision...
-            pid, _, _ = self.vtysh_polled(
-                self.instance.timeline,
-                daemon,
-                "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
-                % self.logfiles[daemon],
-            )
-            self.pids[daemon] = pid
-
-            if use_integrated:
-                self.vtysh(["-d", daemon, "-f", cfgpath])
-
-        def restart(self, daemon: str):
-            pidfile = "%s/%s.pid" % (self.rundir, daemon)
-            with open(pidfile, "r", encoding="utf-8") as fd:
-                pid = int(fd.read())
-            self.check_call(["kill", "-TERM", str(pid)])
-            for _ in range(0, 5):
-                try:
-                    self.check_call(["kill", "-TERM", str(pid)])
-                except subprocess.CalledProcessError:
-                    break
-                self.instance.timeline.sleep(0.1)
-
+        for daemon in self.configs.daemons:
+            if daemon not in self.rtrcfg:
+                continue
+            self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
             self.start_daemon(daemon)
 
-        def end_prep(self):
-            for livelog in self.livelogs.values():
-                livelog.close_prep()
+    def start_daemon(self, daemon: str):
+        frrpath = self.frr.frrpath
+        binmap = self.frr.binmap
 
-            for daemon, pid in list(reversed(self.pids.items())):
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                    # stagger SIGTERM signals a tiiiiny bit
-                    self.instance.timeline.sleep(0.01)
-                except ProcessLookupError:
-                    del self.pids[daemon]
-                    # FIXME: log something
+        use_integrated = daemon in self.frr.daemons_integrated_only
 
-            super().end_prep()
+        if use_integrated:
+            cfgpath = self.tempfile("integrated-" + daemon + ".conf")
+        else:
+            cfgpath = self.tempfile(daemon + ".conf")
+        with open(cfgpath, "w", encoding="utf-8") as fd:
+            fd.write(self.rtrcfg[daemon])
 
-        def end(self):
-            livelogs = self.livelogs.values()
+        assert self.rundir is not None
 
-            # TODO: move this to instance level
-            self.instance.timeline.sleep(1.0, final=livelogs)
+        logfd = self._getlogfd(daemon)
 
-            for livelog in self.livelogs.values():
-                livelog.close()
+        execpath = os.path.join(frrpath, binmap[daemon])
+        cmdline = []
 
-            super().end()
-
-        def vtysh(self, args):
-            frrpath = self.instance.configs.frrpath
-            execpath = os.path.join(frrpath, "vtysh/vtysh")
-            return self.popen(
-                [execpath] + ["--vty_socket", self.rundir] + args,
-                stdout=subprocess.PIPE,
+        cmdline.extend(
+            [
+                execpath,
+                "-d",
+            ]
+        )
+        if not use_integrated:
+            cmdline.extend(
+                [
+                    "-f",
+                    cfgpath,
+                ]
             )
+        cmdline.extend(
+            [
+                "--log",
+                "file:%s" % self.logfiles[daemon],
+                "--log",
+                "monitor:%d" % logfd.fileno(),
+                "--log-level",
+                "debug",
+                "--vty_socket",
+                self.rundir,
+                "-i",
+                "%s/%s.pid" % (self.rundir, daemon),
+            ]
+        )
+        try:
+            self.check_call(cmdline, pass_fds=[logfd.fileno()])
+        except subprocess.CalledProcessError as e:
+            raise TopotatoDaemonCrash(
+                daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
+            ) from e
 
-        def vtysh_polled(self, timeline: Timeline, daemon, cmds, timeout=5.0):
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
-            fn = self.tempfile("run/%s.vty" % (daemon))
+        # want record-priority & timestamp precision...
+        pid, _, _ = self.vtysh_polled(
+            self.instance.timeline,
+            daemon,
+            "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
+            % self.logfiles[daemon],
+        )
+        self.pids[daemon] = pid
 
-            sock.connect(fn)
-            peercred = sock.getsockopt(
-                socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
-            )
-            pid, _, _ = struct.unpack("3I", peercred)
+        if use_integrated:
+            # FIXME: do something with the output
+            self._vtysh(["-d", daemon, "-f", cfgpath]).communicate()
+            if daemon in self.frr.daemons_mgmtd and "mgmtd" in self.frr.daemons:
+                self._vtysh(["-d", "mgmtd", "-f", cfgpath]).communicate()
 
-            cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+    def start_post(self, timeline, failed: List[Tuple[str, str]]):
+        for daemon in self.configs.daemons:
+            if not self.configs.want_daemon(self.name, daemon):
+                continue
 
-            # TODO: refactor
-            vpoll = VtyshPoll(self.name, daemon, sock, cmds)
+            try:
+                _, _, rc = self.vtysh_polled(timeline, daemon, "show version")
+            except ConnectionRefusedError:
+                failed.append((self.name, daemon))
+                return
+            except FileNotFoundError:
+                failed.append((self.name, daemon))
+                return
+            if rc != 0:
+                failed.append((self.name, daemon))
 
-            output = []
-            retcode = None
+    def restart(self, daemon: str):
+        pidfile = "%s/%s.pid" % (self.rundir, daemon)
+        with open(pidfile, "r", encoding="utf-8") as fd:
+            pid = int(fd.read())
+        self.check_call(["kill", "-TERM", str(pid)])
+        for _ in range(0, 5):
+            try:
+                self.check_call(["kill", "-TERM", str(pid)])
+            except subprocess.CalledProcessError:
+                break
+            self.instance.timeline.sleep(0.1)
 
-            with timeline.with_pollee(vpoll) as poller:
-                vpoll.send_cmd()
+        self.start_daemon(daemon)
 
-                end = time.time() + timeout
-                for event in poller.run_iter(end):
-                    if not isinstance(event, TimedVtysh):
-                        continue
-                    output.append(event)
-                    retcode = event.retcode
-                    if event.last:
-                        break
+    def end_prep(self):
+        for livelog in self.livelogs.values():
+            livelog.close_prep()
 
-            return (pid, output, retcode)
+        for daemon, pid in list(reversed(self.pids.items())):
+            try:
+                os.kill(pid, signal.SIGTERM)
+                # stagger SIGTERM signals a tiiiiny bit
+                self.instance.timeline.sleep(0.01)
+            except ProcessLookupError:
+                del self.pids[daemon]
+                # FIXME: log something
 
-    def __init__(self, network: "toponom.Network", configs: FRRConfigs):
-        super().__init__(network)
-        self.configs = configs
-        self.timeline = Timeline()
+        super().end_prep()
+
+    def end(self):
+        livelogs = self.livelogs.values()
+
+        # TODO: move this to instance level
+        self.instance.timeline.sleep(1.0, final=livelogs)
+
+        for livelog in self.livelogs.values():
+            livelog.close()
+
+        super().end()
+
+    def _vtysh(self, args: List[str]) -> subprocess.Popen:
+        assert self.rundir is not None
+
+        frrpath = self.frr.frrpath
+        execpath = os.path.join(frrpath, "vtysh/vtysh")
+        return self.popen(
+            [execpath] + ["--vty_socket", self.rundir] + args,
+            stdout=subprocess.PIPE,
+        )
+
+    def vtysh_exec(self, timeline: Timeline, cmds, timeout=5.0):
+        cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+
+        args: List[str] = []
+        for cmd in cmds:
+            args.extend(("-c", cmd))
+
+        proc = self._vtysh(args)
+        output, _ = proc.communicate(timeout=timeout)
+        output = output.decode("UTF-8")
+
+        timed = TimedVtysh(
+            time.time(), self.name, "vtysh", cmds, proc.returncode, output, True
+        )
+        timeline.append(timed)
+
+        return (None, [timed], proc.returncode)
+
+    def vtysh_polled(self, timeline: Timeline, daemon, cmds, timeout=5.0):
+        if daemon == "vtysh":
+            return self.vtysh_exec(timeline, cmds, timeout)
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
+        fn = self.tempfile("run/%s.vty" % (daemon))
+
+        sock.connect(fn)
+        peercred = sock.getsockopt(
+            socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
+        )
+        pid, _, _ = struct.unpack("3I", peercred)
+
+        cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+
+        # TODO: refactor
+        vpoll = VtyshPoll(self.name, daemon, sock, cmds)
+
+        output = []
+        retcode = None
+
+        with timeline.with_pollee(vpoll) as poller:
+            vpoll.send_cmd()
+
+            end = time.time() + timeout
+            for event in poller.run_iter(end):
+                if not isinstance(event, TimedVtysh):
+                    continue
+                output.append(event)
+                retcode = event.retcode
+                if event.last:
+                    break
+
+        return (pid, output, retcode)

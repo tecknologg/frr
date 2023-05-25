@@ -6,8 +6,9 @@ FRRouting integration for topotato
 
 from .core import (
     FRRSetupError,
+    FRRSetup,
     FRRConfigs,
+    FRRRouterNS,
     TimedVtysh,
     VtyshPoll,
-    FRRNetworkInstance,
 )
