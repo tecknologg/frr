@@ -72,7 +72,9 @@ class Configs(FRRConfigs):
     """
 
 
-class BGPSetAspathExclude(TestBase, AutoFixture, topo=topology, configs=Configs):
+class BGPColorExtendedCommunities(
+    TestBase, AutoFixture, topo=topology, configs=Configs
+):
     @topotatofunc
     def bgp_converge(self, r1, r2):
         expected = {
