@@ -48,7 +48,6 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
-    # this bit does not seem to work. It's required so that bgp_check_advertised_routes_r2 can pass
     staticd = """
     #% extends "boilerplate.conf"
     #% block main
@@ -105,7 +104,7 @@ class BGPRouteMapMatchSourceProtocol(
     TestBase, AutoFixture, topo=topology, configs=Configs
 ):
     @topotatofunc
-    def bgp_check_advertised_routes_r2(self, _, r1, r3):
+    def bgp_check_advertised_routes_r2(self, _, r1, r2):
         expected = {
             "advertisedRoutes": {
                 "10.10.10.10/32": {
@@ -118,13 +117,13 @@ class BGPRouteMapMatchSourceProtocol(
         yield from AssertVtysh.make(
             r1,
             "bgpd",
-            f"show bgp ipv4 unicast neighbors {r3.iface_to('s1').ip4[0].ip} advertised-routes json",
+            f"show bgp ipv4 unicast neighbors {r2.iface_to('s1').ip4[0].ip} advertised-routes json",
             maxwait=5.0,
             compare=expected,
         )
 
     @topotatofunc
-    def bgp_check_advertised_routes_r3(self, _, r1):
+    def bgp_check_advertised_routes_r3(self, _, r1, r3):
         expected = {
             "advertisedRoutes": {
                 "192.168.1.0/24": {
@@ -142,7 +141,7 @@ class BGPRouteMapMatchSourceProtocol(
         yield from AssertVtysh.make(
             r1,
             "bgpd",
-            f"show bgp ipv4 unicast neighbors 192.168.2.2 advertised-routes json",
+            f"show bgp ipv4 unicast neighbors {r3.iface_to('s1').ip4[0].ip} advertised-routes json",
             maxwait=5.0,
             compare=expected,
         )
